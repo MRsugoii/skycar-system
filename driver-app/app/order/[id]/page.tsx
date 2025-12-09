@@ -144,6 +144,9 @@ export default function OrderDetailsPage() {
                             <KV label="行李件數" value={lugStr} />
                             <KV label="舉牌服務" value={bs.need ? `需要 (${bs.text || ''})` : '不需要'} />
                             <KV label="備註" value={order.note || "—"} />
+                            <div className="h-px bg-gray-100 my-4"></div>
+                            <KV label="乘客姓名" value={d.contact?.name || "—"} />
+                            <KV label="乘客電話" value={d.contact?.phone || "—"} icon={<Phone size={14} className="text-gray-400 mt-0.5" />} />
                         </div>
                         <div className="h-px bg-gray-100 my-4"></div>
 
@@ -187,6 +190,7 @@ export default function OrderDetailsPage() {
                         <ActionButton
                             label="開始行程"
                             onClick={() => { if (confirm("確定開始行程？")) updateFlow('enRoute'); }}
+                            disabled={flow !== 'idle'}
                             variant="blue"
                         />
                         <ActionButton
