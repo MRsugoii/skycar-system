@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>司機註冊</title>
+<style>
+:root{
+  --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80;
+  --line:#e7f0f1; --field:#B7C1CC; --bg:#f6f8fb;
+  --radius:16px; --radius-ipt:12px;
+}
+html,body{height:100%;margin:0;background:var(--bg);
+  font-family:system-ui,"Noto Sans TC",Arial;color:var(--text);-webkit-text-size-adjust:none}
+.wrap{width:390px;max-width:390px;margin:0 auto;padding:0 20px 60px}
+@media(max-width:420px){.wrap{width:100%;max-width:420px;padding:0 16px 60px}}
+
+.h1{text-align:center;font-size:26px;font-weight:900;margin:60px 0 24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:24px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+.row{display:grid;gap:8px;margin-bottom:16px}
+label{font-weight:900;font-size:15px}
+.ipt{
+  width:100%;padding:14px 16px;border:1px solid var(--field)!important;border-radius:var(--radius-ipt)!important;
+  background:#fff;font-size:15px;outline:none;box-shadow:none!important;-webkit-appearance:none;
+}
+.ipt:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+.subhint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:-4px}
+.grid2{display:grid;grid-template-columns:1fr 140px;gap:10px}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;width:100%;
+  padding:14px 0;border-radius:var(--radius-ipt)!important;
+  font-weight:800;letter-spacing:.02em;font-size:16px;cursor:pointer;transition:.2s;text-decoration:none;
+}
+.btn-main{background:var(--teal)!important;color:#fff!important;border:1px solid var(--teal)}
+.btn-line{background:#fff!important;color:var(--teal)!important;border:1px solid var(--teal)}
+.btn-line:hover{background:rgba(43,124,255,.06)!important}
+.btn[disabled]{opacity:.5;pointer-events:none}
+
+.hint{font-size:12px}
+.status-ok{color:#14B87A;font-weight:800}
+.status-bad{color:#E34A4A;font-weight:800}
+
+.upload-col{display:grid;gap:10px}
+.file{position:relative}
+.file input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.fake{
+  border:1px solid var(--teal);border-radius:var(--radius-ipt);
+  padding:14px 0;text-align:center;font-weight:800;color:var(--teal);
+}
+.file-name{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.actions{display:grid;gap:12px;margin-top:28px}
+.muted{color:var(--muted);font-size:13px;text-align:center;margin-top:14px;line-height:1.6}
+
+/* 返回箭頭 */
+.back{
+  position:fixed;left:10px;top:10px;z-index:10;width:38px;height:38px;border-radius:50%;
+  background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);cursor:pointer;
+}
+.back svg{width:20px;height:20px;stroke:var(--teal)}
+</style>
+</head>
+<body>
+
+<!-- 返回上一頁 -->
+<button class="back" id="btnBack" aria-label="返回上一頁">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 18l-6-6 6-6"/>
+  </svg>
+</button>
+
+<div class="wrap">
+  <h1 class="h1">司機註冊</h1>
+  <div class="card">
+
+    <!-- 身分證（帳號） -->
+    <div class="row">
+      <label for="idno">身分證字號（帳號）</label>
+      <input id="idno" class="ipt" placeholder="例如 A123456789"
+             inputmode="latin" autocomplete="username"
+             maxlength="10" pattern="[A-Za-z][12][0-9]{8}" required>
+      <div class="subhint">請輸入正確格式：英文開頭＋ 1/2 ＋ 8 位數字。</div>
+    </div>
+
+    <!-- 姓名 -->
+    <div class="row">
+      <label for="name">姓名</label>
+      <input id="name" class="ipt" placeholder="您的姓名" required>
+    </div>
+
+    <!-- 生日 -->
+    <div class="row">
+      <label for="birth">生日</label>
+      <input id="birth" class="ipt" type="date">
+    </div>
+
+    <!-- 手機（暫時密碼） -->
+    <div class="row">
+      <label for="phone">手機（必填，做為暫時密碼）</label>
+      <input id="phone" class="ipt" type="tel" inputmode="numeric"
+             placeholder="09xxxxxxxx（台灣手機）" maxlength="10" required>
+      <div class="subhint">首次登入密碼＝您的手機號（可於登入後自行更改）。</div>
+    </div>
+
+    <!-- 手機驗證碼 -->
+    <div class="row">
+      <label for="otp">手機驗證碼</label>
+      <div class="grid2">
+        <input id="otp" class="ipt" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="輸入 6 位數驗證碼">
+        <button id="sendOtp" class="btn btn-line" type="button">發送驗證碼</button>
+      </div>
+      <div id="otpMsg" class="hint"></div>
+    </div>
+
+    <!-- 地址 -->
+    <div class="row">
+      <label for="addr">地址</label>
+      <input id="addr" class="ipt" placeholder="市 / 區 / 路 / 號…">
+    </div>
+
+    <!-- Email（選填） -->
+    <div class="row">
+      <label for="email">Email（選填）</label>
+      <input id="email" class="ipt" type="email" placeholder="example@mail.com">
+    </div>
+
+    <!-- Line（選填） -->
+    <div class="row">
+      <label for="line">Line ID（選填）</label>
+      <input id="line" class="ipt" placeholder="@ 或 ID">
+    </div>
+
+    <!-- ====== 司機專屬上傳 ====== -->
+    <!-- 駕照：正/反面 + 到期日 -->
+    <div class="row">
+      <label>駕照上傳（正面 / 反面）</label>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 駕照正面</div>
+          <input id="licenseFront" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="nameLicenseFront"></div>
+
+        <div class="file">
+          <div class="fake">上傳 駕照反面</div>
+          <input id="licenseBack" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="nameLicenseBack"></div>
+
+        <input id="licenseExpire" class="ipt" type="date" placeholder="到期日">
+        <div class="subhint">請輸入駕照到期日。</div>
+      </div>
+    </div>
+
+    <!-- 行照（單份） -->
+    <div class="row">
+      <label>行照上傳</label>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 行照</div>
+          <input id="vehicle" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="nameVehicle"></div>
+      </div>
+    </div>
+
+    <!-- 保險：正/反面 + 到期日 -->
+    <div class="row">
+      <label>保險上傳（正面 / 反面）</label>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 保險正面</div>
+          <input id="insFront" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="nameInsFront"></div>
+
+        <div class="file">
+          <div class="fake">上傳 保險反面</div>
+          <input id="insBack" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="nameInsBack"></div>
+
+        <input id="insuranceExpire" class="ipt" type="date" placeholder="到期日">
+        <div class="subhint">請輸入保險到期日。</div>
+      </div>
+    </div>
+
+    <!-- 良民證 -->
+    <div class="row">
+      <label>良民證上傳</label>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 良民證</div>
+          <input id="police" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="namePolice"></div>
+      </div>
+    </div>
+
+    <!-- 個人照（自拍） -->
+    <div class="row">
+      <label>個人照（自拍）上傳</label>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 個人照（自拍）</div>
+          <input id="idPhoto" type="file" accept="image/*" capture="user">
+        </div>
+        <div class="file-name" id="nameIdPhoto"></div>
+        <div class="subhint">請上傳清晰、正面、無墨鏡或帽子的自拍照（作為司機個人形象使用）。</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="submit" class="btn btn-main" type="button">註冊並送出審核</button>
+    </div>
+    <div class="muted">完成申請後，我們將於 1–2 天內完成審核；<br>
+    請通過身分證及手機號登入查看當前狀態。</div>
+  </div>
+</div>
+
+<script>
+(()=>{
+  const $=s=>document.querySelector(s);
+  const L=localStorage;
+  const ROUTE_LOGIN='https://chihang-go.com/driver_login/';
+  const ROUTE_FALLBACK='https://chihang-go.com/';
+  let otpCode='', otpOK=false, timer=0;
+
+  // 返回
+  $('#btnBack').addEventListener('click',()=>{
+    if(document.referrer) history.back();
+    else location.href = ROUTE_FALLBACK;
+  });
+
+  // 身分證輸入：大寫、只留英數、長度 10
+  $('#idno').addEventListener('input', e=>{
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10);
+  });
+  $('#idno').addEventListener('blur', e=>{ e.target.value = e.target.value.toUpperCase(); });
+
+  // 手機輸入：僅數字、長度 10
+  $('#phone').addEventListener('input', e=>{
+    e.target.value = e.target.value.replace(/\D/g,'').slice(0,10);
+  });
+
+  // 台灣身分證檢查（格式＋checksum）
+  function validTWID(code){
+    code=(code||'').toUpperCase();
+    if(!/^[A-Z][12]\d{8}$/.test(code)) return false;
+    const map="ABCDEFGHJKLMNPQRSTUVXYWZIO";
+    const n = map.indexOf(code[0]) + 10;
+    let sum = Math.floor(n/10) + (n%10)*9;
+    const w=[8,7,6,5,4,3,2,1];
+    for(let i=1;i<=8;i++) sum += parseInt(code[i]) * w[i-1];
+    sum += parseInt(code[9]);
+    return sum % 10 === 0;
+  }
+  const validPhone = p => /^09\d{8}$/.test(p);
+
+  // 發送手機 OTP
+  $('#sendOtp').addEventListener('click',()=>{
+    const phone = $('#phone').value.trim();
+    if(!validPhone(phone)){ return showOtp('請輸入正確台灣手機（09 開頭 10 碼）', true); }
+    otpCode = Math.floor(100000 + Math.random()*900000).toString();
+    otpOK = false;
+    showOtp(`驗證碼已寄出（示範：<b>${otpCode}</b>）`, false);
+    countdown(60);
+  });
+  function countdown(s){
+    timer = s; $('#sendOtp').disabled = true; tick();
+  }
+  function tick(){
+    if(timer<=0){ $('#sendOtp').disabled=false; $('#sendOtp').textContent='發送驗證碼'; return; }
+    $('#sendOtp').textContent = `重送 (${timer}s)`; timer--; setTimeout(tick,1000);
+  }
+  function showOtp(msg, bad){
+    const el=$('#otpMsg'); el.innerHTML=msg; el.className='hint ' + (bad?'status-bad':'status-ok');
+  }
+
+  // OTP 僅數字、滿 6 驗
+  $('#otp').addEventListener('input', e=>{
+    e.target.value = e.target.value.replace(/\D/g,'').slice(0,6);
+    const v = e.target.value;
+    if(v.length===6){
+      if(v===otpCode){ otpOK = true; showOtp('手機驗證成功', false); }
+      else { otpOK=false; showOtp('驗證碼錯誤', true); }
+    } else {
+      otpOK = false;
+    }
+  });
+
+  // 檔名顯示（長檔名省略）
+  function shortName(n){ return n.length>22 ? n.slice(0,10)+'…'+n.slice(-10) : n; }
+  [['licenseFront','nameLicenseFront'],
+   ['licenseBack','nameLicenseBack'],
+   ['vehicle','nameVehicle'],
+   ['insFront','nameInsFront'],
+   ['insBack','nameInsBack'],
+   ['police','namePolice'],
+   ['idPhoto','nameIdPhoto']].forEach(([i,n])=>{
+     $('#'+i).addEventListener('change',e=>{
+       const f=e.target.files?.[0]; $('#'+n).textContent = f ? shortName(f.name) : '';
+     });
+   });
+
+  // 送出
+  $('#submit').addEventListener('click',()=>{
+    const submitBtn = $('#submit'); submitBtn.disabled = true;
+
+    const idno = $('#idno').value.trim().toUpperCase();
+    const name = $('#name').value.trim();
+    const birth= $('#birth').value;
+    const phone= $('#phone').value.trim();
+    const addr = $('#addr').value.trim();
+    const email= $('#email').value.trim();
+    const line = $('#line').value.trim();
+    const licenseExpire = $('#licenseExpire').value;
+    const insuranceExpire= $('#insuranceExpire').value;
+
+    const fail = (msg)=>{ alert(msg); submitBtn.disabled=false; };
+
+    if(!validTWID(idno)) return fail('請輸入正確的身分證字號');
+    if(!name) return fail('請輸入姓名');
+    if(!validPhone(phone)) return fail('請輸入正確手機（09 開頭 10 碼）');
+    if(!otpOK) return fail('請完成手機驗證');
+
+    // 必傳檔案：駕照正反、保險正反、行照、良民證、個人照（自拍）
+    const reqFiles = [
+      ['licenseFront','請上傳駕照正面'],
+      ['licenseBack','請上傳駕照反面'],
+      ['insFront','請上傳保險正面'],
+      ['insBack','請上傳保險反面'],
+      ['vehicle','請上傳行照'],
+      ['police','請上傳良民證'],
+      ['idPhoto','請上傳個人照（自拍）'],
+    ];
+    for(const [fid,msg] of reqFiles){
+      const f = $('#'+fid).files?.[0];
+      if(!f) return fail(msg);
+    }
+    if(!licenseExpire) return fail('請輸入駕照到期日');
+    if(!insuranceExpire) return fail('請輸入保險到期日');
+
+    if(localStorage.getItem('driver_'+idno)) return fail('此身分證已註冊，請直接登入');
+
+    const driver = {
+      idno, name, birth, phone, addr, email, line,
+      password: phone,              // 暫時密碼＝手機
+      status: 'pending',
+      docs: {
+        license: {
+          front: $('#licenseFront').files[0]?.name,
+          back:  $('#licenseBack').files[0]?.name,
+          expire: licenseExpire
+        },
+        vehicle: $('#vehicle').files[0]?.name,
+        insurance: {
+          front: $('#insFront').files[0]?.name,
+          back:  $('#insBack').files[0]?.name,
+          expire: insuranceExpire
+        },
+        police:  $('#police').files[0]?.name,
+        idPhoto: $('#idPhoto').files[0]?.name
+      }
+    };
+
+    // TODO：實務上以 fetch 將檔案與資料送至後端
+    localStorage.setItem('driver_'+idno, JSON.stringify(driver));
+    alert('申請已送出，將於 1–2 天內完成審核。');
+    location.assign(ROUTE_LOGIN);
+  });
+})();
+</script>
+</body>
+</html>

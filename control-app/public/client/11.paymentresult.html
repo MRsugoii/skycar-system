@@ -1,0 +1,124 @@
+<!-- 付款結果頁（手機 390px｜藍白風｜兩個面板同時顯示｜主按鈕白字｜按鈕左右各一半） -->
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=390, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>付款結果</title>
+<style>
+  :root{
+    --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80; --line:#e7f0f1; --soft:#eef4ff; --radius:16px;
+  }
+  html,body{margin:0;background:#f6f8fb;font-family:system-ui,"Noto Sans TC",Arial,sans-serif;color:var(--text)}
+  .pg{width:390px;max-width:390px;margin:28px auto;padding:0 16px}
+  .h1{font-size:26px;font-weight:900;text-align:center;margin:0 0 18px}
+
+  .panel{
+    display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:center;
+    background:#fff;border:2px solid var(--line);border-radius:var(--radius);
+    padding:18px;box-shadow:0 6px 20px rgba(0,0,0,.04);margin-bottom:14px
+  }
+  .panel.active{border-color:var(--teal);box-shadow:0 0 0 4px rgba(43,124,255,.08)}
+  .icon{width:72px;height:72px;border-radius:50%;display:grid;place-items:center}
+  .icon svg{width:38px;height:38px;stroke:currentColor}
+  .ok .icon{background:var(--soft);border:1px solid #dbe7ff;color:var(--teal)}
+  .fail .icon{background:#f0f3f9;border:1px solid #e2e8f0;color:#5c6b80}
+
+  .title{font-size:20px;font-weight:900;margin:0 0 6px}
+  .pill{display:inline-block;margin-left:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#f4f7ff;border:1px solid #dfe8ff;color:#1b3a78}
+  .desc{color:var(--muted);line-height:1.7;margin:0}
+  .mono{font-variant-numeric:tabular-nums}
+
+  /* ✅ 兩顆按鈕左右各一半寬 */
+  .actions{display:flex;gap:12px;justify-content:space-between;align-items:stretch;margin-top:12px}
+  .actions .btn,.actions .btn-line{flex:0 0 calc(50% - 6px)}
+
+  .btn,
+  .btn-line{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:12px 18px;border-radius:14px;font-weight:800;text-decoration:none;border:1px solid transparent;transition:.15s ease-in-out;font-family:inherit
+  }
+  .btn{background:var(--teal);border-color:var(--teal);color:#fff !important}
+  .btn:hover{filter:brightness(.93)} .btn:active{transform:translateY(1px)}
+  .btn-line{background:#fff;border-color:var(--teal);color:var(--teal) !important}
+  .btn *{color:inherit !important;fill:inherit !important}
+
+  @media(max-width:420px){
+    .panel{grid-template-columns:1fr;text-align:center}
+    .icon{margin:0 auto}
+  }
+</style>
+</head>
+<body>
+<div class="pg" id="resultPage">
+  <div class="h1">付款結果</div>
+
+  <!-- 成功面板 -->
+  <section class="panel ok" id="okBox">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+    <div>
+      <h2 class="title">付款成功 <span class="pill" id="okStatePill" style="display:none">本次狀態</span></h2>
+      <p class="desc">
+        訂單編號：<strong id="okOrderId" class="mono">—</strong><br>
+        實付金額：<strong id="okAmount" class="mono">—</strong><br>
+        乘客人數：<strong id="okPax" class="mono">—</strong><br>
+        我們會在<strong>啟程前一天</strong>透過<strong>Email</strong>與<strong>簡訊</strong>提供乘車提醒與司機資訊。
+      </p>
+      <div class="actions">
+        <a class="btn"      href="https://chihang-go.com/">回首頁</a>
+        <a class="btn-line" href="https://chihang-go.com/user_member/">查看訂單</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 失敗面板 -->
+  <section class="panel fail" id="failBox">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </div>
+    <div>
+      <h2 class="title">付款未完成 <span class="pill" id="failStatePill" style="display:none">本次狀態</span></h2>
+      <p class="desc">
+        可能原因：驗證逾時、餘額不足或 3D 驗證未通過。<br>
+        可稍後再試或更換付款方式，如需協助請聯絡客服。
+      </p>
+      <div class="actions">
+        <a class="btn"      href="https://chihang-go.com/user_payment_page/">回到付款</a>
+        <a class="btn-line" href="https://chihang-go.com/contact-us/">聯絡客服</a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const L=localStorage,$=s=>document.querySelector(s);
+  const params=new URL(location.href).searchParams;
+  const booking = (()=>{ try{return JSON.parse(L.getItem('fullBooking')||'{}')}catch{return {}} })();
+  const status  = (booking.status||'').toLowerCase();
+  const orderId = params.get('orderId') || booking.orderId || '';
+  const total   = booking?.pricing?.total ?? booking?.price;
+
+  // 乘客人數 = 成人 + 小孩
+  const pax = booking?.ride?.passengers || {};
+  const totalPax = (Number(pax.adult||0) + Number(pax.child||0)) || 0;
+
+  // 填入數據
+  $('#okOrderId').textContent = orderId || '—';
+  $('#okAmount').textContent  = (total!=null) ? `${Number(total).toLocaleString()} 元` : '—';
+  $('#okPax').textContent     = `${totalPax} 人`;
+
+  // 兩個面板都顯示，僅目前狀態加高亮
+  if(status === 'paid'){
+    $('#okBox').classList.add('active');
+    $('#okStatePill').style.display='inline-block';
+  }else if(status === 'failed'){
+    $('#failBox').classList.add('active');
+    $('#failStatePill').style.display='inline-block';
+  }
+})();
+</script>
+</body>
+</html>

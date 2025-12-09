@@ -1,0 +1,520 @@
+<!-- 付款頁（手機版＋登入/註冊彈窗＋會員與優惠券固定兩行＋需登入才可付款） -->
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>付款頁面</title>
+<style>
+  :root{
+    --teal:#2B7CFF; --line:#e7f0f1; --text:#051D4B; --muted:#6b7b80;
+    --bg:#f6f8fb; --field:#B7C1CC; --radius:16px; --radius-ipt:12px;
+    --danger:#E34A4A;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,"Noto Sans TC",Arial;color:var(--text)}
+  .pg{width:390px;max-width:390px;margin:28px auto;padding:0 16px}
+  @media(max-width:420px){.pg{width:100%;max-width:420px}}
+  .h1{font-size:26px;font-weight:900;color:var(--text);margin:0 0 18px;text-align:center}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:clamp(12px,2.4vw,18px);box-shadow:0 6px 20px rgba(0,0,0,.04)}
+  .row{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center}
+  .lbl{color:var(--text);font-weight:800}
+  .muted{color:var(--muted);font-size:12px}
+
+  .ipt,select,textarea{
+    width:100%;padding:12px;border:1px solid var(--field)!important;border-radius:var(--radius-ipt)!important;
+    background:#fff;font-size:15px;box-shadow:none!important;outline:none
+  }
+  .ipt:focus,select:focus,textarea:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+
+  .select-wrap{position:relative;display:block}
+  .select-wrap .select{-webkit-appearance:none;appearance:none;background:#fff;background-image:none!important;padding-right:40px;line-height:1.2}
+  .select-wrap::after{content:"▾";position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--muted);pointer-events:none}
+  .select-wrap:focus-within .select{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+
+  details.acc{border:1px solid var(--line);border-radius:var(--radius-ipt);overflow:hidden;background:#fff}
+  details.acc>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;font-weight:800;color:var(--text)}
+  details.acc[open]>summary::after{content:"▾";color:var(--teal)}
+  details.acc .acc-body{padding:12px 16px;border-top:1px solid var(--line)}
+
+  .pm-list{display:grid;grid-template-columns:1fr;gap:10px}
+  .pm{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:2px solid var(--line);border-radius:var(--radius-ipt);cursor:pointer;background:#fff}
+  .pm.active{border-color:var(--teal);box-shadow:0 0 0 3px rgba(43,124,255,.08)}
+  .pm .name{font-weight:800;color:var(--text)}
+
+  .tbl{width:100%;border-collapse:separate;border-spacing:0 8px}
+  .tbl th{color:#78919a;font-weight:700;text-align:left;padding:6px 8px}
+  .tbl td{padding:10px 8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff}
+  .tbl tr td:first-child{border-left:1px solid var(--line);border-top-left-radius:10px;border-bottom-left-radius:10px}
+  .tbl tr td:last-child{border-right:1px solid var(--line);border-top-right-radius:10px;border-bottom-right-radius:10px;text-align:right;font-weight:700}
+  .monos{font-variant-numeric:tabular-nums}
+
+  .actions{display:flex;gap:12px;justify-content:space-between;align-items:stretch;margin-bottom:8px}
+  .actions .btn, .actions .btn-line{flex:0 0 calc(50% - 6px)}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 22px;border-radius:14px!important;
+    background:#2B7CFF!important;color:#fff!important;border:1px solid #2B7CFF!important;font-weight:800;cursor:pointer;text-decoration:none;transition:.2s
+  }
+  .btn:hover{filter:brightness(.93)} .btn:active{transform:translateY(1px)}
+  .btn-line{background:#fff!important;color:#2B7CFF!important;border:1px solid #2B7CFF!important}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .btn-small{padding:12px 16px;border-radius:14px;font-weight:800}
+  .btn-block{width:100%}
+
+  .memberBar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .pill{background:#f4f8ff;border:1px solid #e7f0f9;color:#1d3a78;padding:8px 12px;border-radius:999px;font-weight:800}
+  .bottom-actions{display:grid;gap:8px}
+
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px;overflow:auto}
+  .modal.active{display:flex}
+  .box{background:#fff;border:1px solid var(--line);border-radius:18px;width:100%;max-width:380px;padding:18px;position:relative;
+       max-height:calc(100dvh - 40px);overflow:auto;-webkit-overflow-scrolling:touch}
+  .box h2{font-size:18px;font-weight:900;margin:4px 0 12px;text-align:center}
+  .close{position:absolute;right:20px;top:16px;border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--muted)}
+  .row1{display:grid;gap:8px;margin-bottom:12px}
+  .toast{margin-top:10px;padding:10px;border-radius:12px;background:#f4f8ff;color:#1d3a78;font-size:13px;text-align:center;display:none}
+
+  .coupon-grid{display:grid;grid-template-columns:1fr;gap:8px}
+  .grid2{display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center}
+
+  /* 開啟彈窗時鎖住背景 */
+  html.modal-open, body.modal-open{overflow:hidden}
+</style>
+</head>
+<body>
+<div class="pg" id="payPage">
+  <div class="h1">付款</div>
+
+  <details class="acc" open>
+    <summary>訂單明細</summary>
+    <div class="acc-body">
+      <table class="tbl monos" id="detailTbl"></table>
+    </div>
+  </details>
+
+  <div class="card">
+    <div class="row">
+      <div class="lbl">發票資訊</div>
+      <div class="select-wrap">
+        <select id="invoiceType" class="ipt select">
+          <option value="" selected>請選擇發票需求</option>
+          <option value="p">電子發票</option>
+          <option value="b2b">統編電子發票</option>
+          <option value="donate">捐贈（創世基金會）</option>
+        </select>
+      </div>
+    </div>
+    <div id="invoiceExtra" style="margin-top:10px;display:none">
+      <div id="pFields" style="display:none" class="row"><div class="lbl">載具碼</div><input id="carrier" class="ipt" placeholder="可留空（例如 /ABC12345）"></div>
+      <div id="b2bFields" style="display:none" class="row"><div class="lbl">統編 / 抬頭</div>
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px">
+          <input id="taxId" class="ipt" placeholder="統一編號"><input id="title" class="ipt" placeholder="公司抬頭">
+        </div></div>
+      <div id="donateFields" style="display:none" class="row"><div class="lbl">愛心碼</div><input id="loveCode" class="ipt" placeholder="可留空（預設捐創世）"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><div class="lbl">付款方式</div><div class="muted">預設 Line Pay（可使用 LINE POINTS）</div></div>
+    <div class="pm-list" id="pmList">
+      <div class="pm active" data-key="linepay"><div class="name">Line Pay</div></div>
+      <div class="pm" data-key="jkopay"><div class="name">街口支付</div></div>
+      <div class="pm" data-key="pxpay"><div class="name">全支付</div></div>
+      <div class="pm" data-key="twpay"><div class="name">台灣 Pay</div></div>
+      <div class="pm" data-key="card"><div class="name">信用卡 / 簽帳卡</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><div class="lbl">金額</div><div class="muted">請再次確認應付金額</div></div>
+    <table class="tbl monos" id="feeTbl"></table>
+  </div>
+
+  <div class="card" id="memberBox">
+    <div id="guestArea" class="bottom-actions">
+      <div class="muted">付款前請先登入或註冊，以便套用優惠與查詢訂單。</div>
+      <button id="btnOpenLogin"  class="btn btn-small" type="button">會員登入</button>
+      <button id="btnOpenSignUp" class="btn btn-small btn-line" type="button">用戶註冊</button>
+    </div>
+
+    <div id="userArea" style="display:none">
+      <div class="memberBar" style="margin-bottom:10px">
+        <div class="pill">會員：<span id="memName">—</span></div>
+        <button id="btnLogout" class="btn btn-line btn-small" type="button">登出</button>
+      </div>
+
+      <div class="row">
+        <div class="lbl">優惠券</div>
+        <div class="coupon-grid">
+          <input id="couponCode" class="ipt" placeholder="輸入折抵碼（如 WELCOME200）">
+          <button id="btnApplyCoupon" class="btn btn-small btn-block" type="button">套用</button>
+        </div>
+      </div>
+      <div class="muted">示範可用：WELCOME200、VIP500；或輸入數字（例：300）。</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-line" id="btnBack" type="button">◀ 返回上一頁</button>
+    <button class="btn" id="btnGo" type="button" disabled>確認付款 ▶</button>
+  </div>
+</div>
+
+<!-- 登入 Modal（文字依圖示） -->
+<div class="modal" id="modalLogin" aria-hidden="true">
+  <div class="box" role="dialog" aria-modal="true">
+    <button class="close" data-close="login">×</button>
+    <h2>會員登入</h2>
+    <div class="row1">
+      <label for="loginId">身分證字號（帳號）</label>
+      <input id="loginId" class="ipt" placeholder="請輸入身分證字號（如 A123456789）">
+    </div>
+    <div class="row1">
+      <label for="loginPwd">登入密碼</label>
+      <input id="loginPwd" class="ipt" type="password" placeholder="請輸入密碼">
+    </div>
+    <div class="row1" style="display:grid;gap:8px">
+      <button id="btnLogin" class="btn" type="button">登入</button>
+    </div>
+    <div class="toast" id="loginMsg"></div>
+  </div>
+</div>
+
+<!-- 註冊 Modal（與「用戶註冊」一致） -->
+<div class="modal" id="modalSignUp" aria-hidden="true">
+  <div class="box" role="dialog" aria-modal="true">
+    <button class="close" data-close="signup">×</button>
+    <h2>用戶註冊</h2>
+
+    <div class="row1">
+      <label for="idNumber">身分證字號（帳號）</label>
+      <input id="idNumber" class="ipt" placeholder="例如 A123456789">
+      <div class="toast" id="idHint" style="display:none">請輸入正確格式：英文開頭 + 1/2 + 8 位數字</div>
+    </div>
+
+    <div class="row1"><label for="name">姓名</label><input id="name" class="ipt" placeholder="您的姓名"></div>
+
+    <div class="row1"><label for="birthday">生日</label><input id="birthday" class="ipt" type="date" placeholder="YYYY-MM-DD"></div>
+
+    <div class="row1">
+      <label for="phone">手機（必填，做為暫時密碼）</label>
+      <input id="phone" class="ipt" type="tel" inputmode="numeric" placeholder="09xxxxxxxx（台灣手機）" required>
+      <div class="toast" id="phoneHint" style="display:none">首次登入密碼 = 您的手機（可於登入後更改）</div>
+    </div>
+
+    <div class="row1">
+      <label for="phoneCode">手機驗證碼</label>
+      <div class="grid2">
+        <input id="phoneCode" class="ipt" placeholder="輸入 6 位數驗證碼">
+        <button id="sendPhoneCode" class="btn btn-line" type="button">發送驗證碼</button>
+      </div>
+      <div class="toast" id="phoneMsg" style="display:none"></div>
+    </div>
+
+    <div class="row1"><label for="addr">地址</label><input id="addr" class="ipt" placeholder="市／區／路／號…"></div>
+
+    <div class="row1"><label for="email">Email（選填）</label><input id="email" class="ipt" type="email" placeholder="example@mail.com"></div>
+
+    <div class="row1"><label for="lineId">Line ID（選填）</label><input id="lineId" class="ipt" placeholder="@ 或 ID"></div>
+    <div class="row1"><label for="waId">WhatsApp ID（選填）</label><input id="waId" class="ipt" placeholder="電話或帳號"></div>
+
+    <div class="row1" style="display:grid;gap:8px">
+      <button id="btnSignUp" class="btn" type="button">註冊並登入</button>
+    </div>
+    <div class="toast" id="signMsg" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const L=localStorage,S=sessionStorage,$=s=>document.querySelector(s);
+
+  const RESULT_URL="https://chihang-go.com/user_thank_you_page/";
+  const BACK_URL="https://chihang-go.com/user_passenger_info/";
+
+  const isEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((s||'').trim());
+  const isTWMobile = s => /^09\d{8}$/.test((s||'').trim());
+  function getBooking(){ try{ return JSON.parse(L.getItem("fullBooking")||"{}"); }catch{return {}} }
+  function setBooking(b){ try{ L.setItem("fullBooking", JSON.stringify(b||{})); }catch{} }
+  function money(n){ return Number(n||0).toLocaleString(); }
+
+  /* 發票切換 */
+  const typeSel=$("#invoiceType"),extra=$("#invoiceExtra");
+  const pF=$("#pFields"),bF=$("#b2bFields"),dF=$("#donateFields");
+  typeSel.addEventListener("change",()=>{
+    extra.style.display=typeSel.value?"block":"none";
+    pF.style.display=typeSel.value==="p"?"grid":"none";
+    bF.style.display=typeSel.value==="b2b"?"grid":"none";
+    dF.style.display=typeSel.value==="donate"?"grid":"none";
+  });
+
+  /* 付款方式 */
+  $("#pmList").addEventListener("click",e=>{
+    const item=e.target.closest(".pm"); if(!item)return;
+    document.querySelectorAll(".pm").forEach(x=>x.classList.remove("active"));
+    item.classList.add("active");
+  });
+
+  /* 金額試算（示範） */
+  const PRICE = { signage:200, offPeakDiscount:250 };
+  function airportKey(str){ const m=String(str||'').match(/\(([A-Z]+)\)/); return m?m[1]:'PORT' }
+  const baseByAirport = { TPE:4000, TSA:3600, RMQ:4250, KHH:4200, PORT:3800 };
+  function calcPricing(b){
+    const car = (b?.ride?.selectedCar)||{};
+    theBase = baseByAirport[airportKey(b.port||b.airport)] ?? 4250;
+    const carX = Number(car.surcharge||0);
+    const sign = b?.ride?.signage ? PRICE.signage : 0;
+    const off  = PRICE.offPeakDiscount ? -PRICE.offPeakDiscount : 0;
+    const coupon = -Number(b?.contact?.coupon||0);
+    const rows = [
+      ['基本服務', theBase],['車型加價', carX],['夜間加價', 0],['連續假期加價', 0],
+      ['安全座椅加價', 0],['舉牌加價', sign],['特定地區加價', 0],['跨區自費加價', 0],
+      ['加點加價', 0],['離峰優惠', off],['優惠券折抵', coupon]
+    ];
+    const total = rows.reduce((s,[,v])=>s+Number(v||0),0);
+    return { rows, total };
+  }
+
+  function renderDetail(){
+    const b=getBooking();
+    const r=b.ride||{}, c=r.selectedCar||{};
+    const pax=r.passengers||{}, seats=r.seats||{}, lug=r.luggage||{};
+
+    // 地址格式化
+    let start='—';
+    if (Array.isArray(b.addresses) && b.addresses[0]) {
+      const a=b.addresses[0];
+      if (typeof a==='string') start=a;
+      else start=[a.city||'',a.district||'',a.detail||''].filter(Boolean).join(' ');
+    } else if (b.pickup_address) {
+      start=b.pickup_address;
+    }
+
+    const end=b.port||b.airport||'—';
+    const flight=b.flight_no||b.flightNumber||b?.flight?.code||'—';
+    const totalPax = (Number(pax.adult||0) + Number(pax.child||0));
+
+    const rows=[
+      ['乘客姓名',b?.contact?.name||'—'],['手機號碼',b?.contact?.phone||'—'],['電子信箱',b?.contact?.email||'—'],
+      ['服務類型',b?.pickup_date||b?.pickup?.date?'送機':'接機'],['出發地',start],['目的地',end],
+      ['航班 / 船班',flight],['乘客人數', totalPax+' 人'],
+      ['後向式安全座椅',(seats.rear||0)+' 張'],['前向式安全座椅',(seats.front||0)+' 張'],['增高座墊',(seats.booster||0)+' 張'],
+      ['行李件數',`20吋以下 ${lug.s20||0} 件；21–25吋 ${lug.s25||0} 件；26–28吋 ${lug.s28||0} 件`],
+      ['舉牌服務',r.signage?'需要':'不需要'],['特殊備註',r.note||'—'],['選擇車型',c.name||'—']
+    ];
+    $("#detailTbl").innerHTML = `<tr><th>項目</th><th>內容</th></tr>` +
+      rows.map(([n,v])=>`<tr><td>${n}</td><td>${v}</td></tr>`).join('');
+
+    const pricing = calcPricing(b);
+    $("#feeTbl").innerHTML = `
+      <tr><th>項目</th><th>金額</th></tr>
+      ${pricing.rows.map(([n,v])=>`<tr><td>${n}</td><td>${(v<0?'－ ':'')+money(Math.abs(v))} 元</td></tr>`).join('')}
+      <tr><td style="font-weight:800;font-size:18px">總金額</td>
+          <td style="font-weight:800;font-size:18px;color:var(--teal)">${money(pricing.total)} 元</td></tr>`;
+  }
+
+  /* 會員 UI */
+  const guestArea=$("#guestArea"), userArea=$("#userArea"), memName=$("#memName");
+  const modalLogin=$("#modalLogin"), modalSign=$("#modalSignUp");
+  function openModal(m){
+    m.classList.add('active');
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+  }
+  function closeModal(m){
+    m.classList.remove('active');
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
+    m.querySelectorAll('.toast').forEach(t=>t.style.display='none');
+  }
+
+  function refreshMemberUI(){
+    const acc = S.getItem('memberAccount')||'';
+    const name = S.getItem('memberName')||'';
+    const logged = !!acc;
+    guestArea.style.display = logged ? 'none' : 'grid';
+    userArea.style.display  = logged ? 'block' : 'none';
+    $("#btnGo").disabled = !logged;
+    if(logged) memName.textContent = name || acc;
+
+    // 已登入時，同步顯示已套用的折抵碼（若有）
+    const b=getBooking();
+    if(logged){
+      const couponInput = $("#couponCode");
+      if(couponInput && b?.contact?.coupon){
+        couponInput.value = String(b.contact.coupon);
+      }
+    }
+    renderDetail();
+  }
+  refreshMemberUI();
+
+  // 開關 Modal
+  $("#btnOpenLogin").onclick = ()=>openModal(modalLogin);
+  $("#btnOpenSignUp").onclick = ()=>openModal(modalSign);
+  document.querySelectorAll('.close').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      const t=e.target.getAttribute('data-close'); if(t==='login') closeModal(modalLogin); else closeModal(modalSign);
+    });
+  });
+  document.addEventListener('click',e=>{
+    if(e.target===modalLogin) closeModal(modalLogin);
+    if(e.target===modalSign)  closeModal(modalSign);
+  });
+
+  // 登入
+  $("#btnLogin").onclick=()=>{
+    const acc=$("#loginId").value.trim(), pwd=$("#loginPwd").value.trim();
+    const msg=$("#loginMsg");
+    if(!acc||!pwd){ msg.textContent='請輸入帳號與密碼'; msg.style.display='block'; return; }
+    const u = JSON.parse(L.getItem('user_'+acc)||'{}');
+    if(!u.account){ msg.textContent='查無帳號，請改用註冊'; msg.style.display='block'; return; }
+    if(u.password!==pwd){ msg.textContent='密碼錯誤'; msg.style.display='block'; return; }
+    S.setItem('memberAccount', acc);
+    S.setItem('memberName', u.displayName||acc);
+    S.setItem('memberEmail', u.email||'');
+    S.setItem('memberPhone', u.phone||'');
+    closeModal(modalLogin);
+    refreshMemberUI();
+  };
+
+  /* ===== 註冊（身分證帳號＋手機驗證，暫時密碼＝手機） ===== */
+  const toHalfWidth = str => String(str||'').replace(/[\uFF10-\uFF19]/g, d => String.fromCharCode(d.charCodeAt(0)-0xFF10+0x30));
+  function normalizeTWMobile(raw){
+    if(!raw) return '';
+    let s = toHalfWidth(raw).trim().replace(/[^\d+]/g,'');
+    if (s.startsWith('+886')) s = '0'+s.slice(4);
+    return s.replace(/\D/g,'');
+  }
+  const isTWID = s => /^[A-Z][12]\d{8}$/.test(String(s||'').trim().toUpperCase());
+
+  function sendPhoneCode(phone){
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    S.setItem('phoneCode:'+phone, code);
+    const msg=$('#phoneMsg');
+    msg.innerHTML = `驗證碼已發送至手機。<br>（示範顯示：<b>${code}</b>）`;
+    msg.style.display = 'block';
+  }
+  function verifyPhoneCode(phone, input){
+    const real = S.getItem('phoneCode:'+phone);
+    return real && input && real === input.trim();
+  }
+
+  $('#sendPhoneCode').addEventListener('click', ()=>{
+    const phone = normalizeTWMobile($('#phone').value);
+    const hint = $('#phoneHint');
+    if(!/^09\d{8}$/.test(phone)){
+      hint.textContent = '請先輸入正確的台灣手機號（09xxxxxxxx）';
+      hint.style.display = 'block';
+      return;
+    }
+    hint.style.display = 'none';
+    sendPhoneCode(phone);
+  });
+
+  $("#btnSignUp").onclick=()=>{
+    const idNumberRaw = $('#idNumber').value.trim().toUpperCase();
+    const name   = $('#name').value.trim();
+    const birthday = $('#birthday').value;
+    const phone  = normalizeTWMobile($('#phone').value);
+    const phoneCode = ($('#phoneCode').value||'').trim();
+    const addr   = $('#addr').value.trim();
+    const email  = ($('#email')?.value || '').trim();
+    const lineId = $('#lineId').value.trim();
+    const waId   = $('#waId').value.trim();
+    const msg    = $('#signMsg'); msg.style.display='none'; msg.textContent='';
+
+    if(!isTWID(idNumberRaw)){ msg.textContent='請輸入正確的身分證字號'; msg.style.display='block'; return; }
+    if(L.getItem('user_'+idNumberRaw)){ msg.textContent='此身分證帳號已被註冊'; msg.style.display='block'; return; }
+    if(!name){ msg.textContent='請輸入姓名'; msg.style.display='block'; return; }
+    if(!birthday){ msg.textContent='請選擇生日'; msg.style.display='block'; return; }
+    if(!addr){ msg.textContent='請輸入地址'; msg.style.display='block'; return; }
+    if(email && !isEmail(email)){ msg.textContent='Email 格式不正確'; msg.style.display='block'; return; }
+    if(!/^09\d{8}$/.test(phone)){ msg.textContent='請輸入正確的手機（09xxxxxxxx）'; msg.style.display='block'; return; }
+    if(!/^\d{6}$/.test(phoneCode)){ msg.textContent='請輸入 6 位數手機驗證碼'; msg.style.display='block'; return; }
+    if(!verifyPhoneCode(phone, phoneCode)){ msg.textContent='手機驗證碼不正確'; msg.style.display='block'; return; }
+
+    const user = {
+      account: idNumberRaw,
+      password: phone, // 暫時密碼＝手機
+      displayName: name,
+      birthday, phone, address: addr, email, lineId, whatsappId: waId,
+      createdAt: Date.now(), totalSpent: 0, totalTrips: 0, level: '一般會員', isNew: true
+    };
+    L.setItem('user_'+idNumberRaw, JSON.stringify(user));
+
+    // 自動登入
+    S.setItem('jwt','demo');
+    S.setItem('memberAccount', idNumberRaw);
+    S.setItem('memberName', name);
+    S.setItem('memberEmail', email);
+    S.setItem('memberPhone', phone||'');
+    S.setItem('isNewMember','1');
+
+    closeModal(modalSign);
+    refreshMemberUI();
+  };
+
+  // 登出
+  $("#btnLogout").onclick=()=>{
+    S.removeItem('memberAccount'); S.removeItem('memberName'); S.removeItem('memberEmail'); S.removeItem('memberPhone');
+    refreshMemberUI();
+  };
+
+  // 優惠券（需登入）
+  $("#btnApplyCoupon").onclick=()=>{
+    if(!S.getItem('memberAccount')){
+      alert('請先登入或註冊後再使用優惠券');
+      return;
+    }
+    const code = ($("#couponCode").value||'').trim();
+    const COUPON_MAP = { 'WELCOME200':200, 'VIP500':500 };
+    let value = 0;
+    if(COUPON_MAP[code.toUpperCase()]) value = COUPON_MAP[code.toUpperCase()];
+    else if(/^\d+$/.test(code)) value = Number(code);
+    const b=getBooking(); b.contact=b.contact||{}; b.contact.coupon = Math.max(0, value);
+    setBooking(b);
+    renderDetail();
+  };
+
+  // 付款
+  $("#btnGo").addEventListener("click",()=>{
+    if(!S.getItem('memberAccount')){ alert('請先登入或註冊再付款'); return; }
+
+    const invType = $("#invoiceType").value;
+    if(invType === 'b2b'){
+      const tid = ($("#taxId").value||'').trim();
+      if(!/^\d{8}$/.test(tid)){
+        alert('統編需為 8 碼數字');
+        $("#taxId").focus();
+        return;
+      }
+    }
+
+    $("#btnGo").disabled=true;
+    const b=getBooking();
+    b.payment = {
+      method: (document.querySelector('.pm.active')?.dataset.key)||'linepay',
+      invoice: {
+        type: invType,
+        carrier: $("#carrier")?.value || '',
+        taxId: $("#taxId")?.value || '',
+        title: $("#title")?.value || '',
+        loveCode: $("#loveCode")?.value || ''
+      }
+    };
+    const orderId="CHG"+Date.now();
+    b.orderId=orderId; b.status="paid";
+    setBooking(b);
+    const url=`${RESULT_URL}?orderId=${encodeURIComponent(orderId)}`;
+    try{ window.location.assign(url); }catch{ location.href=url; }
+  });
+
+  // 返回
+  $("#btnBack").addEventListener("click",()=>{ window.location.assign(BACK_URL); });
+
+  renderDetail();
+})();
+</script>
+</body>
+</html>

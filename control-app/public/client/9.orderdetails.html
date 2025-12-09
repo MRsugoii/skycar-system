@@ -1,0 +1,201 @@
+<!-- 訂單資訊（手機 390px｜表格式顯示：訂單明細＋金額｜移除會員區塊） -->
+<style>
+:root{--teal:#2B7CFF;--text:#051D4B;--line:#e7f0f1;--muted:#6b7b80;--radius:18px;--field:#B7C1CC;--radius-ipt:14px;--wrap:390px}
+html,body{margin:0;background:#f6f8fb;font-family:system-ui,"Noto Sans TC",Arial;color:var(--text)}
+.pg{width:var(--wrap);max-width:var(--wrap);margin:28px auto;padding:0 16px}
+@media(max-width:420px){.pg{width:100%;max-width:420px}}
+.h1{display:flex;align-items:center;justify-content:center;gap:8px;font-size:26px;font-weight:800;margin:0 0 16px;text-align:center}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+.row{display:grid;grid-template-columns:1fr;gap:8px;margin:6px 0}
+.lbl{color:var(--text);font-weight:900}
+.muted{color:var(--muted);font-size:12px}
+.ipt{width:100%;padding:12px;border:1px solid var(--field)!important;border-radius:var(--radius-ipt)!important;background:#fff;font-size:15px;box-shadow:none!important;outline:none}
+.ipt:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+
+/* 表格（與你給的圖片一致的行樣式） */
+.tbl{width:100%;border-collapse:separate;border-spacing:0 10px}
+.tbl th{color:#6b7b80;font-weight:700;text-align:left;padding:8px 10px}
+.tbl td{padding:12px 10px;background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.tbl tr td:first-child,.tbl tr th:first-child{border-left:1px solid var(--line);border-top-left-radius:12px;border-bottom-left-radius:12px}
+.tbl tr td:last-child,.tbl tr th:last-child{border-right:1px solid var(--line);border-top-right-radius:12px;border-bottom-right-radius:12px}
+.tbl .kv-head th{background:rgba(43,124,255,.06);color:var(--text);border:1px solid var(--line)}
+.tbl .right{text-align:right;font-weight:800}
+.tbl .total td{font-weight:900;font-size:18px}
+.tbl .total .right{color:var(--teal)}
+
+/* 底部按鈕（左白右藍） */
+.actions{display:flex;gap:12px;justify-content:space-between;margin-top:10px}
+.btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:16px 22px;border-radius:22px!important;font-weight:800;cursor:pointer;text-decoration:none}
+.btn-line{background:#fff!important;color:#2B7CFF!important;border:2px solid #2B7CFF!important}
+.btn-primary{background:#2B7CFF!important;color:#fff!important;border:2px solid #2B7CFF!important}
+.btn[disabled]{opacity:.6;cursor:not-allowed}
+</style>
+
+<div class="pg" id="orderPage">
+  <div class="h1">訂單資訊</div>
+
+  <!-- 聯絡資訊 -->
+  <div class="card">
+    <div class="row"><div class="lbl">聯絡資訊</div><div class="muted">請留下可聯絡的姓名、手機與 Email（避免 Hotmail）</div></div>
+    <div class="row">
+      <input id="c_name"  class="ipt" placeholder="姓名">
+      <input id="c_phone" class="ipt" type="tel" inputmode="numeric"
+  maxlength="13"
+  placeholder="手機號碼（例如 0912345678）"
+  required
+  pattern="^09\d{8}$"
+  title="請輸入 09 開頭共 10 碼手機">
+      <input id="c_email" class="ipt" placeholder="電子信箱">
+    </div>
+  </div>
+
+  <!-- 訂單明細 -->
+  <div class="card">
+    <div class="row"><div class="lbl">訂單明細</div><div class="muted">請再次確認服務類型、上下車地點、時間與乘車需求</div></div>
+    <table class="tbl" id="orderDetail"></table>
+  </div>
+
+  <!-- 金額 -->
+  <div class="card">
+    <div class="row"><div class="lbl">金額</div><div class="muted">請再次確認應付金額</div></div>
+    <table class="tbl" id="feeList"></table>
+    <div style="margin-top:8px">
+      <label><input type="checkbox" id="ck1"> 我已了解預約條款與隱私政策。</label><br>
+      <label><input type="checkbox" id="ck2"> 同意馳航團隊代為處理金額與收據相關事宜。</label>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-line" id="btnBack" type="button">◀ 返回上一頁</button>
+    <button class="btn btn-primary" id="btnPay" disabled>訂單付款 ▶</button>
+  </div>
+</div>
+
+<script>
+(()=> {
+  /* 固定導向網址 */
+  const PAYMENT_URL='https://chihang-go.com/user_payment_page/';
+  const BACK_URL='https://chihang-go.com/user_travel_info/';
+
+  /* 價格與工具 */
+  const PRICE={ baseByAirport:{TPE:4000,TSA:3600,RMQ:4250,KHH:4200,PORT:3800}, signageFee:200, offPeakDiscount:250 };
+  const $=s=>document.querySelector(s);
+  const pad2=n=>String(n).padStart(2,'0');
+  const fmtDT=(d,h,m)=>d?`${d} ${pad2(h||'00')}:${pad2(m||'00')}`:'';
+  const airportKey=str=>{const m=String(str||'').match(/\(([A-Z]+)\)/);return m?m[1]:'PORT';}
+  function loadAny(keys){for(const k of keys){try{const v=localStorage.getItem(k);if(v)return JSON.parse(v)}catch{}}return null}
+  const toHalfWidth=s=>String(s||'').replace(/[\uFF10-\uFF19]/g,d=>String.fromCharCode(d.charCodeAt(0)-0xFF10+0x30));
+  function normalizeTWMobile(raw){let s=toHalfWidth(raw).trim().replace(/[^\d+]/g,'');if(s.startsWith('+886'))s='0'+s.slice(4);return s.replace(/\D/g,'');}
+
+  /* 讀取資料 */
+  const merged=loadAny(['fullBooking'])||{};
+  const drop=loadAny(['dropFormData'])||{};
+  const arrive=loadAny(['arriveFormData'])||{};
+  const booking={...drop,...arrive,...merged};
+  const isDrop = booking?.source==='drop' || !!booking?.pickup?.date;
+
+  const addrs=(booking.addresses||[]).map(a=>typeof a==='string'?a:[a.city||'',a.district||'',a.detail||''].join(''));
+  const port = booking.port||'';
+  const flightNo = booking.flight?.code || booking.flight_no || '';
+  const departDT = fmtDT(booking.flight?.departDate||booking.depart_date, booking.flight?.departHour||booking.depart_h, booking.flight?.departMinute||booking.depart_m);
+  const arriveDT = fmtDT(booking.flight?.arriveDate||booking.arrive_date, booking.flight?.arriveHour||booking.arrive_h, booking.flight?.arriveMinute||booking.arrive_m);
+  const pickupDT = fmtDT(booking.pickup?.date||booking.pickup_date, booking.pickup?.hour||booking.pickup_h, booking.pickup?.minute||booking.pickup_m);
+
+  const ride = booking.ride||{};
+  const car  = ride.selectedCar||{};
+  const carName = car.name || '（未選）';
+  const adult = Number(ride?.passengers?.adult||0);
+  const child = Number(ride?.passengers?.child||0);
+  const totalPax = adult + child;
+
+  /* 訂單明細渲染 */
+  function renderDetails(){
+    const t=$('#orderDetail');
+    const start = isDrop ? (addrs[0]||'') : (port||'');
+    const end   = isDrop ? (port||'')   : (addrs[0]||'');
+    const extras = addrs.slice(1);
+    const serviceTitle = isDrop ? '出國送機／送到港口' : '回國接機／港口出發';
+
+    const rows=[];
+    rows.push(`<tr class="kv-head"><th style="width:42%">項目</th><th>內容</th></tr>`);
+    rows.push(tr('乘客姓名', (booking?.contact?.name||'—')));
+    rows.push(tr('手機號碼', (booking?.contact?.phone||'—')));
+    rows.push(tr('電子信箱', (booking?.contact?.email||'—')));
+    rows.push(tr('服務類型',serviceTitle));
+    rows.push(tr('起點',start));
+    if(extras.length) rows.push(tr('加點',extras.join('；')));
+    rows.push(tr('終點',end));
+    if(isDrop){ rows.push(tr('指定乘車時間',pickupDT)); rows.push(tr('航班時間（起飛）',departDT)); }
+    else      { rows.push(tr('航班時間（抵達）',arriveDT)); }
+    rows.push(tr('航班／船班',flightNo));
+
+    rows.push(`<tr class="kv-head"><th colspan="2">乘車需求</th></tr>`);
+    rows.push(tr('乘客人數',`${totalPax} 人`));
+    rows.push(tr('成人／小孩',`${adult} 位／${child} 位`));
+    rows.push(tr('行李件數', fmtL(ride?.luggage)));
+    rows.push(tr('安全座椅', fmtS(ride?.seats)));
+    rows.push(tr('選擇車型',carName));
+    rows.push(tr('舉牌服務', ride.signage ? (ride.signageText?`需要（${ride.signageText}）`:'需要'):'不需要'));
+    rows.push(tr('備註', ride.note||'—'));
+    t.innerHTML=rows.join('');
+
+    function tr(k,v){const s=(v??'').toString().trim()||'—'; return `<tr><td>${k}</td><td>${s}</td></tr>`}
+    function fmtL(l){ if(!l) return '—'; return `20吋以下 ${l.s20||0} 件；21–25吋 ${l.s25||0} 件；26–28吋 ${l.s28||0} 件`; }
+    function fmtS(s){ if(!s) return '—'; return `後向式 ${s.rear||0} 張；前向式 ${s.front||0} 張；增高墊 ${s.booster||0} 張`; }
+  }
+
+  /* 金額渲染 */
+  const airport = airportKey(port);
+  function calcFee(){
+    const base = PRICE.baseByAirport[airport] ?? 4250;
+    const carFee = Number(car.surcharge||0);
+    const signageFee = ride.signage ? PRICE.signageFee : 0;
+    const nightFee=0, holidayFee=0, seatFee=0, areaFee=0, crossAreaFee=0, stopoverFee=0;
+    const off = PRICE.offPeakDiscount ? -PRICE.offPeakDiscount : 0;
+    const coupon = Number(sessionStorage.getItem('order_coupon')||0);
+    const rows = [
+      ['基本服務',base],['車型加價',carFee],['夜間加價',nightFee],['連續假期加價',holidayFee],
+      ['安全座椅加價',seatFee],['舉牌加價',signageFee],['特定地區加價',areaFee],
+      ['跨區自費加價',crossAreaFee],['加點加價',stopoverFee],['離峰優惠',off],['優惠券折抵',-coupon]
+    ];
+    const total=rows.reduce((s,[,v])=>s+Number(v||0),0);
+    return {rows,total};
+  }
+  function renderFee(){
+    const {rows,total}=calcFee();
+    const t=$('#feeList');
+    t.innerHTML = `
+      <tr class="kv-head"><th style="width:50%">項目</th><th>金額</th></tr>
+      ${rows.map(([n,v])=>`<tr><td>${n}</td><td class="right">${(v<0?'－ ':'')+Math.abs(v).toLocaleString()} 元</td></tr>`).join('')}
+      <tr class="total"><td>總金額</td><td class="right">${total.toLocaleString()} 元</td></tr>`;
+  }
+
+  /* 付款驗證 */
+  function togglePay(){ $('#btnPay').disabled=!($('#ck1').checked&&$('#ck2').checked); }
+  $('#ck1').addEventListener('change',togglePay);
+  $('#ck2').addEventListener('change',togglePay);
+  togglePay();
+
+  $('#c_phone').addEventListener('blur',()=>{ const el=$('#c_phone'); el.value=normalizeTWMobile(el.value); });
+
+  /* ✅ 訂單付款 → 固定導向 user_payment_page */
+  $('#btnPay').addEventListener('click',()=>{
+    if($('#btnPay').disabled) return;
+    const phoneEl=$('#c_phone'); phoneEl.value=normalizeTWMobile(phoneEl.value);
+    if(!/^09\d{8}$/.test(phoneEl.value)){ phoneEl.setCustomValidity('請輸入 09 開頭共 10 碼手機'); phoneEl.reportValidity(); return; }
+    phoneEl.setCustomValidity('');
+    const contact={ name:($('#c_name').value||'').trim(), phone:phoneEl.value, email:($('#c_email').value||'').trim() };
+    try{ sessionStorage.setItem('memberPhone', contact.phone);}catch(e){}
+    const payload={...booking,contact,pricing:calcFee()};
+    localStorage.setItem('fullBooking', JSON.stringify(payload));
+    window.location.assign(PAYMENT_URL);
+  });
+
+  /* ✅ 返回上一頁 → 固定導向 user_travel_info */
+  $('#btnBack').addEventListener('click',(e)=>{ e.preventDefault(); window.location.assign(BACK_URL); });
+
+  /* 初次渲染 */
+  renderDetails();
+  renderFee();
+})();
+</script>

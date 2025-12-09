@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>司機頁面</title>
+<style>
+:root{
+  --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80; --line:#e7f0f1; --field:#B7C1CC; --bg:#f6f8fb;
+  --radius:18px; --radius-ipt:16px;
+}
+html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,"Noto Sans TC",Arial;color:var(--text);-webkit-text-size-adjust:none}
+#driver-app{width:390px;max-width:390px;margin:0 auto;padding:0 16px 40px}
+
+/* 標題 */
+.h1{font-size:26px;font-weight:900;margin:50px 0 6px;text-align:center}
+.h2{font-size:15px;color:var(--muted);text-align:center;margin:0 0 16px}
+
+/* 卡片 */
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 14px;margin-bottom:16px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+.lbl{font-weight:800}
+.muted{color:var(--muted);font-size:12px}
+.grid{display:grid;gap:10px}
+
+/* Inputs */
+#driver-app .ipt, #driver-app select.ipt, #driver-app textarea.ipt{
+  width:100%;padding:12px 14px;font-size:15px;background:#fff!important;border:1px solid var(--field)!important;border-radius:var(--radius-ipt)!important;
+  -webkit-appearance:none;appearance:none;box-shadow:none!important;background-clip:padding-box;
+}
+#driver-app input:focus, #driver-app select:focus, #driver-app textarea:focus{
+  border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important;outline:none!important;
+}
+
+/* Modal inputs 也吃樣式 */
+.modal .ipt{border:1px solid var(--field)!important;border-radius:var(--radius-ipt)!important;padding:12px 14px;font-size:15px}
+.modal .ipt:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.15)!important;outline:none!important}
+
+/* Buttons */
+#driver-app .btn, #driver-app button.btn, #driver-app a.btn, #driver-app .card .btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:12px 18px;border-radius:50px!important;background:var(--teal)!important;border:1px solid var(--teal)!important;
+  color:#fff!important;font-weight:900!important;letter-spacing:.02em;line-height:1!important;
+  text-decoration:none!important;cursor:pointer;transition:.2s;font-size:16px!important;
+}
+#driver-app .btn[disabled]{opacity:.5;cursor:not-allowed}
+.w100{width:100%}
+.actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.actions.vertical{flex-direction:column}
+
+/* 訂單卡片式表 */
+.tbl{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
+.tbl th,.tbl td{padding:10px 8px;border:1px solid var(--line);background:#fff}
+.tbl thead{display:none}
+.tbl.responsive tbody>tr{display:grid;grid-template-columns:1fr auto;gap:6px;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+.tbl.responsive tbody>tr td{border:none;padding:0;background:transparent;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
+.tbl.responsive td[data-col="id"]{grid-column:1/2;font-weight:900;font-size:16px;letter-spacing:.3px}
+.tbl.responsive td[data-col="amount"]{grid-column:2/3;justify-self:end;font-weight:900}
+.tbl.responsive td[data-col="type"],.tbl.responsive td[data-col="date"]{grid-column:1/2;color:#2b3b55}
+.tbl.responsive td[data-col="status"]{grid-column:2/3;justify-self:end}
+.order-row{cursor:pointer}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
+.badge.ing{background:#f4f8ff} .badge.done{background:#f3fbf5} .badge.cancel{background:#fff6f6}
+
+/* Modal */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.28);z-index:9999;padding:12px}
+.modal.active{display:flex}
+.modal-box{width:100%;max-width:390px;max-height:85vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 10px}
+.modal-title{font-size:18px;font-weight:900;color:var(--text);margin:0}
+.modal-close{cursor:pointer;font-size:20px;color:var(--muted);font-weight:700;background:transparent;border:0}
+
+/* 上傳樣式（同註冊） */
+.upload-col{display:grid;gap:10px}
+.file{position:relative}
+.file input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.fake{border:1px solid var(--teal);border-radius:var(--radius-ipt);padding:12px 0;text-align:center;font-weight:800;color:var(--teal)}
+.file-name{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 返回鍵 */
+.back{position:fixed;left:10px;top:10px;z-index:10;width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,.08)}
+.back svg{width:20px;height:20px;stroke:var(--teal)}
+
+/* KV */
+.sep{height:1px;background:var(--line);margin:12px 0}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:8px}
+.kv .key{font-weight:800}
+.kv .val{overflow-wrap:anywhere}
+
+/* 連結 */
+.logout-link{display:block;margin:12px auto 0;color:var(--teal);text-decoration:underline;cursor:pointer}
+/* 🚫 審核未通過提示框 */
+.alert-card{
+  border:1px solid #FFB5B5!important;
+  background:#FFF5F5!important;
+  box-shadow:0 4px 12px rgba(255,0,0,.05)!important;
+  text-align:center;
+  padding:20px 16px!important;
+}
+</style>
+</head>
+<body>
+
+<button class="back" id="btnBack" aria-label="返回上一頁">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+</button>
+
+<div id="driver-app">
+  <div class="h1">司機帳戶</div>
+<div class="h2" id="welcome">歡迎回來</div>
+<!-- 🔴 文件有誤提示欄（最終版） -->
+<div id="alertBox" style="
+  background:#FFF5F5;
+  border:1px solid #FFB5B5;
+  color:#B30000;
+  border-radius:16px;
+  padding:20px 16px;
+  text-align:center;
+  margin:0 auto 20px;
+  max-width:360px;
+  box-shadow:0 4px 10px rgba(0,0,0,.03);
+">
+  <div style="font-weight:900;font-size:16px;margin-bottom:14px;">
+    文件有誤，請重新上傳
+  </div>
+  <div style="display:flex;justify-content:center;">
+    <button id="btnReupload" style="
+      background:#B30000;
+      color:#fff;
+      font-size:15px;
+      font-weight:800;
+      border:none;
+      border-radius:50px;
+      padding:10px 28px;
+      cursor:pointer;
+      transition:all .25s ease;
+      display:inline-block;
+    "
+    onmouseover="this.style.background='#8E0000'"
+    onmouseout="this.style.background='#B30000'">
+      上傳資料
+    </button>
+  </div>
+</div>
+
+  <!-- 摘要 -->
+  <div class="card" id="profileView">
+    <div class="grid">
+      <div class="kv"><div class="key">帳戶</div><div class="val" id="v_acc">—</div></div>
+      <div class="kv"><div class="key">姓名</div><div class="val" id="v_name">—</div></div>
+      <div class="kv"><div class="key">電話</div><div class="val" id="v_phone">—</div></div>
+      <div class="kv"><div class="key">Email</div><div class="val" id="v_mail">—</div></div>
+      <div class="kv"><div class="key">地址</div><div class="val" id="v_addr">—</div></div>
+      <div class="kv"><div class="key">駕照到期</div><div class="val" id="v_licenseDue">—</div></div>
+      <div class="kv"><div class="key">保險到期</div><div class="val" id="v_insDue">—</div></div>
+    </div>
+    <div class="actions" style="justify-content:center">
+      <button id="btnEdit" class="btn" type="button">編輯</button>
+    </div>
+  </div>
+<!-- 🚫 審核未通過提示框 -->
+<div class="card alert-card" id="alertPermission" style="display:none">
+  <div class="lbl" style="margin-bottom:8px;color:#B30000">司機權限未開啟</div>
+  <div style="color:#B30000;font-weight:800;font-size:15px;text-align:center;">
+    審核未通過，還未開啟司機權限
+  </div>
+</div>
+<!-- 🔴 審核中提示框 -->
+<div class="card alert-card" id="alertPending" style="display:none">
+  <div class="lbl" style="margin-bottom:8px;color:#B30000">審核中</div>
+  <div style="color:#B30000;font-weight:800;font-size:15px;text-align:center;">
+    審核中，無法使用司機權限
+  </div>
+</div>
+  <!-- 🚫 無法使用司機權限提示（與正常訂單區塊同時顯示） -->
+  <div class="card alert-card" id="alertDisabled" style="margin-bottom:16px;">
+    <div class="lbl" style="margin-bottom:8px;color:#B30000">司機權限</div>
+    <div style="color:#B30000;font-weight:800;font-size:15px;text-align:center;">
+      審查中，無法使用該權限。
+    </div>
+  </div>
+  <!-- 進行中訂單 -->
+  <div class="card">
+    <div class="lbl" style="margin-bottom:8px">進行中的訂單</div>
+    <table class="tbl responsive" id="tblOngoing">
+      <thead><tr><th>訂單編號</th><th>類型</th><th>日期/時間</th><th>狀態</th><th>金額</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="muted">點擊列會前往訂單詳情頁並操作行程。</div>
+  </div>
+
+  <!-- 功能 -->
+  <div class="card" style="text-align:center">
+    <div class="actions vertical" style="justify-content:center">
+      <a class="btn w100" href="https://chihang-go.com/driver_past_transactions/">歷史帳單</a>
+    </div>
+    <div class="logout-link" id="btnLogout">司機登出</div>
+  </div>
+</div>
+
+<!-- 編輯 Modal（與註冊頁一致；無行照/良民/個人照；標題不顯示「修改密碼」四字） -->
+<div class="modal" id="modalEdit" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="meTitle">
+    <div class="modal-head">
+      <h2 id="meTitle" class="modal-title">編輯司機資料</h2>
+      <button class="modal-close" id="editClose" type="button" aria-label="關閉">×</button>
+    </div>
+
+    <!-- 基本資料 -->
+    <div class="grid">
+      <div class="grid"><span class="lbl">帳戶（身分證，不可更改）</span><input id="e_acc" class="ipt" disabled></div>
+      <div class="grid"><span class="lbl">姓名</span><input id="e_name" class="ipt" placeholder="您的姓名"></div>
+      <div class="grid"><span class="lbl">生日</span><input id="e_birth" class="ipt" type="date"></div>
+      <div class="grid"><span class="lbl">電話</span><input id="e_phone" class="ipt" type="tel" inputmode="numeric" placeholder="09xxxxxxxx" maxlength="10"></div>
+      <div class="grid"><span class="lbl">Email</span><input id="e_mail" class="ipt" type="email" placeholder="example@mail.com"></div>
+      <div class="grid"><span class="lbl">Line ID（選填）</span><input id="e_line" class="ipt" placeholder="@ 或 ID"></div>
+      <div class="grid"><span class="lbl">地址</span><input id="e_addr" class="ipt" placeholder="市 / 區 / 路 / 號…"></div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 駕照 -->
+    <div class="grid">
+      <span class="lbl">駕照（正面／反面）</span>
+      <div class="upload-col">
+        <div class="file"><div class="fake">上傳 駕照正面</div><input id="e_licenseFront" type="file" accept="image/*,application/pdf"></div>
+        <div class="file-name" id="n_licenseFront"></div>
+        <div class="file"><div class="fake">上傳 駕照反面</div><input id="e_licenseBack" type="file" accept="image/*,application/pdf"></div>
+        <div class="file-name" id="n_licenseBack"></div>
+      </div>
+      <input id="e_license" class="ipt" type="date" placeholder="到期日">
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 保險 -->
+    <div class="grid">
+      <span class="lbl">保險（正面／反面）</span>
+      <div class="upload-col">
+        <div class="file"><div class="fake">上傳 保險正面</div><input id="e_insFront" type="file" accept="image/*,application/pdf"></div>
+        <div class="file-name" id="n_insFront"></div>
+        <div class="file"><div class="fake">上傳 保險反面</div><input id="e_insBack" type="file" accept="image/*,application/pdf"></div>
+        <div class="file-name" id="n_insBack"></div>
+      </div>
+      <input id="e_ins" class="ipt" type="date" placeholder="到期日">
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 密碼（無標題文字） -->
+    <div class="grid">
+      <div class="grid"><span class="lbl">目前密碼</span><input id="pwd_cur" class="ipt" type="password" placeholder="請輸入目前密碼"></div>
+      <div class="muted">若曾未改過，預設為您的手機號。</div>
+      <div class="grid"><span class="lbl">新密碼</span><input id="pwd_new" class="ipt" type="password" placeholder="至少 6 碼"></div>
+      <div class="grid"><span class="lbl">確認新密碼</span><input id="pwd_new2" class="ipt" type="password" placeholder="再次輸入新密碼"></div>
+      <div class="actions" style="justify-content:flex-end">
+        <button id="btnChangePwd" class="btn" type="button">修改密碼</button>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="actions" style="margin-top:6px;justify-content:flex-end">
+      <button id="btnSaveEdit" class="btn" type="button">儲存資料</button>
+    </div>
+    <div class="muted" style="text-align:right;margin-top:6px;">檔案更新將送審（約 1–2 天）。</div>
+  </div>
+</div>
+
+<!-- 補交文件 Modal（新加入） -->
+<div class="modal" id="modalDocs" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="docsTitle">
+    <div class="modal-head">
+      <h2 id="docsTitle" class="modal-title">補交文件</h2>
+      <button class="modal-close" id="docsClose" type="button" aria-label="關閉">×</button>
+    </div>
+
+    <!-- 駕照 -->
+    <div class="grid">
+      <span class="lbl">駕照上傳（正面／反面）</span>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 駕照正面</div>
+          <input id="d_licenseFront" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="n_d_licenseFront"></div>
+
+        <div class="file">
+          <div class="fake">上傳 駕照反面</div>
+          <input id="d_licenseBack" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="n_d_licenseBack"></div>
+      </div>
+      <input id="d_license" class="ipt" type="date" placeholder="到期日">
+      <div class="muted">請輸入駕照到期日。</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 行照 -->
+    <div class="grid">
+      <span class="lbl">行照上傳</span>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 行照</div>
+          <input id="d_vehicle" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="n_d_vehicle"></div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 保險 -->
+    <div class="grid">
+      <span class="lbl">保險上傳（正面／反面）</span>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 保險正面</div>
+          <input id="d_insFront" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="n_d_insFront"></div>
+
+        <div class="file">
+          <div class="fake">上傳 保險反面</div>
+          <input id="d_insBack" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="n_d_insBack"></div>
+      </div>
+      <input id="d_ins" class="ipt" type="date" placeholder="到期日">
+      <div class="muted">請輸入保險到期日。</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 良民證 -->
+    <div class="grid">
+      <span class="lbl">良民證上傳</span>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 良民證</div>
+          <input id="d_police" type="file" accept="image/*,application/pdf">
+        </div>
+        <div class="file-name" id="n_d_police"></div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 個人照 -->
+    <div class="grid">
+      <span class="lbl">個人照（自拍）上傳</span>
+      <div class="upload-col">
+        <div class="file">
+          <div class="fake">上傳 個人照（自拍）</div>
+          <input id="d_idPhoto" type="file" accept="image/*">
+        </div>
+        <div class="file-name" id="n_d_idPhoto"></div>
+      </div>
+      <div class="muted">請上傳清晰、正面、無墨鏡或帽子的自拍照（作為司機個人形象使用）。</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="actions" style="margin-top:6px;justify-content:flex-end">
+      <button id="btnSubmitDocs" class="btn" type="button">送出文件</button>
+    </div>
+    <div class="muted" style="text-align:right;margin-top:6px;">文件更新將送審（約 1–2 天）。</div>
+  </div>
+</div>
+
+<script>
+(()=>{
+  const $ = s => document.querySelector(s);
+  const S = sessionStorage, L = localStorage;
+
+  const ROUTE_HOME='https://chihang-go.com/';
+  const ORDER_DETAIL_URL='https://chihang-go.com/driver_order_details/';
+
+  $('#btnBack').addEventListener('click',()=>{ if(document.referrer) history.back(); else location.href=ROUTE_HOME; });
+
+  const safeParse = s => { try{ return JSON.parse(s||'{}') }catch{ return {} } };
+  const readDriver = acc => safeParse(L.getItem(`driver_${acc}`));
+  const writeDriver = (acc, obj) => L.setItem(`driver_${acc}`, JSON.stringify(obj||{}));
+  const readOrders = acc => JSON.parse(L.getItem(`driver_orders_${acc}`)||'[]');
+  const writeOrders = (acc, list) => L.setItem(`driver_orders_${acc}`, JSON.stringify(list||[]));
+
+  // ===== Demo Seed =====
+  (function seedAccount(){
+    if(!S.getItem('driverAccount')) S.setItem('driverAccount','driverdemo');
+    if(!L.getItem('driver_driverdemo')){
+      writeDriver('driverdemo',{
+        account:'driverdemo', password:'0912345678', name:'示範司機',
+        phone:'0912345678', email:'driver@example.com', addr:'台北市中山區',
+        birth:'1990-01-01', line:'@driver',
+        docs:{ license:{expire:'2026-03-01'}, insurance:{expire:'2026-06-30'} },
+        status:'approved'
+      });
+    }
+  })();
+  const getAcc = () => S.getItem('driverAccount') || 'driverdemo';
+
+  // ===== Demo 訂單 =====
+  function addDemoOrderEachLoad(){
+    const acc = getAcc();
+    const list = readOrders(acc);
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const orderId = `CH202511010002`;
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const demo = {
+      orderId, status:'ing', type:'接機', date:dateStr, total:2200,
+      detail:{pickup:'桃園機場 T2 到達 22:30', dropoff:'台中市南屯區公益路 xxx 號', flight:'BR186'}
+    };
+    list.unshift(demo);
+    if(list.length>1) list.length = 1;
+    writeOrders(acc, list);
+  }
+
+  // ===== Profile =====
+  function renderProfile(){
+    const d=readDriver(getAcc())||{};
+    $('#welcome').textContent='歡迎回來 ' + (d.name||'');
+    $('#v_acc').textContent=d.account||'—';
+    $('#v_name').textContent=d.name||'—';
+    $('#v_phone').textContent=d.phone||'—';
+    $('#v_mail').textContent=d.email||'—';
+    $('#v_addr').textContent=d.addr||'—';
+    $('#v_licenseDue').textContent=d?.docs?.license?.expire || '—';
+    $('#v_insDue').textContent=d?.docs?.insurance?.expire || '—';
+  }
+
+  // ===== Orders =====
+  function renderOrders(){
+    const list=readOrders(getAcc())||[];
+    const ongoing=list.filter(o=>o.status==='ing');
+    const tbody=$('#tblOngoing tbody');
+    tbody.innerHTML = ongoing.length ? ongoing.map(o=>`
+      <tr class="order-row" data-id="${o.orderId}">
+        <td data-col="id">${o.orderId}</td>
+        <td data-col="type">${o.type}</td>
+        <td data-col="date">${o.date}</td>
+        <td data-col="status"><span class="badge ing">進行中</span></td>
+        <td data-col="amount" style="text-align:right">${Number(o.total||0).toLocaleString()} 元</td>
+      </tr>`).join('')
+      : `<tr class="order-row"><td data-col="id">目前沒有進行中的訂單</td></tr>`;
+  }
+
+  // 點列 → 詳情
+  document.addEventListener('click',e=>{
+    const row=e.target.closest?.('.order-row'); 
+    if(!row) return;
+    const id=row.dataset.id; 
+    if(id) location.href = `${ORDER_DETAIL_URL}?id=${encodeURIComponent(id)}`;
+  });
+
+  // ===== Modal 控制 =====
+  const modalEdit=$('#modalEdit');
+  const modalDocs=$('#modalDocs');
+  function openModal(m){ m.classList.add('active'); m.setAttribute('aria-hidden','false'); }
+  function closeModal(m){ m.classList.remove('active'); m.setAttribute('aria-hidden','true'); }
+
+  // 編輯資料
+  $('#btnEdit').addEventListener('click',()=>{
+    const d=readDriver(getAcc())||{};
+    $('#e_acc').value=d.account||''; 
+    $('#e_name').value=d.name||''; 
+    $('#e_birth').value=d.birth||'';
+    $('#e_phone').value=d.phone||'';
+    $('#e_mail').value=d.email||'';
+    $('#e_line').value=d.line||'';
+    $('#e_addr').value=d.addr||'';
+    $('#e_license').value=d?.docs?.license?.expire||'';
+    $('#e_ins').value=d?.docs?.insurance?.expire||'';
+    openModal(modalEdit);
+  });
+  $('#editClose').addEventListener('click',()=>closeModal(modalEdit));
+  document.addEventListener('click',e=>{ if(e.target===modalEdit) closeModal(modalEdit); });
+
+  // 儲存資料
+  $('#btnSaveEdit').addEventListener('click',()=>{
+    const acc=getAcc(), d=readDriver(acc)||{};
+    d.name=$('#e_name').value.trim();
+    d.phone=$('#e_phone').value.trim();
+    d.email=$('#e_mail').value.trim();
+    d.addr=$('#e_addr').value.trim();
+    d.docs.license.expire=$('#e_license').value.trim();
+    d.docs.insurance.expire=$('#e_ins').value.trim();
+    writeDriver(acc,d);
+    closeModal(modalEdit);
+    renderProfile();
+    alert('已儲存資料（檔案將送審）。');
+  });
+
+  // ===== 補交文件 Modal =====
+  const btnReupload=$('#btnReupload');
+  const docsClose=$('#docsClose');
+
+  function openDocs(){
+    if(!modalDocs) return;
+    modalDocs.querySelectorAll('.file-name').forEach(el=>el.textContent='');
+    openModal(modalDocs);
+  }
+  function closeDocs(){ closeModal(modalDocs); }
+
+  btnReupload?.addEventListener('click',openDocs);
+  docsClose?.addEventListener('click',closeDocs);
+  document.addEventListener('click',e=>{ if(e.target===modalDocs) closeDocs(); });
+
+  // 送出補交文件
+  $('#btnSubmitDocs').addEventListener('click',()=>{
+    closeDocs();
+    const toast=document.createElement('div');
+    toast.textContent='文件已送出，待審中';
+    Object.assign(toast.style,{
+      position:'fixed',bottom:'20px',left:'50%',transform:'translateX(-50%)',
+      background:'#00B881',color:'#fff',padding:'12px 20px',
+      borderRadius:'50px',fontWeight:'900',fontSize:'15px',
+      zIndex:'9999',opacity:'0',transition:'opacity .3s'
+    });
+    document.body.appendChild(toast);
+    setTimeout(()=>toast.style.opacity='1',50);
+    setTimeout(()=>{toast.style.opacity='0';setTimeout(()=>toast.remove(),400)},2000);
+  });
+
+  // 登出
+  $('#btnLogout').addEventListener('click',()=>{
+    S.removeItem('driverAccount');
+    location.href='https://chihang-go.com/driver_login/';
+  });
+
+  // ===== 初始化 =====
+  addDemoOrderEachLoad();
+  renderProfile();
+  const driver = readDriver(getAcc()) || {};
+  if(driver.status === 'pending'){
+    document.querySelector('#alertPending').style.display='block';
+    document.querySelector('#alertPermission').style.display='none';
+    document.querySelector('#tblOngoing').style.pointerEvents='none';
+    document.querySelector('#tblOngoing').style.opacity='.5';
+  }else if(driver.status !== 'approved'){
+    document.querySelector('#alertPermission').style.display='block';
+    document.querySelector('#alertPending').style.display='none';
+    document.querySelector('#tblOngoing').style.pointerEvents='none';
+    document.querySelector('#tblOngoing').style.opacity='.5';
+  }else{
+    document.querySelector('#alertPermission').style.display='none';
+    document.querySelector('#alertPending').style.display='none';
+    document.querySelector('#tblOngoing').style.pointerEvents='auto';
+    document.querySelector('#tblOngoing').style.opacity='1';
+  }
+  renderOrders();
+})();
+</script>
+</body>
+</html>

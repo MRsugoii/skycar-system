@@ -1,0 +1,332 @@
+<!-- 乘車資訊｜手機版固定390px｜成人1位起跳＋小孩動態上限＋依車型套用不同座椅/行李上限（標題置中、返回圓角加大、指定欄位不加粗） -->
+<style>
+  :root{
+    --teal:#2B7CFF; --line:#e7f0f1; --text:#051D4B; --muted:#6b7b80; --field:#B7C1CC;
+    --radius:12px; --wrap:390px;
+  }
+  html,body{margin:0;background:#f6f8fb;font-family:system-ui,"Noto Sans TC",Arial;color:var(--text)}
+  .pg{width:var(--wrap);max-width:var(--wrap);margin:28px auto;padding:0 16px}
+  @media(max-width:420px){.pg{width:100%;max-width:420px}}
+
+  /* 標題置中，徽章固定右側不擠壓標題 */
+  .h1{
+    position:relative; display:flex; align-items:center; justify-content:center;
+    gap:8px; font-size:26px; font-weight:800; margin:0 0 16px; text-align:center;
+  }
+  .member-badge{
+    position:absolute; right:0; top:50%; transform:translateY(-50%);
+    display:none; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--line);
+    border-radius:999px; background:#fff; color:var(--text); font-weight:700; font-size:12px; white-space:nowrap;
+  }
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+  .row{display:grid;gap:8px;margin:6px 0}
+  /* 左側分段標籤維持粗體 */
+  .row>label, .card>label{font-weight:900!important;color:var(--text)!important}
+
+  .ipt,select,textarea{
+    width:100%;padding:12px;border:1px solid var(--field)!important;border-radius:var(--radius)!important;
+    background:#fff;font-size:15px;box-shadow:none!important;outline:none;-webkit-appearance:none;appearance:none;background-clip:padding-box;
+  }
+  .ipt:focus,select:focus,textarea:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+  textarea{min-height:90px;resize:vertical}
+  .note{color:var(--teal);font-size:12px}
+
+  /* 車型卡片（單欄） */
+  .cars{display:grid;grid-template-columns:1fr;gap:10px}
+  .car{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff;cursor:pointer}
+  .car .img{height:44px;border-radius:10px;background:#f6fafa;display:flex;align-items:center;justify-content:center}
+  .car .title{font-weight:800;color:var(--teal);display:flex;gap:6px;align-items:center}
+  .car .desc{color:var(--muted);font-size:12px}
+  .car .price{color:var(--teal);font-weight:700;font-size:13px;margin-top:4px}
+  .car.selected{border-color:var(--teal);box-shadow:0 0 0 3px rgba(43,124,255,.08)}
+  .tick{display:none}.car.selected .tick{display:inline}
+
+  /* 清單（成人/小孩、座椅、行李） */
+  .list{display:grid;gap:10px}
+  .it{display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:center}
+  /* 指定的欄位名稱改為不加粗（500/normal） */
+  .lbl{font-weight:500}
+  .sub{color:var(--muted);font-size:12px}
+
+  /* 底部按鈕：同列左右分開 */
+  .actions{display:flex;gap:10px;justify-content:space-between;margin-top:12px}
+  .btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 16px;border-radius:var(--radius)!important;
+       background:#2B7CFF!important;color:#fff!important;border:1px solid #2B7CFF!important;font-weight:800;letter-spacing:.02em;text-decoration:none;cursor:pointer}
+  .btn-line{flex:1;background:#fff!important;color:#2B7CFF!important;border:1px solid #2B7CFF!important}
+  #btnBack{border-radius:16px!important}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+</style>
+
+<div class="pg" id="ridePage">
+  <div class="h1">
+    <span>乘車資訊</span>
+    <span id="memberBadge" class="member-badge">會員帳戶：<b id="memberBadgeText"></b></span>
+  </div>
+
+  <!-- 車型選擇（含人數上限 cap） -->
+  <div class="card">
+    <div class="row"><label>車型選擇</label><div class="note">豪華/商務 + NT$400</div></div>
+    <div class="cars" id="carList">
+
+  <!-- 舒適四人座 -->
+  <div class="car" data-key="eco" data-name="舒適四人座" data-surcharge="0" data-cap="4">
+    <div class="img">
+      <img src="https://chihang-go.com/wp-content/uploads/2025/11/mini-car_14514026.png" alt="舒適四人座">
+    </div>
+    <div>
+      <div class="title">舒適四人座 <span class="tick">（已選）</span></div>
+      <div class="desc">最多 4 人｜經濟舒適型車款</div>
+      <div class="price">含基本價</div>
+    </div>
+  </div>
+
+  <!-- 進口四人座 -->
+  <div class="car" data-key="premium" data-name="進口四人座" data-surcharge="0" data-cap="4">
+    <div class="img">
+      <img src="https://chihang-go.com/wp-content/uploads/2025/11/car_15624193.png" alt="進口四人座">
+    </div>
+    <div>
+      <div class="title">進口四人座 <span class="tick">（已選）</span></div>
+      <div class="desc">最多 4 人｜進口轎車等級</div>
+      <div class="price">含基本價</div>
+    </div>
+  </div>
+
+  <!-- 賓士 VITO -->
+  <div class="car" data-key="lux" data-name="賓士 VITO" data-surcharge="400" data-cap="6">
+    <div class="img">
+      <img src="https://chihang-go.com/wp-content/uploads/2025/11/mini-car_14514020.png" alt="賓士 VITO">
+    </div>
+    <div>
+      <div class="title">賓士 VITO <span class="tick">（已選）</span></div>
+      <div class="desc">最多 6 人｜豪華商旅車款</div>
+      <div class="price">+ NT$ 400</div>
+    </div>
+  </div>
+
+  <!-- ALPHARD -->
+  <div class="car" data-key="van" data-name="ALPHARD" data-surcharge="400" data-cap="6">
+    <div class="img">
+      <img src="https://chihang-go.com/wp-content/uploads/2025/11/mini-car_14514013.png" alt="ALPHARD">
+    </div>
+    <div>
+      <div class="title">ALPHARD <span class="tick">（已選）</span></div>
+      <div class="desc">最多 6 人｜頂級豪華座駕</div>
+      <div class="price">+ NT$ 400</div>
+    </div>
+  </div>
+
+</div>
+
+  <!-- 乘客人數（成人 1 起跳；小孩依剩餘可選） -->
+  <div class="card">
+    <label>乘客人數</label>
+    <div class="list">
+      <div class="it">
+        <div><div class="lbl">成人人數</div><div class="sub">12 歲以上</div></div>
+        <select id="adultCnt" class="ipt"></select>
+      </div>
+      <div class="it">
+        <div><div class="lbl">小孩人數</div><div class="sub">12 歲以下（依車型容量自動調整上限）</div></div>
+        <select id="childCnt" class="ipt"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 安全座椅 -->
+  <div class="card">
+    <div class="row"><label>安全座椅</label><div class="note">依規定 4 歲或體重未達 18 公斤需使用安全座椅</div></div>
+    <div class="list">
+      <div class="it"><div class="lbl">後向式安全座椅<div class="sub">0–4 歲或 ≤18kg</div></div><select id="seatRear"  class="ipt"></select></div>
+      <div class="it"><div class="lbl">前向式安全座椅<div class="sub">0–4 歲且 ≤18kg</div></div><select id="seatFront" class="ipt"></select></div>
+      <div class="it"><div class="lbl">增高座墊<div class="sub">4–12 歲或 18–36kg</div></div><select id="booster"   class="ipt"></select></div>
+    </div>
+  </div>
+
+  <!-- 行李件數 -->
+  <div class="card">
+    <div class="row"><label>行李件數</label><div class="note">所有行李需置於後車廂</div></div>
+    <div class="list">
+      <div class="it"><div class="lbl">20 吋以下</div><select id="lug20" class="ipt"></select></div>
+      <div class="it"><div class="lbl">21–25 吋</div><select id="lug25" class="ipt"></select></div>
+      <div class="it"><div class="lbl">26–28 吋</div><select id="lug28" class="ipt"></select></div>
+    </div>
+  </div>
+
+  <!-- 其他需求 -->
+  <div class="card">
+    <div class="row"><label>其他需求</label><textarea id="note" class="ipt" placeholder="例如：有一個輪椅、嬰兒推車、高爾夫球具…"></textarea></div>
+  </div>
+
+  <!-- 舉牌 -->
+  <div class="card">
+    <div class="row">
+      <label>舉牌服務</label>
+      <div class="it" style="grid-template-columns:1fr 120px">
+        <div class="sub">※ 需加價 NT$ 200 / 張</div>
+        <select id="signage" class="ipt"><option value="否" selected>否</option><option value="是">是</option></select>
+      </div>
+    </div>
+    <div class="row" id="signageTextRow" style="display:none">
+      <label>舉牌內容</label>
+      <input id="signage_text" class="ipt" placeholder="例如：王小明 / WANG, HSIAO-MING">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn-line" id="btnBack">◀ 返回上一頁</button>
+    <button class="btn" id="btnNext">訂單資訊 ▶</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+  /* ✅ 指定下一步頁面 */
+  const ORDER_URL='https://chihang-go.com/user_passenger_info/';
+
+  /* 會員徽章（修正為安全取得 DOM 節點） */
+  try{
+    const acc = sessionStorage.getItem('memberAccount');
+    const badge = document.getElementById('memberBadge');
+    const badgeText = document.getElementById('memberBadgeText');
+    if(acc && badge && badgeText){
+      const isNewA = sessionStorage.getItem('isNewMember')==='1';
+      const isNewB = localStorage.getItem('newMember_'+acc)==='1';
+      let isNewC = false; try{ isNewC = !!JSON.parse(localStorage.getItem('user_'+acc)||'{}').isNew; }catch(e){}
+      badgeText.textContent = (isNewA||isNewB||isNewC) ? '新會員' : acc;
+      badge.style.display = 'inline-flex';
+    }
+  }catch(e){}
+
+  /* ▼ 依車型定義不同的安全座椅/行李上限（可再調整） */
+  const CAR_RULES = {
+    eco:      {cap:4, seats:{rear:1, front:1, booster:1}, luggage:{s20:2, s25:2, s28:2}},
+    premium:  {cap:4, seats:{rear:1, front:1, booster:1}, luggage:{s20:2, s25:2, s28:2}},
+    lux:      {cap:3, seats:{rear:1, front:1, booster:1}, luggage:{s20:2, s25:2, s28:2}},
+    van:      {cap:6, seats:{rear:3, front:3, booster:3}, luggage:{s20:6, s25:6, s28:6}}
+  };
+
+  /* 工具：塞選項 */
+  function opts(sel,arr,unit,keepValue){
+    const keep=keepValue ?? sel.value; sel.innerHTML='';
+    arr.forEach(v=>{const o=document.createElement('option');o.value=String(v);o.textContent=unit?`${v}${unit}`:String(v);sel.appendChild(o);});
+    if(arr.map(String).includes(String(keep))) sel.value=String(keep);
+  }
+  const seatRear  = document.getElementById('seatRear');
+  const seatFront = document.getElementById('seatFront');
+  const booster   = document.getElementById('booster');
+  const lug20     = document.getElementById('lug20');
+  const lug25     = document.getElementById('lug25');
+  const lug28     = document.getElementById('lug28');
+
+  /* 先給 0 作為預設 */
+  opts(seatRear,[0],'張'); opts(seatFront,[0],'張'); opts(booster,[0],'張');
+  opts(lug20,[0],'件');   opts(lug25,[0],'件');     opts(lug28,[0],'件');
+
+  let capacity=4, selectedCar=null;
+  const carList=document.getElementById('carList');
+  const elAdult=document.getElementById('adultCnt');
+  const elChild=document.getElementById('childCnt');
+
+  function range(n){return Array.from({length:n+1},(_,i)=>i)}      // 0..n
+  function range1(n){return Array.from({length:n},(_,i)=>i+1)}     // 1..n
+
+  function applyPeopleCap(cap){
+    capacity = cap;
+    opts(elAdult, range1(capacity), '位');           // 成人 1 起跳
+    const a = Number(elAdult.value || 1);
+    const cMax = Math.max(0, capacity - a);
+    opts(elChild, range(cMax), '位');                // 小孩 0..剩餘
+  }
+
+  function applySeatAndLuggage(rule){
+    opts(seatRear,  range(rule.seats.rear),  '張');  // 0..rearMax
+    opts(seatFront, range(rule.seats.front), '張');
+    opts(booster,   range(rule.seats.booster),'張');
+    opts(lug20,     range(rule.luggage.s20), '件');
+    opts(lug25,     range(rule.luggage.s25), '件');
+    opts(lug28,     range(rule.luggage.s28), '件');
+  }
+
+  function applyRulesByKey(key){
+    const rule = CAR_RULES[key] || CAR_RULES.eco;
+    applyPeopleCap(rule.cap);
+    applySeatAndLuggage(rule);
+  }
+
+  /* 點選車型 */
+  carList.addEventListener('click',e=>{
+    const card=e.target.closest('.car'); if(!card) return;
+    carList.querySelectorAll('.car').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    const key=card.dataset.key;
+    selectedCar={
+      key, name:card.dataset.name,
+      surcharge:Number(card.dataset.surcharge||0),
+      cap:Number(card.dataset.cap||CAR_RULES[key]?.cap||4)
+    };
+    applyRulesByKey(key);
+  });
+
+  /* 成人變動時，重算小孩上限 */
+  elAdult.addEventListener('change',()=>applyPeopleCap(capacity));
+
+  /* 預設選綠能車 */
+  (carList.querySelector('.car[data-key="eco"]')||carList.firstElementChild)?.click();
+
+  /* 舉牌欄位顯示控制 */
+  const signageSel=document.getElementById('signage');
+  const signageRow=document.getElementById('signageTextRow');
+  const signageText=document.getElementById('signage_text');
+  function toggleSign(){const on=signageSel.value==='是';signageRow.style.display=on?'':'none';signageText.required=on;if(!on)signageText.value='';}
+  signageSel.addEventListener('change',toggleSign); toggleSign();
+
+  /* 復原既選（若有） */
+  try{
+    const prev=(()=>{for(const k of ['fullBooking','rideData']){const v=localStorage.getItem(k);if(v)return JSON.parse(v);}return {};})();
+    if(prev?.ride?.selectedCar?.key){
+      const c=carList.querySelector(`.car[data-key="${prev.ride.selectedCar.key}"]`); if(c) c.click();
+    }
+    if(prev?.ride?.passengers){
+      const a=prev.ride.passengers.adult||1; applyPeopleCap(capacity); elAdult.value=String(a); applyPeopleCap(capacity);
+      elChild.value=String(prev.ride.passengers.child||0);
+    }else{ applyPeopleCap(capacity); }
+    if(prev?.ride?.signage){ signageSel.value='是'; toggleSign(); signageText.value=prev.ride.signageText||''; }
+  }catch(e){}
+
+  function validate(){
+    if(!selectedCar){alert('請先選擇車型');return false;}
+    const a=Number(elAdult.value||1), c=Number(elChild.value||0);
+    if(a+c>capacity){alert(`此車型最多可乘坐 ${capacity} 人`);return false;}
+    if(signageSel.value==='是' && !signageText.value.trim()){alert('請填寫舉牌內容');return false;}
+    return true;
+  }
+
+  /* ✅ 事件綁定用取得的元素 */
+  const $btnNext = document.getElementById('btnNext');
+  const $btnBack = document.getElementById('btnBack');
+
+  $btnNext.addEventListener('click', ()=>{
+    if(!validate()) return;
+    const toNum=v=>Number(v||0);
+    const ride={
+      selectedCar,
+      passengers:{ adult:toNum(elAdult.value), child:toNum(elChild.value) },
+      seats:{ rear:toNum(seatRear.value), front:toNum(seatFront.value), booster:toNum(booster.value) },
+      luggage:{ s20:toNum(lug20.value), s25:toNum(lug25.value), s28:toNum(lug28.value) },
+      signage: signageSel.value==='是',
+      signageText: (signageText.value||'').trim(),
+      note: (document.getElementById('note').value||'').trim()
+    };
+    const prev=(()=>{for(const k of ['airportBooking','dropFormData','arriveFormData','fullBooking']){const v=localStorage.getItem(k);if(v)return JSON.parse(v);}return {};})();
+    const flow=prev?.source==='drop'?'出國':(prev?.source==='arrive'?'回國':'');
+    const merged={...prev,ride,flow,memberAccount:sessionStorage.getItem('memberAccount')||'',isNewMember:sessionStorage.getItem('isNewMember')==='1',ts:Date.now(),prelimTotal:(ride.selectedCar?.surcharge||0)+(ride.signage?200:0)};
+    localStorage.setItem('fullBooking',JSON.stringify(merged));
+    localStorage.setItem('rideData',JSON.stringify(ride));
+    location.assign(ORDER_URL);
+  });
+
+  $btnBack.addEventListener('click', ()=>{ history.back(); });
+})();
+</script>

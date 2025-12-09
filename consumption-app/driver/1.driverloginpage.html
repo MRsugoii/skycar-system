@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>司機登入</title>
+<style>
+  :root{
+    --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80;
+    --line:#e7f0f1; --field:#B7C1CC; --bg:#f6f8fb;
+    --radius:16px; --radius-ipt:12px;
+  }
+  html,body{height:100%;margin:0;padding:0;background:var(--bg);
+    font-family:system-ui,"Noto Sans TC",Arial;color:var(--text);-webkit-text-size-adjust:none}
+  .wrap{width:390px;max-width:390px;margin:0 auto;padding:0 20px 40px}
+  @media(max-width:420px){.wrap{width:100%;max-width:420px;padding:0 16px 40px}}
+
+  .h1{text-align:center;font-size:26px;font-weight:900;margin:60px 0 24px;color:var(--text)}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:24px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+  .row{display:grid;gap:8px;margin-bottom:16px}
+  label{font-weight:800;font-size:15px}
+  .ipt{
+    width:100%;padding:14px 16px;border:1px solid var(--field)!important;border-radius:var(--radius-ipt)!important;
+    background:#fff;font-size:15px;outline:none;box-shadow:none!important;-webkit-appearance:none;
+  }
+  .ipt:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+  .err{display:none;margin-top:-6px;margin-bottom:10px;padding:10px;border-radius:12px;background:#fff5f5;border:1px solid #ffd7d7;color:#7a1e1e;font-size:13px}
+
+  /* 按鈕 */
+  .actions{display:grid;gap:10px;margin-top:20px}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;width:100%;
+    padding:14px 0;border-radius:var(--radius-ipt)!important;
+    font-weight:800;letter-spacing:.02em;font-size:16px;
+    border:1px solid var(--teal)!important;cursor:pointer;transition:.2s;text-decoration:none;
+  }
+  .btn-main{background:var(--teal)!important;color:#fff!important}
+  .btn-main:hover{filter:brightness(.93)}
+  .btn-line{background:#fff!important;color:var(--teal)!important;border:1px solid var(--teal)!important}
+  .btn-line:hover{background:rgba(43,124,255,.06)!important}
+  .muted{color:var(--muted);font-size:13px;text-align:center;margin-top:14px;line-height:1.6}
+
+  /* 左上返回箭頭 */
+  .back{
+    position:fixed;left:10px;top:10px;z-index:10;
+    width:38px;height:38px;border-radius:50%;
+    background:#fff;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 10px rgba(0,0,0,.08);cursor:pointer;
+  }
+  .back svg{width:20px;height:20px;stroke:var(--teal)}
+
+  /* 忘記密碼 Modal（照舊） */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal.active{display:flex}
+  .box{background:#fff;border-radius:var(--radius);border:1px solid var(--line);width:90%;max-width:360px;padding:20px;position:relative}
+  .box h2{font-size:18px;font-weight:900;margin:0 0 12px;text-align:center;color:var(--text)}
+  .close{position:absolute;right:16px;top:14px;border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--muted)}
+  .toast{margin-top:12px;padding:10px;border-radius:12px;background:#f4f8ff;color:#1d3a78;font-size:13px;text-align:center}
+</style>
+</head>
+
+<body>
+  <!-- 返回上一頁 -->
+  <button class="back" id="btnBack" aria-label="返回上一頁">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </button>
+
+  <div class="wrap">
+    <h1 class="h1">司機登入</h1>
+    <div class="card">
+      <div class="row">
+        <label for="loginId">身分證字號（帳戶 ID）</label>
+        <input id="loginId" class="ipt" placeholder="例：A123456789" autocomplete="username" inputmode="latin" required>
+      </div>
+      <div class="row">
+        <label for="loginPwd">登入密碼</label>
+        <input id="loginPwd" class="ipt" type="password" placeholder="請輸入密碼" autocomplete="current-password" inputmode="numeric" required>
+      </div>
+      <div id="err" class="err">帳號或密碼有誤，請稍後再試。</div>
+
+      <div class="actions">
+        <button id="btnLogin" class="btn btn-main" type="button">登入</button>
+        <button id="btnRegister" class="btn btn-line" type="button">立即註冊</button>
+        <button id="btnForgot" class="btn btn-line" type="button">忘記密碼</button>
+      </div>
+
+      <div class="muted">規則：<b>身分證字號＝帳戶 ID</b>、<b>手機號碼＝暫時密碼</b>（首次登入將要求更改密碼）。</div>
+    </div>
+  </div>
+
+  <!-- 忘記密碼彈窗（維持 Email） -->
+  <div class="modal" id="modalForgot">
+    <div class="box">
+      <button class="close" id="closeModal">×</button>
+      <h2>重設密碼</h2>
+      <label for="fgEmail">註冊 Email</label>
+      <input id="fgEmail" class="ipt" type="email" placeholder="example@mail.com">
+      <button id="btnSend" class="btn btn-main" style="margin-top:14px" type="button">送出</button>
+      <div class="toast" id="fgMsg" style="display:none"></div>
+    </div>
+  </div>
+
+<script>
+(()=>{
+  const $=s=>document.querySelector(s);
+  const L=localStorage,S=sessionStorage;
+  const ROUTE_HOME='https://chihang-go.com/driver_member/';
+  const ROUTE_REGISTER='https://chihang-go.com/driver_register/';
+  const ROUTE_FALLBACK='https://chihang-go.com/';
+
+  /* 返回上一頁 */
+  $('#btnBack').addEventListener('click',()=>{
+    if(document.referrer)history.back();else location.href=ROUTE_FALLBACK;
+  });
+
+  /* === 台灣身分證快速驗證（格式＋checksum） === */
+  function validTWID(code){
+    code=(code||'').toUpperCase();
+    if(!/^[A-Z][12]\d{8}$/.test(code)) return false;
+    const map="ABCDEFGHJKLMNPQRSTUVXYWZIO";
+    const n = map.indexOf(code[0]) + 10;
+    let sum = Math.floor(n/10) + (n%10)*9;
+    const w=[8,7,6,5,4,3,2,1];
+    for(let i=1;i<=8;i++) sum += parseInt(code[i]) * w[i-1];
+    sum += parseInt(code[9]);
+    return sum % 10 === 0;
+  }
+  /* 手機 09 開頭＋ 8 碼 */
+  const validPhone = p => /^09\d{8}$/.test(p);
+
+  /* ===== Demo 帳號（示範，可移除）=====
+     鍵名使用 driver_身分證字號，密碼預設＝手機（暫時密碼） */
+  if(!L.getItem('driver_A123456789')){
+    L.setItem('driver_A123456789', JSON.stringify({
+      idno:'A123456789',
+      password:'0912345678',   // 暫時密碼＝手機
+      name:'示範司機',
+      email:'driver@mail.com',
+      phone:'0912345678',
+      status:'approved',       // 審核通過
+      car:'TOYOTA Wish',
+      plate:'ABC-1234'
+    }));
+  }
+
+  /* 登入 */
+  const err=$('#err');
+  $('#btnLogin').addEventListener('click',()=>{
+    err.style.display='none';
+
+    const idno=$('#loginId').value.trim().toUpperCase();
+    const pwd=$('#loginPwd').value.trim();
+
+    if(!validTWID(idno)){ err.textContent='身分證字號格式不正確'; err.style.display='block'; return; }
+    if(!validPhone(pwd)){ err.textContent='請輸入正確的手機號碼（09 開頭 10 碼）'; err.style.display='block'; return; }
+
+    const key='driver_'+idno;
+    const d=JSON.parse(L.getItem(key)||'{}');
+    if(!d.idno){ err.textContent='查無帳號，請先註冊'; err.style.display='block'; return; }
+    if(d.password!==pwd){ err.textContent='帳號或密碼有誤'; err.style.display='block'; return; }
+    if(d.status!=='approved'){ err.textContent='帳戶審查中，暫不可登入'; err.style.display='block'; return; }
+
+    // 登入成功 → 寫入 Session
+    S.setItem('driverIdno',idno);
+    S.setItem('driverName',d.name||'');
+    S.setItem('driverEmail',d.email||'');
+    S.setItem('driverPhone',d.phone||'');
+
+    // 若密碼仍等於手機，視為暫時密碼（如需，這裡可導向強制改密碼頁）
+    // location.assign('#/force-change-password');
+    location.assign(ROUTE_HOME);
+  });
+
+  /* 前往註冊 */
+  $('#btnRegister').addEventListener('click',()=>location.assign(ROUTE_REGISTER));
+
+  /* 忘記密碼（Email）—保留原行為 */
+  const modal=$('#modalForgot');
+  $('#btnForgot').onclick=()=>{modal.classList.add('active');$('#fgMsg').style.display='none';$('#fgEmail').value='';};
+  $('#closeModal').onclick=()=>modal.classList.remove('active');
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('active')});
+
+  $('#btnSend').onclick=()=>{
+    const mail=$('#fgEmail').value.trim().toLowerCase();
+    if(!mail){return showMsg('請輸入 Email');}
+    // 依 Email 找到司機，發送重設連結（DEMO：直接給臨時密碼）
+    let key='';
+    for(let i=0;i<L.length;i++){
+      const k=L.key(i);
+      if(k.startsWith('driver_')){
+        const u=JSON.parse(L.getItem(k)||'{}');
+        if((u.email||'').toLowerCase()===mail){key=k;break;}
+      }
+    }
+    if(!key){return showMsg('查無此 Email');}
+    const temp=Math.random().toString(36).slice(-8);
+    const u=JSON.parse(L.getItem(key)||'{}');u.password=temp;
+    L.setItem(key,JSON.stringify(u));
+    showMsg(`重設連結已寄出<br>（示範用臨時密碼：<b>${temp}</b>）`);
+  };
+  function showMsg(txt){const m=$('#fgMsg');m.innerHTML=txt;m.style.display='block';}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>用戶註冊</title>
+<style>
+  :root{
+    --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80;
+    --line:#e7f0f1; --field:#B7C1CC; --bg:#f6f8fb;
+    --radius:16px; --radius-ipt:12px;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);
+    font-family:system-ui,"Noto Sans TC",Arial;color:var(--text);-webkit-text-size-adjust:none}
+  .wrap{width:390px;max-width:390px;margin:0 auto;padding:0 20px 44px}
+  @media(max-width:420px){.wrap{width:100%;max-width:420px;padding:0 16px 44px}}
+
+  .h1{text-align:center;font-size:26px;font-weight:900;margin:60px 0 22px}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+        padding:22px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+  .row{display:grid;gap:8px;margin-bottom:14px}
+  label{font-weight:800;font-size:15px}
+  .hint{color:var(--muted);font-size:12px}
+  .muted{color:var(--muted);font-size:13px;text-align:center;margin-top:10px}
+
+  .ipt{
+    width:100%;padding:14px 16px;border:1px solid var(--field)!important;border-radius:var(--radius-ipt)!important;
+    background:#fff;font-size:15px;outline:none;box-shadow:none!important;-webkit-appearance:none;appearance:none;background-clip:padding-box;
+  }
+  .ipt:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+
+  .grid2{display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center}
+
+  .actions{display:grid;gap:12px;margin-top:16px}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;width:100%;
+    padding:14px 0;border-radius:var(--radius-ipt)!important;font-weight:800;letter-spacing:.02em;font-size:16px;
+    border:1px solid var(--teal)!important;cursor:pointer;transition:.2s;text-decoration:none;
+  }
+  .btn-main{background:var(--teal)!important;color:#fff!important}
+  .btn-main:hover{filter:brightness(.93)}
+  .btn-line{background:#fff!important;color:var(--teal)!important;border:1px solid var(--teal)!important}
+  .btn-line:hover{background:rgba(43,124,255,.06)!important}
+  .btn[disabled]{opacity:.6;cursor:not-allowed}
+
+  .back{
+    position:fixed;left:10px;top:10px;z-index:10;width:38px;height:38px;border-radius:50%;
+    background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 10px rgba(0,0,0,.08);cursor:pointer;
+  }
+  .back svg{width:20px;height:20px;stroke:var(--teal)}
+
+  .toast{margin-top:8px;padding:10px;border-radius:12px;border:1px solid var(--line);background:#f4f8ff;color:#1d3a78;font-size:13px}
+</style>
+</head>
+<body>
+  <!-- 返回上一頁 -->
+  <button class="back" id="btnBack" aria-label="返回上一頁">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </button>
+
+  <div class="wrap">
+    <h1 class="h1">用戶註冊</h1>
+
+    <div class="card">
+      <!-- 帳號：身分證字號 -->
+      <div class="row">
+        <label for="idNumber">身分證字號（帳號）</label>
+        <input id="idNumber" class="ipt" placeholder="例如 A123456789">
+        <div class="hint">請輸入正確格式：英文開頭 + 1/2 + 8 位數字。</div>
+      </div>
+
+      <!-- 基本資料 -->
+      <div class="row">
+        <label for="name">姓名</label>
+        <input id="name" class="ipt" placeholder="您的姓名">
+      </div>
+      <div class="row">
+        <label for="birthday">生日</label>
+        <input id="birthday" class="ipt" type="date" placeholder="YYYY-MM-DD">
+      </div>
+
+      <div class="row">
+        <label for="phone">手機（必填，做為暫時密碼）</label>
+        <input id="phone" class="ipt" type="tel" inputmode="numeric" placeholder="09xxxxxxxx（台灣手機）" required>
+        <div class="hint">首次登入密碼 = 您的手機號（可於登入後自行更改）。</div>
+      </div>
+
+      <!-- 手機驗證 -->
+      <div class="row">
+        <label for="phoneCode">手機驗證碼</label>
+        <div class="grid2">
+          <input id="phoneCode" class="ipt" placeholder="輸入 6 位數驗證碼">
+          <button id="sendPhoneCode" class="btn btn-line" type="button">發送驗證碼</button>
+        </div>
+        <div id="phoneMsg" class="toast" style="display:none"></div>
+      </div>
+
+      <!-- 地址 -->
+      <div class="row">
+        <label for="addr">地址</label>
+        <input id="addr" class="ipt" placeholder="市／區／路／號…">
+      </div>
+
+      <!-- Email（選填） -->
+      <div class="row">
+        <label for="email">Email（選填）</label>
+        <input id="email" class="ipt" type="email" placeholder="example@mail.com">
+      </div>
+
+      <!-- 其他（選填） -->
+      <div class="row">
+        <label for="lineId">Line ID（選填）</label>
+        <input id="lineId" class="ipt" placeholder="@ 或 ID">
+      </div>
+      <div class="row">
+        <label for="waId">WhatsApp ID（選填）</label>
+        <input id="waId" class="ipt" placeholder="電話或帳號">
+      </div>
+
+      <!-- 動作 -->
+      <div class="actions">
+        <button id="btnSubmit" class="btn btn-main" type="button">註冊並登入</button>
+      </div>
+
+      <div class="muted">完成註冊後將自動登入，並帶您前往預約接送。</div>
+    </div>
+  </div>
+
+<script>
+(()=>{
+  const $=s=>document.querySelector(s);
+  const L=localStorage,S=sessionStorage;
+
+  /* 路由 */
+  const ROUTE_APPOINT='https://chihang-go.com/user_member/';
+  const ROUTE_FALLBACK='https://chihang-go.com/';
+
+  /* 返回箭頭 */
+  $('#btnBack').addEventListener('click',()=>{
+    if(document.referrer)history.back();else location.href=ROUTE_FALLBACK;
+  });
+
+  /* 工具 */
+  const toHalfWidth = str => String(str||'').replace(/[\uFF10-\uFF19]/g, d => String.fromCharCode(d.charCodeAt(0)-0xFF10+0x30));
+  function normalizeTWMobile(raw){
+    if(!raw) return '';
+    let s = toHalfWidth(raw).trim();
+    s = s.replace(/[^\d+]/g,'');
+    if (s.startsWith('+886')) s = '0'+s.slice(4);
+    s = s.replace(/\D/g,'');
+    return s;
+  }
+  const isTWMobile = s => /^09\d{8}$/.test(s);
+  const isEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  const isValidTWID = s => /^[A-Z][12]\d{8}$/.test(String(s||'').trim().toUpperCase());
+  const id = x => document.getElementById(x);
+
+  /* 手機驗證碼（Demo） */
+  function sendPhoneCode(phone){
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    S.setItem('phoneCode:'+phone, code);
+    const msg=$('#phoneMsg');
+    msg.innerHTML = `驗證碼已發送至手機。<br>（示範用顯示：<b>${code}</b>）`;
+    msg.style.display = 'block';
+  }
+
+  function verifyPhoneCode(phone, input){
+    const real = S.getItem('phoneCode:'+phone);
+    return real && input && real === input.trim();
+  }
+
+  function showPhoneMsg(t){
+    const m=$('#phoneMsg');
+    m.innerHTML = t;
+    m.style.display = 'block';
+  }
+
+  /* 綁定發送驗證碼 */
+  $('#sendPhoneCode').addEventListener('click', ()=>{
+    const phone = normalizeTWMobile(id('phone').value);
+    if(!isTWMobile(phone)){ showPhoneMsg('請先輸入正確的手機號'); return; }
+    sendPhoneCode(phone);
+  });
+
+  /* 註冊流程 */
+  $('#btnSubmit').addEventListener('click', ()=>{
+    const idNumberRaw = id('idNumber').value.trim().toUpperCase(); // 帳號＝身分證（轉大寫）
+    const name   = id('name').value.trim();
+    const birthday = id('birthday').value;
+    const phone  = normalizeTWMobile(id('phone').value);
+    const addr   = id('addr').value.trim();
+    const email  = (id('email')?.value || '').trim();  // Email 選填
+    const lineId = id('lineId').value.trim();
+    const waId   = id('waId').value.trim();
+
+    // 基本檢查
+    if(!isValidTWID(idNumberRaw)){ alert('請輸入正確的身分證字號'); return; }
+    if(L.getItem('user_'+idNumberRaw)){ alert('此身分證帳號已被註冊'); return; }
+
+    if(!name){ alert('請輸入姓名'); return; }
+    if(!birthday){ alert('請選擇生日'); return; }
+    if(!addr){ alert('請輸入地址'); return; }
+
+    // Email 選填：有填才檢查格式
+    if(email && !isEmail(email)){ alert('Email 格式不正確'); return; }
+
+    if(!isTWMobile(phone)){ alert('請輸入正確的手機號（09xxxxxxxx）'); return; }
+
+    // 手機驗證碼檢查
+    const phoneCode = (id('phoneCode')?.value || '').trim();
+    if(!/^\d{6}$/.test(phoneCode)){ alert('請輸入 6 位數手機驗證碼'); return; }
+    if(!verifyPhoneCode(phone, phoneCode)){ alert('手機驗證碼不正確'); return; }
+
+    // 暫時密碼 = 手機號
+    const finalPassword = phone;
+
+    const user = {
+      account: idNumberRaw,          // 帳號＝身分證
+      password: finalPassword,       // 暫時密碼＝手機
+      displayName: name,
+      birthday, phone, address: addr, email, lineId, whatsappId: waId,
+      createdAt: Date.now(), totalSpent: 0, totalTrips: 0, level: '一般會員', isNew: true
+    };
+
+    // 以身分證為 key 儲存
+    L.setItem('user_'+idNumberRaw, JSON.stringify(user));
+
+    // 自動登入（以身分證作為帳號）
+    S.setItem('jwt','demo');
+    S.setItem('memberAccount', idNumberRaw);
+    S.setItem('memberName', name);
+    S.setItem('memberEmail', email);
+    S.setItem('memberPhone', phone||'');
+    S.setItem('isNewMember','1');
+
+    // 導向：預約接送
+    location.assign(ROUTE_APPOINT);
+  });
+})();
+</script>
+</body>
+</html>

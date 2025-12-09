@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>申請退款</title>
+<style>
+  :root{
+    --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80;
+    --line:#e7f0f1; --field:#B7C1CC; --bg:#f6f8fb;
+    --radius:18px; --radius-ipt:50px;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,"Noto Sans TC",Arial;color:var(--text);-webkit-text-size-adjust:none}
+  .wrap{width:390px;max-width:390px;margin:0 auto;padding:0 16px 40px}
+  .h1{text-align:center;font-size:26px;font-weight:900;margin:50px 0 16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.04);margin-bottom:16px}
+  .lbl{font-weight:800}
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:grid;gap:8px;margin-bottom:14px}
+  .ipt, select, textarea{
+    width:100%;padding:14px 16px;border:1px solid var(--field)!important;border-radius:var(--radius-ipt)!important;
+    background:#fff;font-size:15px;outline:none;box-shadow:none!important;-webkit-appearance:none;appearance:none
+  }
+  .ipt:focus,select:focus,textarea:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+  textarea{resize:none;height:100px;border-radius:16px!important}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;width:100%;
+    padding:14px 0;border-radius:16px!important;font-weight:900;letter-spacing:.02em;font-size:16px;
+    background:#2B7CFF!important;color:#fff!important;border:1px solid #2B7CFF!important;cursor:pointer;transition:.2s;text-decoration:none
+  }
+  .btn:hover{filter:brightness(.93)} .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .back{
+    position:fixed;left:10px;top:10px;z-index:10;width:38px;height:38px;border-radius:50%;
+    background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,.08)
+  }
+  .back svg{width:20px;height:20px;stroke:var(--teal)}
+  .pill{display:inline-block;background:#f4f8ff;border:1px solid #e7f0f9;border-radius:999px;padding:6px 10px;font-weight:800;color:#1d3a78}
+  .kv{display:grid;grid-template-columns:100px 1fr;gap:8px;font-variant-numeric:tabular-nums}
+  .kv .key{font-weight:800}
+  .sep{height:1px;background:var(--line);margin:10px 0}
+  .hint{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <!-- 返回上一頁 -->
+  <button class="back" id="btnBack" aria-label="返回上一頁">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </button>
+
+  <div class="wrap">
+    <h1 class="h1">申請退款</h1>
+
+    <!-- 訂單摘要 -->
+    <div class="card" id="orderSummary" style="display:none">
+      <div class="row" style="margin:0">
+        <div class="kv">
+          <div class="key">訂單編號</div><div id="v_id">—</div>
+          <div class="key">預約時間</div><div id="v_time">—</div>
+          <div class="key">應付總額</div><div id="v_amount" style="color:#2B7CFF;font-weight:900">—</div>
+        </div>
+        <div class="sep"></div>
+        <div class="muted">請確認要取消的訂單資訊無誤。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <label class="lbl" for="bank">銀行名稱</label>
+        <select id="bank" class="ipt" aria-label="銀行名稱">
+          <option value="">請選擇銀行</option>
+          <option>台灣銀行</option>
+          <option>中國信託商業銀行</option>
+          <option>台新國際商業銀行</option>
+          <option>國泰世華銀行</option>
+          <option>玉山商業銀行</option>
+          <option>永豐銀行</option>
+          <option>第一商業銀行</option>
+          <option>彰化銀行</option>
+          <option>合作金庫商業銀行</option>
+          <option>兆豐國際商業銀行</option>
+          <option>華南商業銀行</option>
+          <option>土地銀行</option>
+          <option>渣打銀行</option>
+          <option>星展銀行</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label class="lbl" for="account">銀行帳號</label>
+        <input id="account" class="ipt" type="text" inputmode="numeric" placeholder="請輸入退款帳號（僅數字）" aria-label="銀行帳號">
+        <div class="hint">輸入時自動分組顯示，送出前會去除空白。</div>
+      </div>
+
+      <div class="row">
+        <label class="lbl" for="reasonSel">取消原因</label>
+        <select id="reasonSel" class="ipt" aria-label="取消原因">
+          <option value="">請選擇原因</option>
+          <option value="行程變更">行程變更</option>
+          <option value="重複下單">重複下單</option>
+          <option value="價格或付款問題">價格或付款問題</option>
+          <option value="改搭其他交通">改搭其他交通</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+
+      <div class="row" id="reasonOtherRow" style="display:none">
+        <label class="lbl" for="reasonOther">其他原因說明</label>
+        <textarea id="reasonOther" class="ipt" placeholder="請簡述取消原因" aria-label="其他原因說明"></textarea>
+      </div>
+
+      <div class="row" style="margin-top:6px">
+        <button id="btnCancel" class="btn" type="button">確認申請退款</button>
+      </div>
+
+      <div class="muted">確認後將取消訂單，退款約需 3–5 個工作日。</div>
+    </div>
+  </div>
+
+<script>
+(()=>{
+  const $ = s => document.querySelector(s);
+  const L = localStorage, S = sessionStorage;
+
+  const ROUTE_MEMBER = 'https://chihang-go.com/user_member/';
+  const ROUTE_FALLBACK = 'https://chihang-go.com/';
+
+  /* 返回上一頁 */
+  $('#btnBack').addEventListener('click',()=>{
+    if(document.referrer) history.back(); else location.href = ROUTE_FALLBACK;
+  });
+
+  /* 取得待取消訂單（從 sessionStorage.activeOrder 或 fullBooking） */
+  function getActiveOrder(){
+    try{
+      const a = JSON.parse(S.getItem('activeOrder') || 'null');
+      if (a && a.orderId) return a;
+      const b = JSON.parse(L.getItem('fullBooking') || 'null');
+      return b && b.orderId ? b : {};
+    }catch{ return {}; }
+  }
+
+  /* 訂單摘要渲染 */
+  (function renderSummary(){
+    const o = getActiveOrder();
+    if(!o || !o.orderId) return;
+    $('#orderSummary').style.display = 'block';
+    $('#v_id').textContent = (o.orderId || '—').replace(/[^A-Z0-9]/gi, '').replace(/[A-Z]+$/, '');
+    $('#v_time').textContent = o.date || o?.ride?.dateTime || '—';
+    $('#v_amount').textContent = (Number(o.total||o?.pricing?.total||0).toLocaleString()) + ' 元';
+  })();
+
+  /* 其他原因顯示 */
+  const sel = $('#reasonSel'), otherRow = $('#reasonOtherRow'), otherIpt = $('#reasonOther');
+  sel.addEventListener('change',()=>{
+    const isOther = sel.value === '其他';
+    otherRow.style.display = isOther ? 'grid' : 'none';
+    if(!isOther) otherIpt.value = '';
+  });
+
+  /* 銀行帳號：只允許數字 + 顯示分組 */
+  const acc = $('#account');
+  acc.addEventListener('input',()=>{
+    const digits = acc.value.replace(/\D/g,'').slice(0,20);
+    acc.value = digits.replace(/(\d{4})(?=\d)/g,'$1 ').trim();
+  });
+
+  /* 會員訂單列表 */
+  const getAcc = () => S.getItem('memberAccount') || '';
+  const readOrders = (a) => { try{ return JSON.parse(L.getItem(`orders_${a}`)||'[]'); }catch{ return []; } };
+  const writeOrders = (a,list) => { try{ L.setItem(`orders_${a}`, JSON.stringify(list||[])); }catch{} };
+
+  /* 退款（取消）邏輯 */
+  $('#btnCancel').addEventListener('click',()=>{
+    const bank = $('#bank').value.trim();
+    const account = $('#account').value.replace(/\s+/g,'').trim();
+    const chosen = sel.value.trim();
+    const reasonText = chosen === '其他' ? (otherIpt.value||'').trim() : chosen;
+
+    if(!bank){ alert('請選擇銀行'); return; }
+    if(!account){ alert('請輸入退款帳號'); return; }
+    if(!/^\d{6,20}$/.test(account)){ alert('銀行帳號僅能為 6–20 位數字'); return; }
+    if(!chosen){ alert('請選擇取消原因'); return; }
+    if(chosen==='其他' && !reasonText){ alert('請輸入其他原因說明'); return; }
+
+    const order = getActiveOrder();
+    if(!order || !order.orderId){
+      alert('找不到訂單資料，請回會員頁重試。'); return;
+    }
+
+    // 更新單筆（fullBooking）
+    order.status = 'cancelled';
+    order.cancelInfo = { bank, account, reason: reasonText, cancelledAt: Date.now() };
+    try{ L.setItem('fullBooking', JSON.stringify(order)); }catch{}
+
+    // 同步更新會員訂單列表
+    const a = getAcc();
+    if(a){
+      const list = readOrders(a);
+      const idx = list.findIndex(x=>x.orderId===order.orderId);
+      if(idx>-1){
+        list[idx] = { ...list[idx], status:'cancel', detail:{ ...(list[idx].detail||{}), cancelInfo: order.cancelInfo } };
+      }else{
+        list.unshift({ orderId: order.orderId, status:'cancel', type: order.type||'—', date: order.date||'—', total: order.total||0, detail:{ cancelInfo: order.cancelInfo } });
+      }
+      writeOrders(a, list);
+    }
+
+    try{ S.removeItem('activeOrder'); }catch{}
+    alert('已送出退款申請，退款將於 3–5 個工作日內處理。');
+    location.assign(ROUTE_MEMBER);
+  });
+})();
+</script>
+</body>
+</html>

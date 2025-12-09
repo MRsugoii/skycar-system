@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>訂單詳情</title>
+<style>
+:root{
+  --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80; --line:#e7f0f1;
+  --bg:#f6f8fb; --radius:18px; --danger:#E34A4A;
+}
+html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,"Noto Sans TC",Arial;color:var(--text)}
+#page{width:390px;max-width:390px;margin:0 auto;padding:16px}
+.h1{font-size:22px;font-weight:900;margin:16px 0 6px;text-align:center}
+.muted{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:10px 0;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:8px}
+.kv .key{font-weight:800}
+.sep{height:1px;background:var(--line);margin:12px 0}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px;background:#f4f8ff}
+.timestamp{font-variant-numeric:tabular-nums}
+.state{font-weight:900;color:#2B7CFF}
+
+/* Buttons */
+.btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:48%;
+  padding:14px 0;
+  border-radius:12px;
+  background:var(--teal);
+  border:1px solid var(--teal);
+  color:#fff;
+  font-weight:900;
+  font-size:15px;
+  cursor:pointer;
+  transition:.12s;
+  box-sizing:border-box;
+}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn-red{background:var(--danger)!important;border-color:var(--danger)!important}
+
+/* ✅ 修正排列：兩排兩顆 */
+.btn-group{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:24px;
+}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn-red{background:var(--danger)!important;border-color:var(--danger)!important}
+/* ✅ 修正：藍色按鈕 hover/active/focus 不會變紅 */
+.btn:not(.btn-red):hover,
+.btn:not(.btn-red):active,
+.btn:not(.btn-red):focus-visible{background:var(--teal);border-color:var(--teal);color:#fff;filter:brightness(.95);outline:none}
+.btn-red:hover,.btn-red:active,.btn-red:focus-visible{background:var(--danger);border-color:var(--danger);filter:brightness(.95);outline:none}
+
+.back{
+  position:fixed;left:10px;top:10px;z-index:20;width:38px;height:38px;border-radius:50%;
+  background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,.08)
+}
+.back svg{width:20px;height:20px;stroke:var(--teal)}
+</style>
+</head>
+<body>
+
+<a class="back" href="javascript:history.back()" aria-label="返回">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+</a>
+
+<div id="page">
+  <div class="h1">訂單詳情</div>
+
+  <div id="orderCard" class="card" hidden>
+    <!-- 標頭 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:900" id="orderId">—</div>
+      <span class="badge" id="orderStatus">進行中</span>
+    </div>
+
+    <!-- 狀態與預約 -->
+    <div class="kv">
+      <div class="key">目前狀態</div><div class="state" id="v_state">—</div>
+      <div class="key">服務類型</div><div id="v_type">—</div>
+      <div class="key">預約時間</div><div id="v_date">—</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- ✅ 明細（放在應收金額上方） -->
+    <div class="kv">
+      <div class="key">車型</div><div id="v_vehicle">—</div>
+      <div class="key">上車地點/時間</div><div id="v_pickup">—</div>
+      <div class="key">下車地點</div><div id="v_dropoff">—</div>
+      <div class="key">航班/船班</div><div id="v_flight">—</div>
+      <div class="key">乘客人數</div><div id="v_headcount">—</div>
+      <div class="key">兒童座椅</div><div id="v_childseat">—</div>
+      <div class="key">行李件數</div><div id="v_lugcount">—</div>
+      <div class="key">舉牌服務</div><div id="v_board">—</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 應收金額 / 付款 -->
+    <div class="kv">
+      <div class="key">應收金額</div><div style="color:#2B7CFF;font-weight:900" id="v_total">—</div>
+      <div class="key">付款方式</div><div id="v_pay">—</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 時間戳記 -->
+    <div class="kv">
+      <div class="key">開始行程</div><div class="timestamp" id="t_enRoute">—</div>
+      <div class="key">接到客戶</div><div class="timestamp" id="t_picked">—</div>
+      <div class="key">完成訂單</div><div class="timestamp" id="t_completed">—</div>
+    </div>
+
+    <!-- 按鈕群組（跟著內容走） -->
+    <div class="btn-group" id="btnBox" hidden></div>
+  </div>
+
+  <div class="muted">依序點擊下方按鈕更新行程狀態；完成後將自動返回司機帳戶頁。</div>
+</div>
+
+<script>
+(()=> {
+  const $ = s => document.querySelector(s);
+  const L = localStorage, S = sessionStorage;
+
+  const ACCOUNT_URL = 'https://chihang-go.com/driver_member/';
+  const nowISO = () => new Date().toISOString();
+  const fmt = iso => iso ? new Date(iso).toLocaleString('zh-TW',{hour12:false}) : '—';
+  const stateText = f => ({ idle:'尚未開始', enRoute:'前往接客', picked:'已接到客戶', arrived:'已抵達目的地', completed:'訂單已完成' })[f||'idle'];
+
+  // 讀/寫訂單
+  const acc = S.getItem('driverAccount') || 'driverdemo';
+  const K = `driver_orders_${acc}`;
+  const readOrders = () => JSON.parse(L.getItem(K)||'[]');
+  const writeOrders = list => L.setItem(K, JSON.stringify(list||[]));
+
+  // 確保有單可看
+  function ensureOrder(){
+    const params = new URLSearchParams(location.search);
+    const oid = params.get('id') || '';
+    let list = readOrders();
+    if(!oid){ const on=list.find(o=>o.status==='ing'); if(on) return {list, idx:list.indexOf(on)}; }
+    if(oid){ const i=list.findIndex(o=>o.orderId===oid); if(i>=0) return {list, idx:i}; }
+    // 造 demo
+    const now=new Date(), pad=n=>String(n).padStart(2,'0');
+    const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const demo={
+      orderId:`CHD-${stamp}-DEMO`, status:'ing', type:'接機',
+      date:`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`,
+      total:2200,
+      detail:{
+        pickup:'桃園機場 T2 到達 22:30',
+        dropoff:'台中市南屯區公益路 xxx 號',
+        flight:'BR186', rider:'王小明', vehicle:'HONDA Odyssey',
+        pax:{adult:2,child:0}, // 用 headcount 也可
+        childSeat:{rear:0,front:1,booster:1},
+        luggage:{s20:0,s25:1,s28:1},
+        boardSign:{need:true,text:'王小明'},
+        pay:'信用卡'
+      },
+      flow:'idle',
+      audit:{enRouteAt:null,pickedAt:null,arrivedAt:null,completedAt:null}
+    };
+    list.unshift(demo); writeOrders(list); return {list, idx:0};
+  }
+
+  const {list, idx} = ensureOrder();
+  const order = list[idx];
+  const persist = () => { list[idx]=order; writeOrders(list); };
+
+  function render(){
+    $('#orderCard').hidden=false; $('#btnBox').hidden=false;
+
+    $('#orderId').textContent = order.orderId;
+    $('#orderStatus').textContent = (order.status==='done'?'已完成':'進行中');
+
+    const d = order.detail || {};
+    const pax = d.pax || {};
+    const lug = d.luggage || {};
+    const cs  = d.childSeat || {};
+    const bs  = d.boardSign || {};
+
+    // 狀態 / 預約
+    $('#v_state').textContent = stateText(order.flow);
+    $('#v_type').textContent  = order.type || '—';
+    $('#v_date').textContent  = order.date || '—';
+
+    // ✅ 明細
+    $('#v_vehicle').textContent   = d.vehicle || '—';
+    $('#v_pickup').textContent    = d.pickup || '—';
+    $('#v_dropoff').textContent   = d.dropoff || '—';
+    $('#v_flight').textContent    = d.flight || '—';
+    $('#v_headcount').textContent = (d.headcount ?? (pax.adult!=null||pax.child!=null ? (pax.adult + (pax.child||0)) : null)) ?? '—';
+    $('#v_childseat').textContent = (cs.rear!=null||cs.front!=null||cs.booster!=null)
+      ? `後向 ${cs.rear||0} / 前向 ${cs.front||0} / 增高 ${cs.booster||0}` : '—';
+    $('#v_lugcount').textContent  = (lug.s20!=null||lug.s25!=null||lug.s28!=null)
+      ? `20吋以下 ${lug.s20||0}；21–25吋 ${lug.s25||0}；26–28吋 ${lug.s28||0}` : '—';
+    $('#v_board').textContent     = (bs.need ? `需要（${bs.text||'—'}）` : (bs.need===false ? '不需要' : '—'));
+
+    // 應收 / 付款
+    $('#v_total').textContent = `${Number(order.total||0).toLocaleString()} 元`;
+    $('#v_pay').textContent   = d.pay || '—';
+
+    // 時間
+    $('#t_enRoute').textContent = fmt(order.audit?.enRouteAt);
+    $('#t_picked').textContent  = fmt(order.audit?.pickedAt);
+    $('#t_completed').textContent=fmt(order.audit?.completedAt);
+
+    renderButtons();
+  }
+
+  function mkBtn(text, handler, danger=false){
+    const b=document.createElement('button');
+    b.type='button'; b.className='btn'+(danger?' btn-red':''); b.textContent=text; b.onclick=handler; return b;
+  }
+
+  function renderButtons(){
+  const box = $('#btnBox'); 
+  box.innerHTML = '';
+
+  const bStart = mkBtn('開始行程', ()=>{
+    if(confirm('確定開始行程？')){
+      order.flow='enRoute';
+      order.audit.enRouteAt=nowISO();
+      persist(); render();
+    }
+  });
+
+  const bPicked = mkBtn('接到客人', ()=>{
+    order.flow='picked';
+    order.audit.pickedAt=nowISO();
+    persist(); render();
+  });
+
+  const bDone = mkBtn('完成訂單', ()=>{
+    if(confirm('確認完成本訂單？')){
+      order.flow='completed';
+      order.status='done';
+      order.audit.completedAt=nowISO();
+      persist(); render();
+      alert('已完成訂單');
+      setTimeout(()=>location.href=ACCOUNT_URL,400);
+    }
+  });
+
+  const bIssue = mkBtn('異常回報', ()=>{
+    window.location.href = 'tel:0912345678';
+  }, true);
+
+  // ✅ 控制啟用順序
+  if(order.flow==='idle'){ bPicked.disabled=true; bDone.disabled=true; }
+  else if(order.flow==='enRoute'){ bPicked.disabled=false; bDone.disabled=true; }
+  else if(order.flow==='picked'){ bPicked.disabled=false; bDone.disabled=false; }
+  else if(order.flow==='completed'){ [bStart,bPicked,bDone].forEach(b=>b.disabled=true); }
+
+  box.append(bStart,bPicked,bDone,bIssue);
+}
+  order.flow = order.flow || 'idle';
+  order.audit = order.audit || {enRouteAt:null,pickedAt:null,completedAt:null};
+  render();
+})();
+</script>
+</body>
+</html>

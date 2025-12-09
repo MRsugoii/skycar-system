@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>機場／港口接送</title>
+<style>
+  :root{
+    --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80; --line:#e7f0f1; --bg:#f6f8fb;
+    --radius:18px; --rbtn:16px;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,"Noto Sans TC",Arial;color:var(--text);-webkit-text-size-adjust:none}
+  .pg{width:390px;max-width:390px;margin:0 auto;padding:0 16px 32px}
+
+ /* 標題列 */
+.h1{ position:relative; display:flex;align-items:center;justify-content:center;
+     margin:50px 0 16px; text-align:center; }
+  .h1 .ttl{
+    font-size:26px;
+    font-weight:900;
+    letter-spacing:.04em;
+    color:var(--text);
+  }
+
+  /* 改成圖1樣式的膠囊徽章（標題下方、靠左） */
+.badge{
+  display:none;align-items:center;gap:6px;
+  padding:6px 14px;border-radius:999px;
+  background:#fff;border:1px solid #e1e7f5;box-shadow:0 6px 14px rgba(0,0,0,.08);
+  font-weight:800;font-size:13px;color:var(--text);
+  justify-content:flex-start;
+  margin:-6px 0 12px;   /* 貼近標題、與內容留白 */
+}
+.badge b{font-weight:900;color:#051D4B;font-size:15px}
+
+  /* 卡片區塊 */
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:0 12px 24px rgba(0,0,0,.06);
+    padding:16px;
+    margin-bottom:14px;
+  }
+
+  /* 選項按鈕 */
+  .opt{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    border:2px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    cursor:pointer;
+    user-select:none;
+    transition:all .2s ease;
+  }
+  .opt.active{border-color:var(--teal);box-shadow:0 0 0 3px rgba(43,124,255,.10)}
+  .dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--teal);display:inline-block;position:relative;flex:0 0 20px}
+  .opt.active .dot::after{content:"";position:absolute;inset:4px;background:var(--teal);border-radius:50%}
+  .opt .title{font-weight:900}
+  .opt .sub{color:var(--muted);font-size:12px;margin-top:2px}
+
+  /* 按鈕與提示 */
+  .foot{display:flex;gap:12px;justify-content:flex-end}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:14px 22px;border-radius:var(--rbtn);
+    background:var(--teal)!important;color:#fff!important;border:1px solid var(--teal)!important;
+    font-weight:900;text-decoration:none;cursor:pointer;transition:.2s
+  }
+  .btn[disabled]{opacity:.45;pointer-events:none}
+  .tip{color:var(--muted);font-size:12px;margin-top:8px}
+
+  /* 返回箭頭 */
+  .back{
+    position:fixed;left:10px;top:10px;z-index:10;
+    width:38px;height:38px;border-radius:50%;
+    background:#fff;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 10px rgba(0,0,0,.08)
+  }
+  .back svg{width:20px;height:20px;stroke:var(--teal)}
+</style>
+</head>
+<body>
+  <!-- 返回上一頁 -->
+  <button class="back" id="btnBack" aria-label="返回上一頁">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </button>
+
+  <div class="pg">
+    <!-- 標題 -->
+    <div class="h1"><span class="ttl">機場／港口接送</span></div>
+<div id="memberBadge" class="badge">會員帳戶：<b id="badgeText"></b></div>
+
+    <div class="card">
+      <div class="title" style="font-weight:800;margin-bottom:8px">請選擇服務類型</div>
+
+      <div class="opt" data-value="arrive">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <div class="title">回國接機／港口出發</div>
+          <div class="sub">機場／港口 → 住家／目的地</div>
+        </div>
+      </div>
+
+      <div class="opt" data-value="depart" style="margin-top:10px">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <div class="title">出國送機／送到港口</div>
+          <div class="sub">住家／集合地 → 機場／港口</div>
+        </div>
+      </div>
+
+      <div class="tip">選擇完成後，點「開始預約」前往對應頁面。</div>
+      <div class="foot" style="margin-top:12px">
+        <button class="btn" id="goBtn" disabled>開始預約 ▶</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(()=> {
+  const S=sessionStorage,$=s=>document.querySelector(s);
+  const ROUTES={ arrive:'https://chihang-go.com/user_pickup/', depart:'https://chihang-go.com/user_departure/' };
+
+  $('#btnBack').addEventListener('click',()=>{ 
+    if(document.referrer) history.back(); 
+    else location.href='https://chihang-go.com/'; 
+  });
+
+  // 顯示會員徽章
+(()=>{
+  const acc=S.getItem('memberAccount');
+  if(!acc) return;
+  // 原本的 span 裡文字是「會員：」
+  // 這裡直接把整段文字組起來
+  $('#memberBadge').innerHTML = '會員帳戶：<b id="badgeText"></b>';
+  $('#badgeText').textContent = acc;
+  $('#memberBadge').style.display = 'inline-flex';
+})();
+
+  // 選項邏輯
+  const opts=document.querySelectorAll('.opt');
+  const btn=$('#goBtn');
+  let selected='';
+  const setActive=(val)=>{
+    selected=val;
+    opts.forEach(o=>{
+      const on=o.dataset.value===val;
+      o.classList.toggle('active',on);
+    });
+    btn.disabled=!ROUTES[selected];
+  };
+  opts.forEach(o=>o.addEventListener('click',()=>setActive(o.dataset.value)));
+  btn.addEventListener('click',()=>{
+    if(!ROUTES[selected]) return;
+    try{S.setItem('serviceType',selected);}catch{}
+    location.href=ROUTES[selected];
+  });
+
+  const prev=S.getItem('serviceType');
+  if(prev && ROUTES[prev]) setActive(prev);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,597 @@
+<!-- 會員頁面（demo 帳號 demo/123456｜進行中訂單：可開啟詳情並「申請退款」｜移除刪除示範） -->
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>會員頁面</title>
+<style>
+:root{ --teal:#2B7CFF; --text:#051D4B; --muted:#6b7b80; --line:#e7f0f1; --field:#B7C1CC; --bg:#f6f8fb }
+html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,"Noto Sans TC",Arial;color:var(--text);-webkit-text-size-adjust:none}
+#orders-app{width:390px;max-width:390px;margin:0 auto;padding:0 16px 40px}
+
+.h1{font-size:26px;font-weight:900;margin:50px 0 6px;text-align:center}
+.h2{font-size:15px;color:var(--muted);text-align:center;margin:0 0 16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px 16px 14px;margin-bottom:16px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+.lbl{font-weight:800}
+.muted{color:var(--muted);font-size:12px}
+.grid{display:grid;gap:10px}
+
+/* Inputs（含彈窗內欄位）*/
+#orders-app .ipt, .modal-box .ipt,
+#orders-app select.ipt, .modal-box select.ipt,
+#orders-app textarea.ipt, .modal-box textarea.ipt {
+  width:100%;
+  padding:12px;
+  font-size:15px;
+  background:#fff!important;
+  border:1px solid var(--field)!important;
+  border-radius:16px!important;
+  -webkit-appearance:none;
+  appearance:none;
+  box-shadow:none!important;
+  background-clip:padding-box;
+}
+#orders-app .ipt:focus, .modal-box .ipt:focus {
+  border-color:var(--teal)!important;
+  box-shadow:0 0 0 2px rgba(43,124,255,.12)!important;
+  outline:none!important;
+}
+
+/* Buttons */
+#orders-app .btn,#orders-app button,#orders-app a.btn{
+  display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:50px!important;background:#2B7CFF!important;color:#fff!important;border:1px solid #2B7CFF!important;
+  font-weight:900;letter-spacing:.02em;line-height:1;text-decoration:none;cursor:pointer;transition:.2s;
+}
+#orders-app .btn[variant="ghost"]{background:#fff!important;color:var(--teal)!important;border:1px solid var(--teal)!important}
+.actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+
+/* 訂單表：手機卡片式 */
+.tbl{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
+.tbl th,.tbl td{padding:10px 8px;border:1px solid var(--line);background:#fff}
+.tbl thead{display:none} /* 手機藏表頭 */
+.tbl.responsive tbody>tr{
+  display:grid;grid-template-columns:1fr auto;gap:6px;border:1px solid var(--line);
+  border-radius:12px;padding:10px;background:#fff;
+}
+.tbl.responsive tbody>tr td{border:none;padding:0;background:transparent;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
+.tbl.responsive td[data-col="id"]{grid-column:1/2;font-weight:900;font-size:16px;letter-spacing:.3px}
+.tbl.responsive td[data-col="amount"]{grid-column:2/3;justify-self:end;font-weight:900}
+.tbl.responsive td[data-col="type"],.tbl.responsive td[data-col="date"]{grid-column:1/2;color:#2b3b55}
+.tbl.responsive td[data-col="status"]{grid-column:2/3;justify-self:end}
+.order-row{cursor:pointer}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
+.badge.ing{background:#f4f8ff} .badge.done{background:#f3fbf5} .badge.cancel{background:#fff6f6}
+
+/* 優惠券 */
+.coupon{border:1px dashed var(--teal);border-radius:14px;padding:12px;display:grid;gap:8px;background:#fbfdff}
+.coupon .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.coupon .code{font-weight:900;color:var(--teal);font-size:18px;letter-spacing:.3px}
+.coupon .title{font-weight:800}
+.coupon .terms{color:var(--muted)}
+.coupon .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* Modal：手機尺寸＋內滾動 */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.28);z-index:9999;padding:12px}
+.modal.active{display:flex}
+.modal-box{
+  width:100%;max-width:390px;max-height:85vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,.08)
+}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.modal-close{cursor:pointer;font-size:20px;color:var(--muted);font-weight:700;background:transparent;border:0}
+
+/* 返回鍵 */
+.back{position:fixed;left:10px;top:10px;z-index:10;width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,.08)}
+.back svg{width:20px;height:20px;stroke:var(--teal)}
+
+/* Key-Value */
+.sep{height:1px;background:var(--line);margin:12px 0}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:8px}
+.kv .key{font-weight:800}
+.kv .val{overflow-wrap:anywhere}
+
+/* 登出連結 */
+.logout-link{display:block;margin:12px auto 0;color:var(--teal);text-decoration:underline;cursor:pointer}
+</style>
+</head>
+<body>
+
+<button class="back" id="btnBack" aria-label="返回上一頁">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+</button>
+
+<div id="orders-app">
+  <div class="h1">會員頁面</div>
+  <div class="h2" id="welcome">歡迎回來</div>
+
+  <!-- 會員概要 -->
+  <div class="card" id="profileView">
+    <div class="grid">
+      <div class="kv"><div class="key">帳戶</div><div class="val" id="v_acc">—</div></div>
+      <div class="kv"><div class="key">姓名</div><div class="val" id="v_name">—</div></div>
+      <div class="kv"><div class="key">生日</div><div class="val" id="v_birth">—</div></div>
+      <div class="kv"><div class="key">電話</div><div class="val" id="v_phone">—</div></div>
+      <div class="kv"><div class="key">地址</div><div class="val" id="v_addr">—</div></div>
+      <div class="kv"><div class="key">Email</div><div class="val" id="v_mail">—</div></div>
+      <div class="kv"><div class="key">Line ID</div><div class="val" id="v_line">—</div></div>
+      <div class="kv"><div class="key">WhatsApp</div><div class="val" id="v_wa">—</div></div>
+    </div>
+    <div class="actions" style="justify-content:center"><button id="btnEdit" class="btn" type="button">編輯</button></div>
+  </div>
+
+  <!-- 統計 -->
+  <div class="card">
+    <div class="grid">
+      <div class="kv"><div class="key">累積消費</div><div class="val" id="v_spent">NT$ 0</div></div>
+      <div class="kv"><div class="key">累積趟數</div><div class="val" id="v_trips">0 趟</div></div>
+      <div class="kv"><div class="key">會員等級</div><div class="val" id="v_level">—</div></div>
+    </div>
+  </div>
+
+  <!-- 優惠券 -->
+  <div class="card" id="couponBox">
+    <div class="lbl" style="margin-bottom:8px">可用優惠券</div>
+    <div id="couponList" class="grid"></div>
+    <div class="muted">已使用或過期的優惠券不會顯示。</div>
+  </div>
+
+  <!-- 進行中訂單 -->
+  <div class="card">
+    <div class="lbl" style="margin-bottom:8px">進行中的訂單</div>
+    <table class="tbl responsive" id="tblOngoing">
+      <thead><tr><th>訂單編號</th><th>類型</th><th>日期/時間</th><th>狀態</th><th>金額</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- 新增紅色「緊急聯絡」按鈕（表格下方、提示文字上方） -->
+    <div class="actions" style="justify-content:center;margin-top:10px">
+      <button class="btn" id="btnEmergency" style="background:#E34A4A!important;border-color:#E34A4A!important;color:#fff!important;">緊急聯絡</button>
+    </div>
+
+    <div class="muted">點擊列可查看詳情，亦可申請退款。</div>
+  </div>
+
+  <!-- 歷史訂單 -->
+  <div class="card">
+    <div class="lbl" style="margin-bottom:8px">歷史訂單</div>
+    <table class="tbl responsive" id="tblHistory">
+      <thead><tr><th>訂單編號</th><th>類型</th><th>日期/時間</th><th>狀態</th><th>金額</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="muted">包含已完成與已取消的訂單。</div>
+  </div>
+
+  <!-- 底部動作 -->
+  <div class="card" style="text-align:center">
+    <a class="btn" id="btnBook" href="https://chihang-go.com/user_online_appointment/">預約服務</a>
+    <div class="logout-link" id="btnLogout">會員登出</div>
+  </div>
+</div>
+
+<!-- 訂單詳情 Modal -->
+<div class="modal" id="modalDetail" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+    <div class="modal-head">
+      <h2 id="mdTitle" style="font-size:18px;font-weight:900;margin:0;color:var(--text)">訂單詳情</h2>
+      <button class="modal-close" id="modalClose" type="button" aria-label="關閉">×</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- 編輯會員 Modal -->
+<div class="modal" id="modalEdit" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="meTitle">
+    <div class="modal-head">
+      <h2 id="meTitle" style="font-size:18px;font-weight:900;margin:0;color:var(--text)">編輯會員資料</h2>
+      <button class="modal-close" id="editClose" type="button" aria-label="關閉">×</button>
+    </div>
+    <div class="grid" id="editForm">
+      <div class="grid"><span class="lbl">帳戶（不可更改）</span><input id="e_acc" class="ipt" disabled></div>
+      <div class="grid"><span class="lbl">姓名</span><input id="e_name" class="ipt" placeholder="姓名"></div>
+      <div class="grid"><span class="lbl">生日</span><input id="e_birth" class="ipt" type="date"></div>
+      <div class="grid"><span class="lbl">電話</span><input id="e_phone" class="ipt" type="tel" inputmode="numeric" placeholder="09xxxxxxxx"></div>
+      <div class="grid"><span class="lbl">地址</span><input id="e_addr" class="ipt" placeholder="市／區／路／號…"></div>
+      <div class="grid"><span class="lbl">Email</span><input id="e_mail" class="ipt" type="email" placeholder="example@mail.com"></div>
+      <div class="grid"><span class="lbl">Line ID</span><input id="e_line" class="ipt" placeholder="@ 或 ID"></div>
+      <div class="grid"><span class="lbl">WhatsApp</span><input id="e_wa" class="ipt" placeholder="電話或帳號"></div>
+      <!-- 變更密碼（選填） -->
+<div class="sep"></div>
+<div class="grid"><span class="lbl">目前密碼</span>
+  <input id="e_pwd_current" class="ipt" type="password" placeholder="請輸入目前密碼">
+  <div class="muted">若曾未改過，預設為您的手機號。</div>
+</div>
+<div class="grid"><span class="lbl">新密碼</span>
+  <input id="e_pwd_new" class="ipt" type="password" placeholder="至少 6 碼">
+</div>
+<div class="grid"><span class="lbl">確認新密碼</span>
+  <input id="e_pwd_new2" class="ipt" type="password" placeholder="再次輸入新密碼">
+</div>
+      <div class="actions" style="margin-top:6px;justify-content:flex-end"><button id="btnSaveEdit" class="btn" type="button">儲存</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=> {
+  const $ = s => document.querySelector(s);
+  const S = sessionStorage, L = localStorage;
+
+  /* 退款頁（暫用原取消訂單路由；若有專屬退款頁請替換此 URL） */
+  const ROUTE_REFUND='https://chihang-go.com/user_cancel_order/';
+  const ROUTE_HOME='https://chihang-go.com/';
+  const ROUTE_APPOINT='https://chihang-go.com/user_online_appointment/';
+
+  $('#btnBack').addEventListener('click',()=>{ if(document.referrer) history.back(); else location.href=ROUTE_HOME; });
+
+  /* 強制導向預約頁：避免外部程式攔截 <a> click */
+  document.getElementById('btnBook').addEventListener('click',(e)=>{ e.preventDefault(); window.location.href = ROUTE_APPOINT; });
+
+  const safeParse = s => { try{ return JSON.parse(s||'{}') }catch{ return {} } };
+  const readUser = acc => safeParse(L.getItem(`user_${acc}`));
+  const writeUser = (acc, obj) => L.setItem(`user_${acc}`, JSON.stringify(obj||{}));
+  const readOrders = acc => JSON.parse(L.getItem(`orders_${acc}`)||'[]');
+  const writeOrders = (acc, list) => L.setItem(`orders_${acc}`, JSON.stringify(list||[]));
+
+  /* Demo seed：demo/123456 */
+  (function seed(){
+    if(!S.getItem('memberAccount')) S.setItem('memberAccount','demo');
+
+    if(!L.getItem('user_demo')){
+      writeUser('demo',{
+        account:'demo', password:'123456', displayName:'示範用戶',
+        birthday:'1995-07-27', email:'demo@example.com', address:'台中市西屯區…',
+        phone:'0912345678', lineId:'@demo', whatsappId:'0912345678',
+        totalSpent:7800, totalTrips:3, level:'一般會員'
+      });
+    }
+    if(!L.getItem('orders_demo')){
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const d = String(now.getDate()).padStart(2,'0');
+  const orderId = `CH${y}${m}${d}0001`;
+
+  writeOrders('demo',[
+    { orderId: orderId, status:'ing', type:'接機', date:`${y}-${m}-${d} 21:10`, total:2200,
+      detail:{ pickup:'桃園機場 T2 到達 21:10', dropoff:'台中市南屯區…', flight:'BR186', passengers:2,
+               items:[{name:'機場接送（TPE→南屯）',qty:1,unitPrice:2400}], discount:200, pay:'Line Pay',
+               seats:{rear:0,front:1,booster:1}, luggage:{s20:0,s25:1,s28:1}, signage:true, signageText:'王小明', carName:'HONDA Odyssey'} },
+    { orderId:`CH${y}${m}${d}0002`, status:'done', type:'送機', date:`${y}-${m}-${d} 05:30`, total:2400,
+      detail:{ pickup:'台中市西屯區… 05:30', dropoff:'桃園國際機場 T1', flight:'CI011', passengers:3,
+               items:[{name:'機場接送（西屯→TPE）',qty:1,unitPrice:2200},{name:'加大型行李',qty:1,unitPrice:200}],
+               pay:'信用卡', note:'需要兒童座椅', seats:{rear:1,front:0,booster:0}, luggage:{s20:1,s25:1,s28:0}, signage:false, carName:'TOYOTA Wish'} }
+  ]);
+}
+
+    /* demo 優惠券 */
+    if(!L.getItem('coupons_demo')){
+      const now=Date.now(), day=86400000;
+      L.setItem('coupons_demo', JSON.stringify([
+        {code:'WELCOME200', title:'新戶折抵 200', terms:'單筆滿 2000 可用', expireAt:now+30*day, used:false},
+        {code:'VIP500', title:'會員回饋 500', terms:'單筆滿 3500 可用', expireAt:now+10*day, used:false}
+      ]));
+    }
+  })();
+
+  const getAcc = () => S.getItem('memberAccount') || 'demo';
+
+function renderProfile(){
+  const acc=getAcc(), u=readUser(acc)||{};
+  $('#welcome').textContent='歡迎回來 ' + (u.displayName||acc);
+  $('#v_acc').textContent=u.account||acc;
+  $('#v_name').textContent=u.displayName||'—';
+  $('#v_birth').textContent=u.birthday||'—';
+  $('#v_phone').textContent=u.phone||'—';
+  $('#v_addr').textContent=u.address||'—';
+  $('#v_mail').textContent=u.email||'—';
+  $('#v_line').textContent=u.lineId||'—';
+  $('#v_wa').textContent=u.whatsappId||'—';
+  $('#v_spent').textContent='NT$ ' + Number(u.totalSpent||0).toLocaleString();
+  $('#v_trips').textContent=Number(u.totalTrips||0)+' 趟';
+
+  // 🔽 新增這段：自動判斷會員等級
+  const spent = Number(u.totalSpent || 0);
+  let level = 'C'; // 預設為 C 級
+  if (spent >= 100000) level = 'A';       // 10萬以上：A 級
+  else if (spent >= 10000) level = 'B';   // 1萬以上：B 級
+  $('#v_level').textContent = level;      // 顯示 A / B / C
+}
+
+  /* 優惠券 */
+  function fmtDate(ts){ try{ const d=new Date(Number(ts)); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }catch{return ''} }
+  function renderCoupons(){
+    const acc=getAcc(), list=(JSON.parse(L.getItem('coupons_'+acc)||'[]')||[]).filter(c=>!c.used && c.expireAt>Date.now());
+    const box=$('#couponList');
+    if(!list.length){ box.innerHTML='<div class="muted">目前沒有可用的優惠券。</div>'; return; }
+    box.innerHTML=list.map(c=>`
+      <div class="coupon">
+        <div class="top">
+          <div class="code">${c.code}</div>
+          <div class="title">${c.title||''}</div>
+        </div>
+        <div class="terms">${c.terms||''}</div>
+        <div class="row">
+          <div class="muted">有效期限：${fmtDate(c.expireAt)}</div>
+          <button class="btn" variant="ghost" data-act="copy" data-code="${c.code}">複製序號</button>
+        </div>
+      </div>`).join('');
+  }
+  document.addEventListener('click',(e)=>{ const b=e.target.closest?.('button[data-act]'); if(b?.dataset.act==='copy'){ navigator.clipboard?.writeText(b.dataset.code).then(()=>alert('已複製：'+b.dataset.code)); } });
+
+  /* 訂單列表（已移除「刪除（示範）」） */
+function renderOrders(){
+  const acc=getAcc(), list=readOrders(acc)||[];
+  const ongoing=list.filter(o=>o.status==='ing');
+  const history=list.filter(o=>o.status!=='ing');
+
+  fill('#tblOngoing tbody', ongoing, '目前沒有進行中的訂單');
+  fill('#tblHistory tbody', history, '尚無歷史訂單');
+
+  function fill(sel, arr, emptyText){
+    const tbody=document.querySelector(sel);
+    tbody.innerHTML = arr.length ? arr.map(rowHTML).join('') 
+      : `<tr class="order-row"><td data-col="id">${emptyText}</td><td data-col="type"></td><td data-col="date"></td><td data-col="status"></td><td data-col="amount"></td></tr>`;
+  }
+
+  function rowHTML(o){
+    // 保持原始訂單編號，避免傳到退款頁後抓不到
+let displayId = o.orderId || '';
+
+    const cls = o.status==='ing' ? 'ing' :
+                o.status==='done' ? 'done' :
+                (o.status==='refund' ? 'ing' : 'cancel'); // refund 狀態顯示藍色徽章
+    const txt = o.status==='ing' ? '進行中' :
+                o.status==='done' ? '已完成' :
+                o.status==='refund' ? '退款中' :
+                o.status==='notapproved' ? '退款被拒' :
+                o.status==='cancelled' ? '已取消' : '已取消';
+
+    const icon = (o.status === 'cancelled')
+  ? '<span style="color:#E34A4A;font-weight:900;">取消</span>'
+  : (o.status === 'refund')
+    ? '<span style="color:#2B7CFF;font-weight:900;">退款中</span>'
+    : (o.status === 'notapproved')
+      ? '<span style="color:#999;font-weight:900;">拒絕退款</span>'
+      : '';
+
+return `<tr class="order-row" data-id="${o.orderId}">
+  <td data-col="id">${displayId}</td>
+  <td data-col="type">${o.type||''}</td>
+  <td data-col="date">${o.date||''}</td>
+  <td data-col="status"><span class="badge ${cls}">${txt}</span></td>
+  <td data-col="amount" style="text-align:right">
+    ${Number(o.total||0).toLocaleString()} 元
+    ${icon ? `<div style="margin-top:4px;">${icon}</div>` : ''}
+  </td>
+</tr>`;
+
+  }
+}
+
+  /* 點列看詳情（modal） */
+  const modal=$('#modalDetail'), modalBody=$('#modalBody');
+  document.addEventListener('click',(e)=>{
+    const row=e.target.closest?.('.order-row'); 
+    if(!row) return;
+    const acc=getAcc(), list=readOrders(acc)||[], o=list.find(x=>x.orderId===row.dataset.id);
+    if(!o || !o.orderId) return;
+    modalBody.innerHTML = buildDetail(o); openModal(modal); 
+  });
+
+  function buildDetail(o){
+    const d=o.detail||{};
+    const seats = d.seats || o.ride?.seats || {};
+    const luggage = d.luggage || o.ride?.luggage || {};
+    const signage = (d.signage ?? o.ride?.signage);
+    const signageText = d.signageText || o.ride?.signageText || '';
+    const carName = d.carName || d.car || o.ride?.selectedCar?.name || '';
+    const items=(d.items||[]).map(it=>`
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <span style="overflow-wrap:anywhere">${it.name} × ${it.qty}</span>
+        <span>${(it.unitPrice*it.qty).toLocaleString()} 元</span>
+      </div>`).join('');
+    const discount=d.discount?`<div style="display:flex;justify-content:space-between"><span>折扣</span><span>- ${Number(d.discount).toLocaleString()} 元</span></div>`:'';
+    const statusTxt=o.status==='ing'?'進行中':(o.status==='done'?'已完成':'已取消');
+    const statusCls=o.status==='ing'?'ing':(o.status==='done'?'done':'cancel');
+
+    const seatLine = (seats.rear||seats.front||seats.booster) != null
+      ? `後向 ${seats.rear||0}／前向 ${seats.front||0}／增高 ${seats.booster||0}` : '';
+    const lugLine = (luggage.s20||luggage.s25||luggage.s28) != null
+      ? `20吋以下 ${luggage.s20||0}；21–25吋 ${luggage.s25||0}；26–28吋 ${luggage.s28||0}` : '';
+
+    return `
+      <div class="grid" style="gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:900">訂單編號</div>
+          <span class="badge ${statusCls}">${statusTxt}</span>
+        </div>
+        <div style="font-variant-numeric:tabular-nums">${o.orderId}</div>
+
+        <div class="sep"></div>
+
+        <div class="kv"><div class="key">服務類型</div><div class="val">${o.type||'-'}</div></div>
+        <div class="kv"><div class="key">預約時間</div><div class="val">${o.date||'-'}</div></div>
+        ${carName ? `<div class="kv"><div class="key">車型</div><div class="val">${carName}</div></div>` : ''}
+
+        <div class="sep"></div>
+
+        <div class="kv"><div class="key">上車地點/時間</div><div class="val">${d.pickup||'-'}</div></div>
+        <div class="kv"><div class="key">下車地點</div><div class="val">${d.dropoff||'-'}</div></div>
+        <div class="kv"><div class="key">航班/船班</div><div class="val">${d.flight||'-'}</div></div>
+        <div class="kv"><div class="key">乘客人數</div><div class="val">${d.passengers ?? '-'}</div></div>
+        ${seatLine ? `<div class="kv"><div class="key">兒童座椅</div><div class="val">${seatLine}</div></div>` : ''}
+        ${lugLine ? `<div class="kv"><div class="key">行李件數</div><div class="val">${lugLine}</div></div>` : ''}
+        ${signage !== undefined ? `<div class="kv"><div class="key">舉牌服務</div><div class="val">${signage ? ('需要' + (signageText?`（${signageText}）`:'')) : '不需要'}</div></div>` : ''}
+
+        <div class="sep"></div>
+
+        <div><b>費用明細</b>
+          <div style="margin-top:6px">${items}${discount}
+            <div style="display:flex;justify-content:space-between;font-weight:800;margin-top:6px">
+              <span>應付總額</span><span style="color:#2B7CFF">${Number(o.total||0).toLocaleString()} 元</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="kv"><div class="key">付款方式</div><div class="val">${d.pay||'-'}</div></div>
+        <div class="kv"><div class="key">備註</div><div class="val">${d.note||'-'}</div></div>
+
+        ${o.status==='ing'
+          ? `<div class="actions" style="justify-content:flex-end">
+               <button class="btn" id="goRefund" data-order="${o.orderId}">申請退款</button>
+             </div>`
+          : ''}
+      </div>`;
+  }
+
+  /* 申請退款（跳去外頁，帶上目前訂單） */
+  document.addEventListener('click',(e)=>{
+    const btn=e.target.closest?.('#goRefund'); if(!btn) return;
+    const acc=getAcc(), list=readOrders(acc)||[], o=list.find(x=>x.orderId===btn.dataset.order);
+    if(!o){ alert('找不到訂單資料'); return; }
+    try{
+      S.setItem('activeOrder', JSON.stringify(o));
+    }catch(e){}
+    const ret='?return='+encodeURIComponent(location.href);
+    closeModal($('#modalDetail')); location.assign(ROUTE_REFUND + ret);
+  });
+
+  // 編輯
+  const modalEdit=document.getElementById('modalEdit');
+  document.getElementById('btnEdit').addEventListener('click',()=>{
+    const u=readUser(getAcc())||{};
+    $('#e_acc').value=u.account||''; $('#e_name').value=u.displayName||'';
+    $('#e_birth').value=u.birthday||''; $('#e_phone').value=u.phone||'';
+    $('#e_addr').value=u.address||''; $('#e_mail').value=u.email||'';
+    $('#e_line').value=u.lineId||''; $('#e_wa').value=u.whatsappId||'';
+    openModal(modalEdit);
+  });
+  document.getElementById('btnSaveEdit').addEventListener('click',()=>{
+  const acc=getAcc(), u=readUser(acc)||{};
+
+  // 1) 先做資料欄位檢查
+  const phone=($('#e_phone').value||'').replace(/\D/g,'');
+  if(phone && !/^09\d{8}$/.test(phone)){ alert('手機格式須為 09xxxxxxxx'); return; }
+
+  // 2) 密碼變更（選填）：只有在任一密碼欄有填時才啟動檢查
+  const cur = ($('#e_pwd_current').value||'').trim();
+  const npw = ($('#e_pwd_new').value||'').trim();
+  const npw2= ($('#e_pwd_new2').value||'').trim();
+  let newPassword = null;
+
+  if (cur || npw || npw2) {
+    // 必須三欄都填
+    if(!cur || !npw || !npw2){ alert('請完整填寫「目前密碼／新密碼／確認新密碼」'); return; }
+    // 目前密碼需正確
+    if((u.password||'') !== cur){ alert('目前密碼不正確'); return; }
+    // 新密碼規則
+    if(npw.length < 6){ alert('新密碼至少 6 碼'); return; }
+    if(npw !== npw2){ alert('兩次輸入的新密碼不一致'); return; }
+    // 可選：避免與舊密碼相同
+    if(npw === cur){ alert('新密碼不可與目前密碼相同'); return; }
+
+    newPassword = npw;
+  }
+
+  // 3) 組合更新資料
+  const updated={...u,
+    displayName:($('#e_name').value||'').trim(),
+    birthday:$('#e_birth').value||'',
+    phone,
+    address:($('#e_addr').value||'').trim(),
+    email:($('#e_mail').value||'').trim(),
+    lineId:($('#e_line').value||'').trim(),
+    whatsappId:($('#e_wa').value||'').trim()
+  };
+  if(newPassword) updated.password = newPassword; // 只有使用者有變更才覆蓋
+
+  // 4) 寫入與回填
+  writeUser(acc,updated);
+  closeModal(modalEdit);
+  renderProfile();
+  alert(newPassword ? '已儲存並更新密碼' : '已儲存會員資料');
+});
+
+  // 登出
+  document.getElementById('btnLogout').addEventListener('click',()=>{
+    S.removeItem('jwt'); S.removeItem('memberAccount'); alert('您已登出'); location.href='https://chihang-go.com/user_login/';
+  });
+
+  // modal helpers
+  function openModal(m){ m.classList.add('active'); m.setAttribute('aria-hidden','false'); }
+  function closeModal(m){ m.classList.remove('active'); m.setAttribute('aria-hidden','true'); }
+  document.getElementById('modalClose').addEventListener('click',()=>closeModal($('#modalDetail')));
+  document.getElementById('editClose').addEventListener('click',()=>closeModal(modalEdit));
+  document.addEventListener('click',(e)=>{ if(e.target===$('#modalDetail')) closeModal($('#modalDetail')); if(e.target===modalEdit) closeModal(modalEdit); });
+  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeModal($('#modalDetail')); closeModal(modalEdit);} });
+
+  // demo：緊急聯絡（僅示範，不真的撥號）
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest?.('#btnEmergency');
+    if (!btn) return;
+    alert('正在撥打客服電話：0800-000-000（示範用）');
+  });
+
+  // boot
+  (function(){
+  // --- DEMO：保證有一筆「進行中」的訂單 ---
+(function ensureDemoOngoing(){
+  try{
+    const acc = (sessionStorage.getItem('memberAccount') || 'demo');
+    const list = JSON.parse(localStorage.getItem('orders_' + acc) || '[]');
+
+// 若沒有進行中訂單就塞一筆
+if (!list.some(o => o.status === 'ing')) {
+  const now = new Date();
+  const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0'), d = String(now.getDate()).padStart(2,'0');
+
+  // ✅ 自動產生當日流水號（這段要放在外面）
+  const sameDayOrders = list.filter(o => o.orderId && o.orderId.startsWith(`CH${y}${m}${d}`));
+const lastSerial = sameDayOrders.length
+  ? Math.max(...sameDayOrders.map(o => {
+      // 取出最後四位數字（即使舊資料有「-」也能正常轉換）
+      const match = o.orderId.match(/(\d{4})$/);
+      return match ? Number(match[1]) : 0;
+    }))
+  : 0;
+const nextSerial = String(lastSerial + 1).padStart(4, '0');
+const orderId = `CH${y}${m}${d}${nextSerial}`;
+
+  // ✅ 然後這裡再建立訂單
+  const order = {
+    orderId: orderId,
+    status: 'ing',
+    type: '接機',
+    date: `${y}-${m}-${d} ${String(now.getHours()+1).padStart(2,'0')}:30`,
+    total: 2200,
+    detail:{
+      pickup:'桃園機場 T2 到達 22:30',
+      dropoff:'台中市南屯區公益路 xxx 號',
+      flight:'BR186',
+      passengers:2,
+      items:[{name:'機場接送（TPE→台中）', qty:1, unitPrice:2200}],
+      discount:0,
+      pay:'信用卡',
+      seats:{rear:0, front:1, booster:1},
+      luggage:{s20:0, s25:1, s28:1},
+      signage:true,
+      signageText:'王小明',
+      carName:'TOYOTA Wish',
+      note:'司機到達前 10 分鐘會電話聯繫'
+    }
+  };
+  list.unshift(order);
+  localStorage.setItem('orders_' + acc, JSON.stringify(list));
+}
+  }catch(e){}
+})();
+    renderProfile(); renderCoupons(); renderOrders();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!-- 回國接機／港口出發（手機版 390px｜標題置中｜返回左、下一頁右｜保存表單到 localStorage） -->
+<style>
+  :root{
+    --teal:#2B7CFF; --line:#e7f0f1; --text:#051D4B; --muted:#6b7b80;
+    --field:#B7C1CC; --bg:#f6f8fb; --radius:12px; --wrap:390px;
+  }
+  html,body{margin:0;background:var(--bg);font-family:system-ui,"Noto Sans TC",Arial;color:var(--text)}
+  .wrap{width:var(--wrap);max-width:var(--wrap);margin:28px auto;padding:0 16px 60px}
+
+  /* 標題置中；徽章不擠壓標題（若需要） */
+  .h1{position:relative;font-size:26px;font-weight:900;margin:0 0 16px;text-align:center}
+  .member-badge{display:none;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;
+    color:var(--text);font-weight:700;font-size:12px;justify-content:center;margin:-6px 0 12px}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.04);margin-bottom:14px}
+  .row{display:grid;gap:10px}
+  .lbl{font-weight:800}
+  .muted{color:var(--muted);font-size:12px}
+
+  .mini{display:grid;grid-template-columns:1fr 86px 86px;gap:8px;margin-bottom:6px}
+  .mini > span{font-size:12px;color:#344966;font-weight:800}
+  .mini-addr{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+  .mini-addr > span{font-size:12px;color:#344966;font-weight:800}
+  .time-line{display:grid;grid-template-columns:1fr minmax(70px,86px) minmax(70px,86px);gap:8px}
+
+  .ipt,select,textarea{
+    width:100%;padding:12px;border:1px solid var(--field)!important;border-radius:var(--radius)!important;
+    background:#fff;font-size:15px;outline:none;box-shadow:none!important;-webkit-appearance:none;appearance:none;background-clip:padding-box;box-sizing:border-box;
+  }
+  .ipt:focus,select:focus,textarea:focus{border-color:var(--teal)!important;box-shadow:0 0 0 2px rgba(43,124,255,.12)!important}
+  textarea{min-height:84px;resize:vertical}
+
+  .addr-item{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .addr-item textarea{grid-column:1/-1}
+  .stop-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .add-btn{border:1px dashed var(--teal)!important;color:var(--teal)!important;background:#fff!important;border-radius:var(--radius)!important;padding:10px 12px;font-weight:700}
+  .rmv-link{border:0;background:#fff;color:var(--teal);font-weight:700;cursor:pointer}
+
+  /* 按鈕（左白框藍字、右實心藍；同一行左右分開） */
+  .actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px}
+  .btn{
+    flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:16px 22px;
+    border-radius:22px!important;font-weight:800;cursor:pointer;text-decoration:none
+  }
+  .btn-line{background:#fff!important;color:#2B7CFF!important;border:2px solid #2B7CFF!important}
+  .btn-primary{background:#2B7CFF!important;color:#fff!important;border:2px solid #2B7CFF!important}
+</style>
+
+<div class="wrap" id="arrivePage">
+  <h1 class="h1">回國接機／港口出發</h1>
+  <div id="memberBadge" class="member-badge">會員帳戶：<b id="memberBadgeText"></b></div>
+
+  <form id="arriveForm" onsubmit="return false">
+    <!-- 航班/船班抵達時間 -->
+    <div class="card">
+      <div class="row">
+        <div class="lbl">航班／船班抵達時間</div>
+        <div class="mini"><span>日期</span><span>時</span><span>分</span></div>
+        <div class="time-line">
+          <input type="date" class="ipt" id="arrive_date" required>
+          <select class="ipt" id="arrive_h" required></select>
+          <select class="ipt" id="arrive_m" required></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 航班／船班編號 -->
+    <div class="card">
+      <div class="row">
+        <div class="lbl">航班／船班編號</div>
+        <input class="ipt" id="flight_no" placeholder="例如：TR897 / BR186（必填）" required>
+      </div>
+    </div>
+
+    <!-- 機場／港口 -->
+    <div class="card">
+      <div class="row">
+        <div class="lbl">機場／港口</div>
+        <select class="ipt" id="port" required>
+          <option value="" selected disabled>請選擇航站</option>
+          <optgroup label="機場">
+            <option>桃園國際機場 (TPE)</option>
+            <option>台北松山機場 (TSA)</option>
+            <option>台中清泉崗機場 (RMQ)</option>
+            <option>高雄小港機場 (KHH)</option>
+          </optgroup>
+          <optgroup label="港口">
+            <option>基隆港</option>
+            <option>台北港</option>
+            <option>台中港</option>
+            <option>高雄港</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+
+    <!-- 接送地址 -->
+    <div class="card">
+      <div class="row">
+        <div class="lbl">接送地址</div>
+        <div class="mini-addr"><span>縣市</span><span>鄉鎮市區</span></div>
+        <div class="addr-item" id="firstAddr">
+          <select class="ipt city" required></select>
+          <select class="ipt dist" required><option value="">請選擇鄉鎮市區</option></select>
+          <textarea class="ipt detail" placeholder="詳細地址（路／巷／弄／號／樓）（必填）" required></textarea>
+        </div>
+
+        <div class="stop-actions">
+          <div class="muted">可新增多個接送地點</div>
+          <button type="button" class="add-btn" id="addStopBtn">＋ 增加地點</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="stopsContainer"></div>
+
+    <!-- 底部：返回左、下一頁右 -->
+    <div class="actions">
+      <button type="button" class="btn btn-line" id="btnBack">◀ 返回上一頁</button>
+      <button type="button" class="btn btn-primary" id="goRide">下一頁 ▶</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(()=> {
+  /* 目的地（下一頁）改為 user_travel_info */
+  const NEXT_URL = 'https://chihang-go.com/user_travel_info/';
+  /* 返回固定導向 user_online_appointment */
+  const BACK_URL = 'https://chihang-go.com/user_online_appointment/';
+
+  /* ===== 會員徽章 ===== */
+  try{
+    const acc=sessionStorage.getItem('memberAccount');
+    if(acc){
+      const isNewA=sessionStorage.getItem('isNewMember')==='1';
+      const isNewB=localStorage.getItem('newMember_'+acc)==='1';
+      let isNewC=false; try{isNewC=!!JSON.parse(localStorage.getItem('user_'+acc)||'{}').isNew;}catch(e){}
+      document.getElementById('memberBadgeText').textContent=(isNewA||isNewB||isNewC)?'新會員':acc;
+      document.getElementById('memberBadge').style.display='inline-flex';
+    }
+  }catch(e){}
+
+  /* ===== 時分下拉（5 分刻） ===== */
+  function buildTime(hSel,mSel){
+    hSel.innerHTML='<option value="" disabled selected>選擇時</option>'+
+      Array.from({length:24},(_,i)=>`<option>${String(i).padStart(2,"0")}</option>`).join('');
+    mSel.innerHTML='<option value="" disabled selected>選擇分</option>'+
+      Array.from({length:12},(_,i)=>`<option>${String(i*5).padStart(2,"0")}</option>`).join('');
+  }
+  buildTime(document.getElementById('arrive_h'),document.getElementById('arrive_m'));
+
+  /* ===== 縣市/區（簡版示例，可換成完整資料） ===== */
+  const DIST={
+    "台北市":["中正區","大安區","信義區","內湖區","士林區","文山區"],
+    "新北市":["板橋區","新店區","中和區","永和區","三重區","淡水區"],
+    "桃園市":["桃園區","中壢區","龜山區","八德區"],
+    "台中市":["西區","北區","南屯區","太平區"],
+    "高雄市":["前鎮區","苓雅區","三民區","鳳山區"]
+  };
+  function fillCities(sel){
+    sel.innerHTML='<option value="">選擇縣市</option>'+Object.keys(DIST).map(c=>`<option>${c}</option>`).join('');
+    sel.addEventListener('change',()=>{
+      const dist=sel.closest('.addr-item').querySelector('.dist');
+      const list=DIST[sel.value]||[];
+      dist.innerHTML='<option value="">請選擇鄉鎮市區</option>'+list.map(d=>`<option>${d}</option>`).join('');
+    });
+  }
+  fillCities(document.querySelector('#firstAddr .city'));
+
+  /* ===== 新增/移除地點卡 ===== */
+  function addStopCard(){
+    const box=document.getElementById('stopsContainer');
+    const wrap=document.createElement('div');
+    wrap.className='card';
+    wrap.innerHTML=`
+      <div class="row">
+        <div class="lbl">加點地址</div>
+        <div class="addr-item">
+          <select class="ipt city"></select>
+          <select class="ipt dist"><option value="">請選擇鄉鎮市區</option></select>
+          <textarea class="ipt detail" placeholder="詳細地址（路／巷／弄／號／樓）"></textarea>
+        </div>
+        <div class="stop-actions">
+          <span></span>
+          <button type="button" class="rmv-link">移除此地點 ✕</button>
+        </div>
+      </div>`;
+    box.appendChild(wrap);
+    const c=wrap.querySelector('.city'); fillCities(c);
+    wrap.querySelector('.rmv-link').addEventListener('click',()=>wrap.remove());
+  }
+  document.getElementById('addStopBtn').addEventListener('click',e=>{e.preventDefault();addStopCard();});
+
+  /* ===== 收集資料 + 存入 localStorage + 導頁 ===== */
+  function collect(){
+    const V=id=>document.getElementById(id)?.value?.trim()||'';
+    const addresses=[...document.querySelectorAll('.addr-item')].map(div=>({
+      city:div.querySelector('.city')?.value||'',
+      district:div.querySelector('.dist')?.value||'',
+      detail:div.querySelector('textarea')?.value?.trim()||''
+    })).filter(a=>a.city||a.district||a.detail);
+    return {
+      source:'arrive',
+      flight:{arriveDate:V('arrive_date'),arriveHour:V('arrive_h'),arriveMinute:V('arrive_m'),code:V('flight_no')},
+      port:V('port'),
+      addresses,
+      savedAt:Date.now()
+    };
+  }
+  function saveAndGo(){
+    const form=document.getElementById('arriveForm');
+    if(form && !form.checkValidity()){ form.reportValidity(); return; }
+    const data=collect();
+    localStorage.setItem('arriveFormData',JSON.stringify(data));
+    localStorage.setItem('airportBooking',JSON.stringify(data));
+    window.location.assign(NEXT_URL);
+  }
+
+  /* ===== 按鈕行為：返回左、下一頁右 ===== */
+  document.getElementById('btnBack').addEventListener('click',()=>{
+    window.location.assign(BACK_URL);
+  });
+  document.getElementById('goRide').addEventListener('click',saveAndGo);
+})();
+</script>
