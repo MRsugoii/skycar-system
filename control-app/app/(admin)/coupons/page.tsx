@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import Link from "next/link";
-import { Truck, Ticket, Search, Plus, Edit, Trash2, X, Save, MoreHorizontal, Calendar, Tag, User, Layers } from "lucide-react";
+import { Truck, Ticket, Search, Plus, Edit, Trash2, X, Save, MoreHorizontal, Calendar, Tag, User, Layers, DollarSign } from "lucide-react";
 
 // Define Coupon Type based on requirements
 interface Coupon {
@@ -187,20 +187,21 @@ function CouponsContent() {
             </div>
 
             {/* Tabs */}
+            {/* Tabs */}
             <div className="border-b border-gray-200">
-                <nav className="flex gap-6">
+                <nav className="flex gap-8 mb-4">
                     <Link
                         href="/vehicles"
-                        className="pb-4 text-sm font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center gap-2"
+                        className="pb-3 text-base font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center gap-2"
                     >
-                        <Truck size={16} />
-                        車輛管理
+                        <DollarSign size={18} />
+                        價格管理
                     </Link>
                     <Link
                         href="/coupons"
-                        className="pb-4 text-sm font-medium border-b-2 transition-colors border-blue-600 text-blue-600 flex items-center gap-2"
+                        className="pb-3 text-base font-bold border-b-2 transition-colors border-blue-600 text-blue-600 flex items-center gap-2"
                     >
-                        <Ticket size={16} />
+                        <Ticket size={18} />
                         優惠卷管理
                     </Link>
                 </nav>

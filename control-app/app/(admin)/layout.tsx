@@ -69,7 +69,7 @@ export default function AdminLayout({
 
                             <Suspense fallback={<div className="h-10 bg-gray-800/50 rounded animate-pulse" />}>
                                 <NavGroup icon={<Truck size={20} />} label="前台管理" activePaths={["/vehicles", "/coupons"]} mainHref="/vehicles">
-                                    <SubNavItem href="/vehicles" label="車輛管理" />
+                                    <SubNavItem href="/vehicles" label="價格管理" />
                                     <SubNavItem href="/coupons" label="優惠卷管理" />
                                 </NavGroup>
                             </Suspense>
