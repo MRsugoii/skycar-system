@@ -1085,13 +1085,7 @@ function VehiclesContent() {
   };
   const [routeFormData, setRouteFormData] = useState(initialRouteFormState);
 
-  // --- 5. Mileage Settings Data (Global) ---
-  const [mileageSettings, setMileageSettings] = useState({
-    basePrice: 85,
-    baseDistance: 1.5,
-    perKmPrice: 25,
-    nightSurchargeRate: 1.2,
-  });
+
 
   // Common States
   const [inputKeyword, setInputKeyword] = useState("");
@@ -1655,34 +1649,7 @@ function VehiclesContent() {
     </div>
   );
 
-  const renderMileageTab = () => (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <Route className="text-blue-600" size={24} />
-          全域里程計費參數
-        </h3>
-        <p className="text-sm text-gray-500 mb-6">此處設定適用於無固定報價的點對點行程，系統將依據 Google Maps 距離計算。</p>
 
-        <div className="grid grid-cols-1 gap-6">
-          <InputField
-            label="設定一公里為多少錢 (每公里單價)"
-            type="number"
-            value={mileageSettings.perKmPrice}
-            onChange={(v) => setMileageSettings({ ...mileageSettings, perKmPrice: Number(v) })}
-            suffix="元/公里"
-          />
-        </div>
-
-        <div className="mt-8 flex justify-end">
-          <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-200 font-medium">
-            <Save size={18} />
-            儲存設定
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderVehicleTab = () => (
     <>
@@ -1912,21 +1879,14 @@ function VehiclesContent() {
           </Link>
           <div className="text-gray-300"><ChevronRight size={16} /></div>
 
-          <Link
-            href="/vehicles?tab=mileage"
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${currentTab === 'mileage' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
-          >
-            <Route size={16} />
-            4. 里程計費
-          </Link>
-          <div className="text-gray-300"><ChevronRight size={16} /></div>
+
 
           <Link
             href="/vehicles"
             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${(!currentTab || currentTab === 'vehicle') ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
           >
             <Car size={16} />
-            5. 車輛管理
+            4. 車輛管理
           </Link>
         </div>
       </div>
@@ -1936,7 +1896,7 @@ function VehiclesContent() {
         {currentTab === 'holiday' && renderHolidayTab()}
         {currentTab === 'airport' && renderAirportTab()}
         {currentTab === 'route' && renderRouteTab()}
-        {currentTab === 'mileage' && renderMileageTab()}
+
         {(!currentTab || currentTab === 'vehicle') && renderVehicleTab()}
       </div>
 
