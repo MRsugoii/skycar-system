@@ -5,7 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Filter, MoreHorizontal, Download, Plus, X, Save, Check, Trash2, RefreshCcw, Calendar, User, FileText, Car, DollarSign, Briefcase, MapPin, Clock, ArrowRight, Ban, CheckCircle, Smartphone, Globe } from "lucide-react";
 import Link from "next/link";
 import { useSystemActivity } from "../context/SystemActivityContext";
-import InvoicePreview from "@/components/InvoicePreview"; // Import the preview component
+import InvoicePreview from "@/components/InvoicePreview";
+import { read, utils } from "xlsx";
 
 type Order = {
   id: string;
@@ -66,6 +67,63 @@ function OrdersContent() {
   const currentStatus = searchParams.get("status") || "unconfirmed";
   const currentDriver = searchParams.get("driver");
   const isFinanceMode = searchParams.get("mode") === "finance";
+  const { addLog } = useSystemActivity();
+
+  const handleImportClick = () => {
+    document.getElementById("order-import-input")?.click();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = utils.sheet_to_json(worksheet);
+
+      const newOrders: Order[] = jsonData.map((row: any, index: number) => ({
+        id: row['訂單編號'] || `IMP${Date.now()}${index}`,
+        platform: row['平台'] || "Excel Import",
+        user: row['客戶姓名'] || "Unknown",
+        phone: row['電話'] || "",
+        email: row['Email'] || "",
+        driver: row['司機'] || "未指派",
+        from: row['出發地'] || "",
+        to: row['目的地'] || "",
+        status: row['狀態'] || "unconfirmed",
+        amount: row['金額']?.toString() || "0",
+        date: row['日期'] || new Date().toLocaleDateString(),
+        time: row['時間'] || "12:00",
+        createdAt: new Date().toLocaleString(),
+        paymentMethod: row['付款方式'] || "Cash",
+        serviceType: row['服務類型'] || "接機",
+        flightNumber: row['航班'] || "",
+        departureTime: row['起飛時間'] || "",
+        arrivalTime: row['抵達時間'] || "",
+        passengerCount: row['人數']?.toString() || "1",
+        luggageCount: row['行李']?.toString() || "0",
+        specialRequests: {
+          carSeat: row['安全座椅'] || "無",
+          boosterSeat: row['增高墊'] || "無",
+          vehicleType: row['車型'] || "一般轎車",
+          signage: row['舉牌'] || "無",
+          notes: row['備註'] || "無"
+        },
+        priceBreakdown: { base: 0, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: Number(row['金額']) || 0 }
+      }));
+
+      setOrders([...newOrders, ...orders]);
+      addLog(`成功匯入 ${newOrders.length} 筆訂單`, "success");
+    } catch (error) {
+      console.error("Import error:", error);
+      alert("匯入失敗，請確認檔案格式正確。");
+    }
+
+    // Reset input
+    e.target.value = "";
+  };
 
   const [orders, setOrders] = useState<Order[]>([
     {
@@ -413,7 +471,7 @@ function OrdersContent() {
     });
   };
 
-  const { addLog } = useSystemActivity();
+
 
   const handleOpenModal = (order: Order) => {
     setCurrentOrder(order);
@@ -581,6 +639,20 @@ function OrdersContent() {
         </div>
         {!currentDriver && (
           <div className="flex gap-3">
+            <input
+              type="file"
+              id="order-import-input"
+              className="hidden"
+              accept=".xlsx, .xls"
+              onChange={handleFileUpload}
+            />
+            <button
+              onClick={handleImportClick}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
+            >
+              <FileText size={16} />
+              匯入訂單
+            </button>
             <button
               onClick={() => setIsReportModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">

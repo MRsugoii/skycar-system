@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Filter, MoreHorizontal, Download, Plus, X, Save, Check, Trash2, RefreshCcw, Calendar, User, FileText, Car, DollarSign, Briefcase, MapPin, Clock, ArrowRight, Ban, CheckCircle, Smartphone, Globe, ShieldCheck, ClipboardList, Power, ChevronLeft, ChevronRight, Eye, Mail, Phone, Edit } from "lucide-react";
 import Link from "next/link";
 import { useSystemActivity } from "../context/SystemActivityContext";
+import { read, utils } from "xlsx";
 
 type Driver = {
     id: string;
@@ -63,6 +64,52 @@ function DriversContent() {
     const router = useRouter();
     const currentStatus = searchParams.get("status") || "all";
     const { addLog } = useSystemActivity();
+
+    const handleImportClick = () => {
+        document.getElementById("driver-import-input")?.click();
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = read(data);
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = utils.sheet_to_json(worksheet);
+
+            const newDrivers: Driver[] = jsonData.map((row: any, index: number) => ({
+                id: row['ID'] || `IMP${Date.now()}${index}`,
+                name: row['姓名'] || "Unknown",
+                phone: row['電話'] || "",
+                status: row['狀態'] || "正常",
+                totalOrders: Number(row['總單數']) || 0,
+                completionRate: row['完成率'] || "100%",
+                email: row['Email'] || "",
+                vehicle: row['車型'] || "",
+                plate: row['車牌'] || "",
+                location: row['地區'] || "",
+                rating: Number(row['評分']) || 5.0,
+                joinDate: row['加入日期'] || new Date().toISOString().split('T')[0],
+                totalEarnings: Number(row['總收入']) || 0,
+                account: row['帳號'] || "",
+                nationalId: row['身分證字號'] || "",
+                address: row['地址'] || "",
+                dob: row['生日'] || "",
+                bankAccount: row['銀行帳戶'] || ""
+            }));
+
+            setDrivers([...newDrivers, ...drivers]);
+            addLog(`成功匯入 ${newDrivers.length} 位司機`, "success");
+        } catch (error) {
+            console.error("Import error:", error);
+            alert("匯入失敗，請確認檔案格式正確。");
+        }
+
+        // Reset input
+        e.target.value = "";
+    };
 
     const [drivers, setDrivers] = useState<Driver[]>([
         {
@@ -223,6 +270,20 @@ function DriversContent() {
                     <p className="text-sm text-gray-500 mt-1">管理所有已註冊的司機資訊與審核狀態。</p>
                 </div>
                 <div className="flex gap-3">
+                    <input
+                        type="file"
+                        id="driver-import-input"
+                        className="hidden"
+                        accept=".xlsx, .xls"
+                        onChange={handleFileUpload}
+                    />
+                    <button
+                        onClick={handleImportClick}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
+                    >
+                        <FileText size={16} />
+                        匯入司機
+                    </button>
                     <button
                         onClick={() => setIsReportModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">

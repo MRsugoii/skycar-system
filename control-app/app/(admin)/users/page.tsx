@@ -8,6 +8,7 @@ import {
     Car, Briefcase, MoreHorizontal, Save, Edit, AlertTriangle, RefreshCcw
 } from "lucide-react";
 import { useSystemActivity } from "../context/SystemActivityContext";
+import { read, utils } from "xlsx";
 
 // Define the User type with expanded details
 type User = {
@@ -72,6 +73,49 @@ export default function UsersPage() {
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const { addLog } = useSystemActivity();
 
+    const handleImportClick = () => {
+        document.getElementById("user-import-input")?.click();
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = read(data);
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = utils.sheet_to_json(worksheet);
+
+            const newUsers: User[] = jsonData.map((row: any, index: number) => ({
+                id: row['ID'] || `IMP${Date.now()}${index}`,
+                name: row['姓名'] || "Unknown",
+                email: row['Email'] || "",
+                phone: row['電話'] || "",
+                joinDate: row['加入日期'] || new Date().toISOString().split('T')[0],
+                status: (row['狀態'] === 'Suspended' || row['狀態'] === '停權') ? "Suspended" : "Active",
+                dob: row['生日'] || "",
+                address: row['地址'] || "",
+                lineId: row['Line ID'] || "",
+                whatsapp: row['WhatsApp'] || "",
+                totalSpending: Number(row['累積消費']) || 0,
+                totalRides: Number(row['搭乘次數']) || 0,
+                level: row['等級'] || "C",
+                nationalId: row['身分證字號'] || "",
+                password: row['密碼'] || ""
+            }));
+
+            setUsers([...newUsers, ...users]);
+            addLog(`成功匯入 ${newUsers.length} 位用戶`, "success");
+        } catch (error) {
+            console.error("Import error:", error);
+            alert("匯入失敗，請確認檔案格式正確。");
+        }
+
+        // Reset input
+        e.target.value = "";
+    };
+
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -131,6 +175,20 @@ export default function UsersPage() {
                     <p className="text-sm text-gray-500 mt-1">管理註冊用戶與權限。</p>
                 </div>
                 <div className="flex gap-3">
+                    <input
+                        type="file"
+                        id="user-import-input"
+                        className="hidden"
+                        accept=".xlsx, .xls"
+                        onChange={handleFileUpload}
+                    />
+                    <button
+                        onClick={handleImportClick}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
+                    >
+                        <FileText size={16} />
+                        匯入用戶
+                    </button>
                     <button
                         onClick={() => setIsReportModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">
