@@ -64,7 +64,19 @@ interface AirportMatrixType {
   status: boolean;
 }
 
+
+// Define Route Type
+interface RouteType {
+  id: number;
+  name: string;
+  start: string;
+  end: string;
+  price: number;
+  status: boolean;
+}
+
 function VehiclesContent() {
+
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab') || 'vehicle'; // Default to vehicle management
 
@@ -1062,6 +1074,17 @@ function VehiclesContent() {
     { id: 2, name: "台中-日月潭", start: "台中高鐵站", end: "日月潭水社碼頭", price: 2500, status: true },
   ]);
 
+  const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
+  const [editingRoute, setEditingRoute] = useState<RouteType | null>(null);
+  const initialRouteFormState: Omit<RouteType, 'id'> = {
+    name: "",
+    start: "",
+    end: "",
+    price: 0,
+    status: true
+  };
+  const [routeFormData, setRouteFormData] = useState(initialRouteFormState);
+
   // --- 5. Mileage Settings Data (Global) ---
   const [mileageSettings, setMileageSettings] = useState({
     basePrice: 85,
@@ -1377,6 +1400,41 @@ function VehiclesContent() {
     setRoutePrices(routePrices.map(r => r.id === id ? { ...r, status: !r.status } : r));
   };
 
+  const handleOpenRouteModal = (route?: RouteType) => {
+    if (route) {
+      setEditingRoute(route);
+      setRouteFormData(route);
+    } else {
+      setEditingRoute(null);
+      setRouteFormData(initialRouteFormState);
+    }
+    setIsRouteModalOpen(true);
+  };
+
+  const handleCloseRouteModal = () => {
+    setIsRouteModalOpen(false);
+    setEditingRoute(null);
+  };
+
+  const handleSaveRoute = () => {
+    if (editingRoute) {
+      setRoutePrices(routePrices.map(r => r.id === editingRoute.id ? { ...routeFormData, id: r.id } : r));
+    } else {
+      const newId = Math.max(0, ...routePrices.map(r => r.id)) + 1;
+      setRoutePrices([...routePrices, { ...routeFormData, id: newId }]);
+    }
+    handleCloseRouteModal();
+  };
+
+  const handleDeleteRoute = () => {
+    if (editingRoute) {
+      if (confirm('確定要刪除此路線嗎？')) {
+        setRoutePrices(routePrices.filter(r => r.id !== editingRoute.id));
+        handleCloseRouteModal();
+      }
+    }
+  };
+
   const handleSearch = () => {
     // Basic search implementation
   };
@@ -1582,7 +1640,12 @@ function VehiclesContent() {
                   </button>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"><MoreHorizontal size={18} /></button>
+                  <button
+                    onClick={() => handleOpenRouteModal(r)}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -1813,6 +1876,7 @@ function VehiclesContent() {
           )}
           {currentTab === 'route' && (
             <button
+              onClick={() => handleOpenRouteModal()}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm shadow-blue-200"
             >
               <Plus size={16} />
@@ -2493,7 +2557,89 @@ function VehiclesContent() {
           </div >
         )
       }
-    </div >
+      {/* Route Settings Modal */}
+      {
+        isRouteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="text-xl font-bold text-gray-900">
+                  {editingRoute ? '編輯路線' : '新增路線'}
+                </h3>
+                <button onClick={handleCloseRouteModal} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="space-y-4">
+                  <InputField
+                    label="路線名稱"
+                    value={routeFormData.name}
+                    onChange={(v) => setRouteFormData({ ...routeFormData, name: v })}
+                    placeholder="例如：台中-日月潭"
+                    required
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputField
+                      label="起點"
+                      value={routeFormData.start}
+                      onChange={(v) => setRouteFormData({ ...routeFormData, start: v })}
+                      placeholder="例如：台中高鐵"
+                      required
+                    />
+                    <InputField
+                      label="終點"
+                      value={routeFormData.end}
+                      onChange={(v) => setRouteFormData({ ...routeFormData, end: v })}
+                      placeholder="例如：日月潭"
+                      required
+                    />
+                  </div>
+                  <InputField
+                    label="固定價格"
+                    type="number"
+                    value={routeFormData.price}
+                    onChange={(v) => setRouteFormData({ ...routeFormData, price: Number(v) })}
+                    suffix="元"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-between items-center">
+                <div>
+                  {editingRoute && (
+                    <button
+                      onClick={handleDeleteRoute}
+                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+                    >
+                      <Trash2 size={16} />
+                      刪除路線
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCloseRouteModal}
+                    className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-sm"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleSaveRoute}
+                    disabled={!routeFormData.name || !routeFormData.start || !routeFormData.end}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    儲存
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div>
   );
 }
 
