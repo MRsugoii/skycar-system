@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Truck, Ticket, Search, Plus, Edit, Trash2, X, Save, Camera, Image as ImageIcon, MoreHorizontal, AlertCircle, Download, Calendar, FileText, DollarSign, Armchair, Users, Briefcase, Car, Plane, MapPin, Route, ChevronRight, ChevronDown } from "lucide-react";
@@ -64,7 +64,7 @@ interface AirportMatrixType {
   status: boolean;
 }
 
-export default function VehiclesPage() {
+function VehiclesContent() {
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab') || 'vehicle'; // Default to vehicle management
 
@@ -2519,4 +2519,11 @@ function InputField({ label, type = "text", required = false, suffix, value, onC
     </div>
   );
 }
-  }
+
+export default function VehiclesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">正在載入價格管理系統...</div>}>
+      <VehiclesContent />
+    </Suspense>
+  );
+}
