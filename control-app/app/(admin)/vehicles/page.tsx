@@ -1666,32 +1666,25 @@ function VehiclesContent() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <InputField
-            label="基本起步價 (Base Price)"
+            label="基本起步價"
             type="number"
             value={mileageSettings.basePrice}
             onChange={(v) => setMileageSettings({ ...mileageSettings, basePrice: Number(v) })}
             suffix="元"
           />
           <InputField
-            label="包含基本里程 (Base Distance)"
+            label="包含基本里程"
             type="number"
             value={mileageSettings.baseDistance}
             onChange={(v) => setMileageSettings({ ...mileageSettings, baseDistance: Number(v) })}
             suffix="公里"
           />
           <InputField
-            label="續程每公里單價 (Price per KM)"
+            label="續程每公里單價"
             type="number"
             value={mileageSettings.perKmPrice}
             onChange={(v) => setMileageSettings({ ...mileageSettings, perKmPrice: Number(v) })}
             suffix="元/公里"
-          />
-          <InputField
-            label="夜間加成倍率"
-            type="number"
-            value={mileageSettings.nightSurchargeRate}
-            onChange={(v) => setMileageSettings({ ...mileageSettings, nightSurchargeRate: Number(v) })}
-            suffix="倍 (x)"
           />
         </div>
 
