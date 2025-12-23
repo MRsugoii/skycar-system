@@ -2152,7 +2152,9 @@ function VehiclesContent() {
                             })}
                             className="w-full px-3 py-2 pl-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                           />
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span className="text-gray-400 text-sm">$</span>
+                          </div>
                         </div>
                       </div>
                     ))}
