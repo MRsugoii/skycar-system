@@ -1361,8 +1361,8 @@ function OrdersContent() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
               <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
-                <h3 className="text-xl font-bold text-gray-900">{isNewOrder ? "新增訂單" : "編輯訂單"}</h3>
-                <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-500 transition-colors">
+                <h3 className="text-xl font-bold text-gray-900">匯出報表</h3>
+                <button onClick={() => setIsReportModalOpen(false)} className="text-gray-400 hover:text-gray-500 transition-colors">
                   <X size={24} />
                 </button>
               </div>
@@ -1400,9 +1400,7 @@ function OrdersContent() {
                 </div>
 
                 <div className="pt-2 flex justify-end gap-3">
-                  <button onClick={() => setIsReportModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                    取消
-                  </button>
+
                   <button onClick={() => setIsReportModalOpen(false)} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm shadow-blue-200 flex items-center gap-2">
                     <FileText size={16} />
                     確認匯出
