@@ -53,12 +53,33 @@ export default function DriverDashboard() {
     useEffect(() => {
         if (!driver?.name) return;
 
+        let channel: any;
+
         const fetchOrders = async () => {
+            // 1. Get Driver UUID
+            // We use simple name matching for this demo bridge
+            const { data: driverData, error: driverError } = await supabase
+                .from('drivers')
+                .select('id')
+                .eq('name', driver.name)
+                .single();
+
+            // If driver doesn't exist in Supabase yet (e.g. login allowed via mock headers), we might fail.
+            // But the seed script ensures '王小明' exists.
+            if (driverError || !driverData) {
+                console.error("Could not find Supabase driver ID for", driver.name);
+                return;
+            }
+
+            const driverId = driverData.id;
+
+            // 2. Fetch Orders using UUID
             const { data, error } = await supabase
                 .from('orders')
                 .select('*')
-                .eq('driver_id', driver.name)
-                .in('status', ['confirmed', 'pickedUp', 'completed']); // Fetch relevant statuses
+                .eq('driver_id', driverId)
+                .in('status', ['confirmed', 'pickedUp', 'completed', 'assigned'])
+                .order('pickup_time', { ascending: true });
 
             if (error) {
                 console.error('Error fetching driver orders:', error);
@@ -69,31 +90,33 @@ export default function DriverDashboard() {
                     price: row.price,
                     from: row.pickup_address,
                     to: row.dropoff_address,
-                    date: new Date(row.pickup_time).toLocaleDateString(),
-                    time: new Date(row.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    // details for order page if needed
+                    date: row.pickup_time ? new Date(row.pickup_time).toLocaleDateString() : 'N/A',
+                    time: row.pickup_time ? new Date(row.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
                     detail: {
                         contact: { name: row.contact_name, phone: row.contact_phone },
-                        pax: { adult: row.passenger_count, child: 0 }
-                    }
+                        pax: { adult: row.passenger_count || 1, child: 0 },
+                        vehicle: { plate: "RAB-1234" }
+                    },
+                    driverName: driver.name
                 }));
-                // Sort by time?
-                setOrders(mappedOrders.sort((a: any, b: any) => new Date(a.date + ' ' + a.time).getTime() - new Date(b.date + ' ' + b.time).getTime()));
+                setOrders(mappedOrders);
+            }
+
+            // 3. Setup Subscription with correct UUID
+            if (!channel) {
+                channel = supabase
+                    .channel('driver_orders')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `driver_id=eq.${driverId}` }, () => {
+                        fetchOrders();
+                    })
+                    .subscribe();
             }
         };
 
         fetchOrders();
 
-        // Realtime subscription
-        const channel = supabase
-            .channel('driver_orders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `driver_id=eq.${driver.name}` }, () => {
-                fetchOrders();
-            })
-            .subscribe();
-
         return () => {
-            supabase.removeChannel(channel);
+            if (channel) supabase.removeChannel(channel);
         };
     }, [driver]);
 
@@ -234,7 +257,7 @@ export default function DriverDashboard() {
                                             onClick={() => router.push(`/order/${order.id}`)}
                                             className="bg-gray-50 border border-gray-100 rounded-xl p-4 grid grid-cols-[1fr_auto] gap-y-1 gap-x-3 cursor-pointer hover:bg-blue-50/50 hover:border-blue-100 transition-all group"
                                         >
-                                            <div className="font-black text-gray-900 text-lg group-hover:text-blue-700 transition-colors">{order.id}</div>
+                                            <div className="font-black text-gray-900 text-lg group-hover:text-blue-700 transition-colors">{order.id.substring(0, 8)}...</div>
                                             <div className="text-right font-black text-gray-900 text-lg">${order.price?.toLocaleString()}</div>
 
                                             <div className="text-sm font-bold text-gray-500 flex items-center gap-1">
@@ -593,6 +616,7 @@ function FileUploader({ label, field, onFile }: any) {
     // Or we could try to instantiate the component. 
     // Actually the easiest way given the import issue is just to copy the UI logic here since it's small.
     // The previous FileButton component has its own inputRef etc. 
+    // We will just invoke it.
 
     return (
         <FileButton
