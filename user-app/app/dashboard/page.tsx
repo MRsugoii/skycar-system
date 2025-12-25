@@ -137,7 +137,9 @@ export default function DashboardPage() {
                                 carName: o.vehicle_type,
                                 passengers: o.passenger_count,
                                 note: o.note,
-                                pay: '現金' // Default
+                                pay: '現金',
+                                flight: o.flight_number,
+                                luggage: o.luggage_count ? { s20: 0, s25: o.luggage_count, s28: 0 } : undefined
                             }
                         };
                     });
