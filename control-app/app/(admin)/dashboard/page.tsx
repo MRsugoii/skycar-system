@@ -1,13 +1,107 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowUpRight, ArrowDownRight, Users, Car, ShoppingBag, DollarSign, MoreHorizontal, Download, Calendar, X, FileText, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useSystemActivity } from "../context/SystemActivityContext";
+import { supabase } from "../../../lib/supabase";
 
 export default function DashboardPage() {
     const { logs } = useSystemActivity();
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+    // Stats State
+    const [stats, setStats] = useState({
+        totalOrders: 0,
+        activeDrivers: 0,
+        totalUsers: 0,
+        revenue: 0,
+        todayOrders: { total: 0, pending: 0, ongoing: 0, completed: 0 }
+    });
+
+    const [recentOrders, setRecentOrders] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchDashboardData();
+
+        // Subscribe to realtime updates for dashboard
+        const channel = supabase
+            .channel('dashboard_updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+                fetchDashboardData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => {
+                fetchDashboardData();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
+    const fetchDashboardData = async () => {
+        try {
+            // 1. Total Orders
+            const { count: orderCount } = await supabase.from('orders').select('*', { count: 'exact', head: true });
+
+            // 2. Total Users
+            const { count: userCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
+
+            // 3. Active Drivers
+            const { count: driverCount } = await supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'active');
+
+            // 4. Revenue & Recent Orders
+            const { data: orderData } = await supabase
+                .from('orders')
+                .select('id, price, status, created_at, pickup_address, dropoff_address, pickup_time')
+                .order('created_at', { ascending: false });
+
+            let totalRevenue = 0;
+            let today = { total: 0, pending: 0, ongoing: 0, completed: 0 };
+
+            // Define "today" as local date string
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            const recent = (orderData || []).slice(0, 6).map((o: any) => ({
+                id: o.id,
+                route: `${(o.pickup_address || '').substring(0, 6)}... \u2192 ${(o.dropoff_address || '').substring(0, 6)}...`, // Arrow symbol
+                price: o.price,
+                status: o.status,
+                time: new Date(o.created_at).toLocaleString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                timestamp: new Date(o.created_at).getTime()
+            }));
+
+            (orderData || []).forEach((o: any) => {
+                // Revenue (simple sum)
+                if (o.price) totalRevenue += Number(o.price);
+
+                // Today's Stats
+                // Check if pickup_time is today
+                if (o.pickup_time && o.pickup_time.startsWith(todayStr)) {
+                    today.total++;
+                    if (o.status === 'pending' || o.status === 'assigned') today.pending++;
+                    else if (o.status === 'confirmed' || o.status === 'pickedUp') today.ongoing++;
+                    else if (o.status === 'completed') today.completed++;
+                }
+            });
+
+            setStats({
+                totalOrders: orderCount || 0,
+                activeDrivers: driverCount || 0,
+                totalUsers: userCount || 0,
+                revenue: totalRevenue,
+                todayOrders: today
+            });
+            setRecentOrders(recent);
+
+        } catch (error) {
+            console.error("Error loading dashboard:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -31,10 +125,10 @@ export default function DashboardPage() {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="總訂單數" value="1,234" change="+12.5%" trend="up" icon={<ShoppingBag className="text-blue-600" />} color="blue" />
-                <StatCard title="活躍司機" value="45" change="+3.2%" trend="up" icon={<Car className="text-green-600" />} color="green" />
-                <StatCard title="註冊用戶" value="892" change="+5.4%" trend="up" icon={<Users className="text-purple-600" />} color="purple" />
-                <StatCard title="今日營收" value="$12,450" change="-1.2%" trend="down" icon={<DollarSign className="text-orange-600" />} color="orange" />
+                <StatCard title="總訂單數" value={stats.totalOrders.toLocaleString()} change="+5%" trend="up" icon={<ShoppingBag className="text-blue-600" />} color="blue" />
+                <StatCard title="活躍司機" value={stats.activeDrivers.toString()} change="+0" trend="up" icon={<Car className="text-green-600" />} color="green" />
+                <StatCard title="註冊用戶" value={stats.totalUsers.toLocaleString()} change="+1" trend="up" icon={<Users className="text-purple-600" />} color="purple" />
+                <StatCard title="累計營收" value={`$${stats.revenue.toLocaleString()}`} change="+8%" trend="up" icon={<DollarSign className="text-orange-600" />} color="orange" />
             </div>
 
             {/* Main Content Grid */}
@@ -42,13 +136,13 @@ export default function DashboardPage() {
                 {/* Today's Order Overview */}
                 <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                        <h3 className="text-lg font-semibold text-gray-900">今日訂單狀況</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">今日訂單狀況 ({new Date().toLocaleDateString()})</h3>
                         <Link href="/orders" className="text-sm text-blue-600 font-medium hover:underline">查看全部</Link>
                     </div>
                     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <StatusCard label="待派車" count={8} color="orange" icon={<Clock size={20} />} total={65} />
-                        <StatusCard label="執行中" count={15} color="blue" icon={<Car size={20} />} total={65} />
-                        <StatusCard label="已完成" count={42} color="green" icon={<CheckCircle size={20} />} total={65} />
+                        <StatusCard label="待派車/未執行" count={stats.todayOrders.pending} color="orange" icon={<Clock size={20} />} total={stats.todayOrders.total || 1} />
+                        <StatusCard label="執行中" count={stats.todayOrders.ongoing} color="blue" icon={<Car size={20} />} total={stats.todayOrders.total || 1} />
+                        <StatusCard label="已完成" count={stats.todayOrders.completed} color="green" icon={<CheckCircle size={20} />} total={stats.todayOrders.total || 1} />
                     </div>
                     <div className="px-6 pb-6">
                         <h4 className="text-sm font-medium text-gray-700 mb-4">系統即時動態</h4>
@@ -72,26 +166,42 @@ export default function DashboardPage() {
                             <MoreHorizontal size={20} />
                         </button>
                     </div>
-                    <div className="flex-1 overflow-auto p-2">
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors group cursor-pointer">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${i % 2 === 0 ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
-                                        {i % 2 === 0 ? <Car size={18} /> : <ShoppingBag size={18} />}
+                    <div className="flex-1 overflow-auto p-2 min-h-[300px]">
+                        {loading ? (
+                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">載入中...</div>
+                        ) : recentOrders.length === 0 ? (
+                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">無最新訂單</div>
+                        ) : (
+                            recentOrders.map((o) => (
+                                <div key={o.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors group cursor-pointer">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold text-sm bg-blue-100 text-blue-600`}>
+                                            <Car size={18} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors truncate">{o.route}</p>
+                                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                {/* Shorten ID for display */}
+                                                #{o.id.toString().substring(0, 8)}... • {o.time}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">台北市信義區 &rarr; 中山區</p>
-                                        <p className="text-xs text-gray-500">訂單 #CH20251016000{i} • 5 分鐘前</p>
+                                    <div className="text-right shrink-0 ml-2">
+                                        <p className="text-sm font-bold text-gray-900">${o.price}</p>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${o.status === 'confirmed' || o.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
+                                                o.status === 'pickedUp' ? 'bg-blue-100 text-blue-700' :
+                                                    o.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                        'bg-gray-100 text-gray-600'
+                                            }`}>
+                                            {o.status === 'confirmed' ? '待執行' :
+                                                o.status === 'assigned' ? '已派單' :
+                                                    o.status === 'pickedUp' ? '進行中' :
+                                                        o.status === 'completed' ? '已完成' : o.status}
+                                        </span>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-gray-900">$350</p>
-                                    <span className="text-[10px] px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
-                                        進行中
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                     <div className="p-4 border-t border-gray-100">
                         <Link href="/orders" className="block w-full py-2 text-sm text-center text-gray-600 hover:text-gray-900 font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
@@ -162,7 +272,7 @@ export default function DashboardPage() {
 }
 
 function StatusCard({ label, count, total, color, icon }: any) {
-    const percentage = Math.round((count / total) * 100);
+    const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
     const colors: any = {
         green: "bg-green-500",
         blue: "bg-blue-500",
