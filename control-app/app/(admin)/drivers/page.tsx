@@ -6,6 +6,7 @@ import { Search, Filter, MoreHorizontal, Download, Plus, X, Save, Check, Trash2,
 import Link from "next/link";
 import { useSystemActivity } from "../context/SystemActivityContext";
 import { read, utils } from "xlsx";
+import { supabase } from "@/lib/supabase";
 
 type Driver = {
     id: string;
@@ -111,92 +112,69 @@ function DriversContent() {
         e.target.value = "";
     };
 
-    const [drivers, setDrivers] = useState<Driver[]>([
-        {
-            id: "1", name: "劉曉明", phone: "0909882192", status: "正常", totalOrders: 95, completionRate: "100%", email: "xiaoming0908@gmail.com", vehicle: "Benz", plate: "9276MG", location: "台北市", rating: 4.8, joinDate: "2024-12-31", totalEarnings: 120000,
-            account: "liuxiaoming", nationalId: "A123456789", password: "xiaoming123", address: "10617台北市大安區羅斯福路四段1號", dob: "2000-01-01", bankAccount: "郵局700-0102031 7218621"
-        },
-        {
-            id: "2", name: "陳大華", phone: "0912345678", status: "正常", totalOrders: 150, completionRate: "98%", email: "chen@example.com", vehicle: "Honda CR-V", plate: "XYZ-9876", location: "新北市", rating: 4.9, joinDate: "2023-11-20", totalEarnings: 85000,
-            account: "chendahua", nationalId: "F123456789", password: "0912345678", address: "新北市板橋區文化路一段100號", dob: "1985-05-20", bankAccount: "中國信託822-123456789012"
-        },
-        {
-            id: "3", name: "林志豪", phone: "0923456789", status: "審核中", totalOrders: 0, completionRate: "-", email: "lin@example.com", vehicle: "Toyota Altis", plate: "DEF-5678", location: "桃園市", rating: 0, joinDate: "2025-12-01", totalEarnings: 0,
-            account: "linzhihao", nationalId: "H123456789", password: "0923456789", address: "桃園市中壢區中正路50號", dob: "1990-10-10", bankAccount: "國泰世華013-987654321098"
-        },
-        {
-            id: "4", name: "吳雅婷", phone: "0934567890", status: "停權", totalOrders: 45, completionRate: "92%", email: "wu@example.com", vehicle: "Tesla Model 3", plate: "EAG-8888", location: "台北市", rating: 4.5, joinDate: "2024-05-10", totalEarnings: 45000,
-            account: "wuyating", nationalId: "A223456789", password: "0934567890", address: "台北市信義區信義路五段7號", dob: "1995-03-15", bankAccount: "台新銀行812-288812345678"
-        },
-        {
-            id: "5", name: "張建國", phone: "0945678901", status: "正常", totalOrders: 320, completionRate: "99%", email: "zhang@example.com", vehicle: "Nissan Sentra", plate: "GHI-9012", location: "台中市", rating: 4.7, joinDate: "2023-08-05", totalEarnings: 210000,
-            account: "zhangjianguo", nationalId: "B123456789", password: "0945678901", address: "台中市西屯區台灣大道三段251號", dob: "1980-08-08", bankAccount: "玉山銀行808-123123123123"
-        },
-        {
-            id: "6", name: "陳小美", phone: "0956789012", status: "待補件", totalOrders: 0, completionRate: "-", email: "may@example.com", vehicle: "Toyota Camry", plate: "JKL-3456", location: "高雄市", rating: 0, joinDate: "2025-12-02", totalEarnings: 0,
-            account: "chenxiaomei", nationalId: "S223456789", password: "0956789012", address: "高雄市前金區中正四路200號", dob: "1992-02-02", bankAccount: "台新銀行812-987654321"
-        },
-        {
-            id: "7", name: "孫小美", phone: "0987654321", status: "審核中", totalOrders: 0, completionRate: "-", email: "sun@example.com", vehicle: "Honda Fit", plate: "XYZ-1234", location: "台北市", rating: 0, joinDate: "2025-12-08", totalEarnings: 0,
-            account: "sunxiaomei", nationalId: "C123456789", password: "0987654321", address: "台北市大安區", dob: "1995-05-05", bankAccount: "國泰世華013-123456789"
-        },
-    ]);
+    const [drivers, setDrivers] = useState<Driver[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Load from localStorage on mount
     useEffect(() => {
-        const storedDrivers: Driver[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key?.startsWith("driver_")) {
-                try {
-                    const raw = localStorage.getItem(key);
-                    if (raw) {
-                        const d = JSON.parse(raw);
-                        // Map local storage format to Control App Driver type if needed
-                        // Assuming the register app saves "status" strings matching what we expect (e.g. "審核中")
-                        // If "pending" is saved, we map it to "審核中"
-                        let status = d.status;
-                        if (status === 'pending') status = '審核中';
+        const fetchDrivers = async () => {
+            setIsLoading(true);
+            try {
+                // Fetch drivers from Supabase
+                // Assuming 'users' table holds drivers with role='driver' or a specific 'drivers' table
+                // Based on previous context, we might be using 'users' or 'drivers'. 
+                // Let's assume 'drivers' table exists as per standard dispatch system, or we check 'users'.
+                // Given the fields, let's try 'drivers' table first.
+                const { data, error } = await supabase
+                    .from('drivers')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-                        storedDrivers.push({
-                            id: d.idno, // Use specific ID for key
-                            name: d.name,
-                            phone: d.phone,
-                            status: status,
-                            totalOrders: d.totalOrders || 0,
-                            completionRate: d.completionRate || "-",
-                            email: d.email || "-",
-                            vehicle: d.vehicle || "-",
-                            plate: d.plate || "-",
-                            location: d.addr?.substring(0, 3) || "-",
-                            rating: d.rating || 0,
-                            joinDate: new Date().toISOString().split('T')[0], // Default to today if missing
-                            totalEarnings: d.totalEarnings || 0,
-                            account: d.idno,
-                            nationalId: d.idno,
-                            password: d.password,
-                            address: d.addr || "",
-                            dob: d.birth || "",
-                            bankAccount: d.bankAccount || ""
-                        });
-                    }
-                } catch (e) {
-                    console.error("Failed to parse driver", key);
+                if (error) {
+                    console.error("Error fetching drivers:", error);
+                } else {
+                    const mappedDrivers: Driver[] = (data || []).map((d: any) => ({
+                        id: d.id,
+                        name: d.name,
+                        phone: d.phone,
+                        status: d.status || "審核中", // Default to pending
+                        totalOrders: d.total_orders || 0,
+                        completionRate: d.completion_rate ? `${d.completion_rate}%` : "-",
+                        email: d.email || "",
+                        vehicle: d.vehicle_model || "-",
+                        plate: d.license_plate || "-",
+                        location: d.city || "-",
+                        rating: d.rating || 0.0,
+                        joinDate: d.created_at ? new Date(d.created_at).toISOString().split('T')[0] : "",
+                        totalEarnings: d.total_earnings || 0,
+                        account: d.account_name || d.phone, // fallback
+                        nationalId: d.national_id || "",
+                        address: d.address || "",
+                        dob: d.dob || "",
+                        bankAccount: d.bank_account || "",
+                        password: "", // Don't expose password
+                    }));
+                    setDrivers(mappedDrivers);
                 }
+            } catch (err) {
+                console.error("Unexpected error fetching drivers:", err);
+            } finally {
+                setIsLoading(false);
             }
-        }
+        };
 
-        // Remove duplicates if necessary (though React state init usually happens once, useEffect runs after)
-        // Here we just append specifically found local drivers that aren't already hardcoded?
-        // For simpler demo, let's just prepend them.
-        if (storedDrivers.length > 0) {
-            setDrivers(prev => {
-                // simple de-dupe by id (nationalId)
-                const existingIds = new Set(prev.map(p => p.nationalId));
-                const newOnes = storedDrivers.filter(d => !existingIds.has(d.nationalId));
-                return [...newOnes, ...prev];
-            });
-        }
+        fetchDrivers();
+
+        // Real-time subscription
+        const channel = supabase
+            .channel('drivers_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => {
+                fetchDrivers();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const [isModalOpen, setIsModalOpen] = useState(false);

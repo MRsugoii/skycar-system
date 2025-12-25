@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '../../components/PageHeader';
 import { FileButton } from '../../components/FileButton';
 import { User, FileText, ChevronRight, LogOut, CheckCircle, Smartphone, Globe, ShieldCheck, ClipboardList, AlertCircle, X, Camera, AlertTriangle, Upload } from "lucide-react";
+import { supabase } from '../../lib/supabase';
 
 export default function DriverDashboard() {
     const router = useRouter();
@@ -46,11 +47,55 @@ export default function DriverDashboard() {
 
     useEffect(() => {
         refreshDriver();
-        const allOrdersStr = localStorage.getItem("orders");
-        if (allOrdersStr) {
-            setOrders(JSON.parse(allOrdersStr));
-        }
     }, [router]);
+
+    // Fetch Orders from Supabase
+    useEffect(() => {
+        if (!driver?.name) return;
+
+        const fetchOrders = async () => {
+            const { data, error } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('driver_id', driver.name)
+                .in('status', ['confirmed', 'pickedUp', 'completed']); // Fetch relevant statuses
+
+            if (error) {
+                console.error('Error fetching driver orders:', error);
+            } else {
+                const mappedOrders = (data || []).map((row: any) => ({
+                    id: row.id,
+                    status: row.status,
+                    price: row.price,
+                    from: row.pickup_address,
+                    to: row.dropoff_address,
+                    date: new Date(row.pickup_time).toLocaleDateString(),
+                    time: new Date(row.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    // details for order page if needed
+                    detail: {
+                        contact: { name: row.contact_name, phone: row.contact_phone },
+                        pax: { adult: row.passenger_count, child: 0 }
+                    }
+                }));
+                // Sort by time?
+                setOrders(mappedOrders.sort((a: any, b: any) => new Date(a.date + ' ' + a.time).getTime() - new Date(b.date + ' ' + b.time).getTime()));
+            }
+        };
+
+        fetchOrders();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel('driver_orders')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `driver_id=eq.${driver.name}` }, () => {
+                fetchOrders();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [driver]);
 
     const handleLogout = () => {
         sessionStorage.clear();

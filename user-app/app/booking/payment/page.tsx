@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronDown, ChevronUp, CheckCircle2, User, Ticket, LogOut, X } from "lucide-react";
 import { VEHICLES } from "../ride-info/data";
+import { supabase } from "../../../lib/supabase";
 
 export default function PaymentPage() {
     const router = useRouter();
@@ -79,7 +80,7 @@ export default function PaymentPage() {
         router.push('/register?returnTo=/booking/payment');
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!paymentMethod) {
             alert("請選擇付款方式");
             return;
@@ -92,58 +93,70 @@ export default function PaymentPage() {
         const nextSerial = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); // 4 digits
         const orderId = `CH${y}${m}${d}${nextSerial}`;
 
-        const newOrder = {
-            orderId: orderId, // Match Dashboard interface
-            userId: memberAccount || 'GUEST',
-            status: 'pending',
-            createdAt: now.toISOString(),
-            date: `${basicInfo.pickupTime?.date || basicInfo.flightInfo?.date} ${basicInfo.pickupTime?.time || basicInfo.flightInfo?.time}`, // Add date field for Dashboard
-            type: basicInfo.type === 'pickup' ? '接機' : '送機', // Normalize type for Dashboard display if needed
-            total: prices.total, // Ensure total is at root
-            detail: { // Wrap details for Dashboard structure
-                pickup: basicInfo.type === 'pickup'
-                    ? `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`
-                    : `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`,
-                dropoff: basicInfo.type === 'pickup'
-                    ? `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`
-                    : `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`,
-                flight: basicInfo.flightInfo?.flightNumber,
-                passengers: (rideInfo.passengers?.adults || 0) + (rideInfo.passengers?.children || 0),
-                items: [], // Optional
-                pay: paymentMethod === 'creditcard' ? '信用卡' : '現金',
-                carName: VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name,
-                seats: rideInfo.seats,
-                luggage: rideInfo.luggage,
-                signage: rideInfo.signboard?.needed,
-                signageText: rideInfo.signboard?.title,
+        const isPickup = basicInfo.type === 'pickup';
+        const pickupAddr = isPickup
+            ? `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`
+            : `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`;
+        const dropoffAddr = isPickup
+            ? `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`
+            : `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`;
+
+        // Determine correct date/time to use
+        const dateStr = basicInfo.pickupTime?.date || basicInfo.flightInfo?.date;
+        const timeStr = basicInfo.pickupTime?.time || basicInfo.flightInfo?.time;
+        const pickupTime = new Date(`${dateStr}T${timeStr}:00`).toISOString();
+
+        const passengerCount = (rideInfo.passengers?.adults || 0) + (rideInfo.passengers?.children || 0);
+        const luggageCount = (rideInfo.luggage?.s || 0) + (rideInfo.luggage?.m || 0) + (rideInfo.luggage?.l || 0);
+        const vehicleName = VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name || 'Unknown';
+
+        try {
+            const { error } = await supabase.from('orders').insert({
+                user_id: memberAccount || contactInfo.name,
+                contact_name: contactInfo.name,
+                contact_phone: contactInfo.phone,
+                pickup_address: pickupAddr,
+                dropoff_address: dropoffAddr,
+                pickup_time: pickupTime,
+                passenger_count: passengerCount,
+                luggage_count: luggageCount,
+                vehicle_type: vehicleName,
+                price: prices.total,
+                status: 'pending',
                 note: rideInfo.notes
-            },
-            // Legacy/Payment fields (keep for record/Reference)
-            flightInfo: basicInfo.flightInfo,
-            pickupTime: basicInfo.pickupTime,
-            locations: basicInfo.locations,
-            contact: contactInfo,
-            priceDetails: prices,
-            totalAmount: prices.total,
-            paymentInfo: {
-                method: paymentMethod,
-                invoiceType,
-                invoiceValue: (invoiceType === 'taxId' || invoiceType === 'mobile') ? invoiceValue : undefined
+            });
+
+            if (error) {
+                console.error('Supabase error:', error);
+                throw error;
             }
-        };
 
-        const account = memberAccount;
-        if (account) {
-            const key = `orders_${account}`;
-            const existingOrders = JSON.parse(localStorage.getItem(key) || '[]');
-            localStorage.setItem(key, JSON.stringify([newOrder, ...existingOrders]));
-        } else {
-            const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-            localStorage.setItem('orders', JSON.stringify([newOrder, ...existingOrders]));
+            // Also keep local storage for Result page display if needed, or just rely on URL params
+            // We'll keep the minimal local storage just in case the result page needs it, but mostly we rely on Supabase now.
+            // keeping this for legacy demo compatibility if result page reads it:
+            const newOrder = {
+                orderId: orderId,
+                status: 'pending',
+                total: prices.total,
+                // ... other fields if needed by Result page
+            };
+            const account = memberAccount;
+            if (account) {
+                const key = `orders_${account}`;
+                const existingOrders = JSON.parse(localStorage.getItem(key) || '[]');
+                localStorage.setItem(key, JSON.stringify([newOrder, ...existingOrders]));
+            } else {
+                const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                localStorage.setItem('orders', JSON.stringify([newOrder, ...existingOrders]));
+            }
+
+            alert("付款成功！訂單已成立。");
+            router.push(`/booking/result?status=success&orderId=${orderId}`);
+
+        } catch (err) {
+            console.error(err);
+            alert("訂單建立失敗，請稍後再試。");
         }
-
-        alert("付款成功！訂單已成立。");
-        router.push(`/booking/result?status=success&orderId=${orderId}`);
     };
 
     if (!isLoaded) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;

@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { PageHeader } from "../../../components/PageHeader";
-import { Phone, Clock, MapPin, Navigation } from "lucide-react";
+import { Phone, Clock, MapPin, Navigation, FileText } from "lucide-react";
+import { supabase } from "../../../lib/supabase";
 
 export default function OrderDetailsPage() {
     const router = useRouter();
@@ -12,63 +13,90 @@ export default function OrderDetailsPage() {
 
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [isDocsOpen, setIsDocsOpen] = useState(false);
 
-    useEffect(() => {
-        // Mock fetch
-        const allOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-        const found = allOrders.find((o: any) => o.id === orderId);
+    const fetchOrder = async () => {
+        if (!orderId) return;
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', orderId)
+            .single();
 
-        if (found) {
-            // --- Self-Healing Logic for Demo ---
-            // If state is inconsistent (e.g., completed but no timestamps), reset to idle.
-            const hasAudit = found.audit && (found.audit.enRouteAt || found.audit.pickedAt || found.audit.completedAt);
-            if (!hasAudit && (found.status === 'completed' || found.flow === 'completed')) {
-                found.flow = 'idle';
-                found.status = 'confirmed';
-                found.audit = {};
-            }
+        if (data) {
+            // Map Supabase data to local shape
+            const mapStatusToFlow = (s: string) => {
+                if (s === 'completed') return 'completed';
+                if (s === 'pickedUp') return 'picked'; // Map 'pickedUp' db status to 'picked' flow
+                if (s === 'en_route') return 'enRoute';
+                return 'idle';
+            };
 
-            // Ensure flow exists
-            if (!found.flow) found.flow = found.status === 'completed' ? 'completed' : 'idle';
-            if (!found.audit) found.audit = {};
-
-            setOrder(found);
+            const mapped = {
+                id: data.id,
+                orderId: data.id,
+                status: data.status,
+                flow: mapStatusToFlow(data.status),
+                date: new Date(data.pickup_time).toLocaleDateString(),
+                time: new Date(data.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                from: data.pickup_address,
+                to: data.dropoff_address,
+                price: data.price,
+                type: data.vehicle_type,
+                note: data.note,
+                detail: {
+                    contact: { name: data.contact_name, phone: data.contact_phone },
+                    pax: { adult: data.passenger_count },
+                    luggage: { count: data.luggage_count }
+                },
+                audit: {
+                    // StartTrip -> en_route
+                    enRouteAt: data.status === 'en_route' || data.status === 'pickedUp' || data.status === 'completed' ? data.updated_at : null,
+                    // PickedUp -> pickedUp
+                    pickedAt: data.status === 'pickedUp' || data.status === 'completed' ? data.updated_at : null,
+                    // Complete -> completed
+                    completedAt: data.status === 'completed' ? data.updated_at : null
+                }
+            };
+            setOrder(mapped);
         }
         setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchOrder();
+
+        const channel = supabase
+            .channel(`order_${orderId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, () => {
+                fetchOrder();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [orderId]);
 
-    const updateFlow = (newFlow: string) => {
-        const now = new Date().toISOString();
-        const updated = { ...order, flow: newFlow };
-        if (!updated.audit) updated.audit = {};
+    const updateFlow = async (newFlow: string) => {
+        let newStatus = 'confirmed';
+        if (newFlow === 'enRoute') newStatus = 'en_route';
+        if (newFlow === 'picked') newStatus = 'pickedUp';
+        if (newFlow === 'completed') newStatus = 'completed';
 
-        // Update timestamps & status based on flow
-        if (newFlow === 'enRoute') {
-            updated.status = 'confirmed';
-            updated.audit.enRouteAt = now;
-        }
-        if (newFlow === 'picked') {
-            updated.status = 'pickedUp';
-            updated.audit.pickedAt = now;
-        }
-        if (newFlow === 'completed') {
-            updated.status = 'completed';
-            updated.audit.completedAt = now;
-        }
+        const { error } = await supabase
+            .from('orders')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .eq('id', orderId);
 
-        setOrder(updated);
-
-        // Sync to localStorage
-        const allOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-        const idx = allOrders.findIndex((o: any) => o.id === orderId);
-        if (idx >= 0) {
-            allOrders[idx] = updated;
-            localStorage.setItem("orders", JSON.stringify(allOrders));
-        }
-
-        if (newFlow === 'completed') {
-            // Stay on page to show filled timeline, maybe alert
-            alert('訂單已完成！');
+        if (error) {
+            console.error(error);
+            alert('更新失敗');
+        } else {
+            if (newFlow === 'completed') {
+                alert('訂單已完成！');
+                router.push('/dashboard');
+            }
         }
     };
 
@@ -211,8 +239,24 @@ export default function OrderDetailsPage() {
                             variant="red"
                         />
                     </div>
+                    <div className="mt-3">
+                        <ActionButton
+                            label="【 汽車出租單 】"
+                            onClick={() => setIsDocsOpen(true)}
+                            variant="indigo"
+                            icon={<FileText size={18} className="text-indigo-100" />}
+                        />
+                    </div>
                     <p className="text-[10px] text-center text-gray-400 mt-2 font-medium">請依序點擊按鈕以更新行程狀態</p>
                 </div>
+            )}
+
+            {/* Rental Contract Modal */}
+            {isDocsOpen && (
+                <RentalContractModal
+                    order={order}
+                    onClose={() => setIsDocsOpen(false)}
+                />
             )}
 
         </div>
@@ -231,21 +275,234 @@ function KV({ label, value, highlight, icon }: any) {
     );
 }
 
-function ActionButton({ label, onClick, disabled, variant }: any) {
+function ActionButton({ label, onClick, disabled, variant, icon }: any) {
     let bgClass = "bg-gray-100 text-gray-400 cursor-not-allowed";
 
     if (!disabled) {
         if (variant === 'blue') bgClass = "bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-blue-200 shadow-md transform transition-all";
         if (variant === 'red') bgClass = "bg-red-500 text-white hover:bg-red-600 active:scale-[0.98] shadow-red-200 shadow-md transform transition-all";
+        if (variant === 'indigo') bgClass = "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.98] shadow-indigo-200 shadow-md transform transition-all";
     }
 
     return (
         <button
             onClick={onClick}
             disabled={disabled}
-            className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none ${bgClass}`}
+            className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none flex items-center justify-center gap-2 ${bgClass}`}
         >
+            {icon && icon}
             {label}
         </button>
     )
+}
+
+function RentalContractModal({ order, onClose }: any) {
+    // Current date for contract
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const d = now.getDate();
+
+    // Calculate end time (assuming similar day dropoff or based on duration)
+    // For demo, just use same day + 1 hour as placeholder if no end time
+    const startDate = order.date;
+    const startTime = order.time;
+    // Mock end
+    const endDate = order.date;
+    const endTime = "18:00";
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white w-full max-w-lg max-h-[95vh] overflow-y-auto rounded-lg shadow-2xl relative">
+                {/* Close Button */}
+                <button
+                    onClick={onClose}
+                    className="absolute right-2 top-2 p-2 bg-gray-100/80 hover:bg-gray-200 rounded-full z-10 print:hidden"
+                >
+                    <Navigation size={20} className="rotate-45" />
+                </button>
+
+                {/* Contract Content - Mimicking the Image Structure */}
+                <div className="p-8 text-gray-900 font-serif text-sm leading-relaxed border-[3px] border-double border-gray-400 m-2">
+
+                    {/* Header */}
+                    <div className="text-center space-y-2 mb-6">
+                        <div className="flex justify-center border-b border-black pb-2 items-baseline">
+                            <span className="text-xl font-bold mr-2">公司名稱：</span>
+                            <span className="text-xl border-b border-black px-4 min-w-[200px]">馳航科技股份有限公司</span>
+                        </div>
+                        <div className="flex justify-between items-end relative">
+                            <h1 className="text-3xl font-bold tracking-[1em] mx-auto">汽車出租單</h1>
+                            <div className="absolute right-0 top-0 text-red-600 text-xl font-bold tracking-widest">
+                                {order.orderId ? order.orderId.substring(2) : "000451"}
+                            </div>
+                        </div>
+                        <div className="text-right mt-1">
+                            中華民國 {y - 1911} 年 {m} 月 {d} 日
+                        </div>
+                    </div>
+
+                    {/* Table Grid */}
+                    <div className="border-2 border-black">
+                        {/* Row 1: Renter Info */}
+                        <div className="grid grid-cols-[80px_1fr_40px_1fr] border-b border-black divide-x divide-black">
+                            <div className="p-2 flex items-center justify-center font-bold bg-gray-50">租車人</div>
+                            <div className="p-2 font-medium">{order.detail?.contact?.name}</div>
+                            <div className="p-2 flex items-center justify-center font-bold bg-gray-50 text-center leading-tight text-xs">電話</div>
+                            <div className="p-2 font-medium">{order.detail?.contact?.phone}</div>
+                        </div>
+
+                        {/* Row 2: Driver & Address */}
+                        <div className="grid grid-cols-[30px_100px_1fr_40px_1fr] border-b border-black divide-x divide-black">
+                            <div className="p-1 flex items-center justify-center font-bold bg-gray-50 writing-vertical text-center text-xs row-span-2">駕駛資料</div>
+                            <div className="p-2 text-xs border-b border-black">租車人自駕姓名</div>
+                            <div className="p-2 border-b border-black bg-gray-100 text-center text-xs text-gray-400">（附駕免填）</div>
+                            <div className="p-2 flex items-center justify-center font-bold bg-gray-50 text-center leading-tight text-xs row-span-2">住址</div>
+                            <div className="p-2 row-span-2 text-xs break-all flex items-center">
+                                {/* Pickup/Dropoff could be used as address placeholder */}
+                                {order.from}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-[30px_100px_1fr_40px_1fr] border-b border-black divide-x divide-black -mt-[1px]">
+                            <div className="col-span-1 border-none"></div> {/* Spacer for rowspan */}
+                            <div className="p-2 text-xs">代僱司機姓名</div>
+                            <div className="p-2 font-medium">{order.driverName || "在此簽名"}</div>
+                            <div className="col-span-1 border-none"></div> {/* Spacer for rowspan */}
+                            <div className="col-span-1 border-none"></div> {/* Spacer for rowspan */}
+                        </div>
+
+                        {/* Row 3: Vehicle Info */}
+                        <div className="grid grid-cols-[80px_1fr_80px_1fr_80px_1fr] border-b border-black divide-x divide-black">
+                            <div className="p-2 flex items-center justify-center font-bold bg-gray-50">車輛資料</div>
+                            <div className="p-2 text-xs">
+                                <span className="block text-gray-500 text-[10px]">牌照號碼</span>
+                                {order.detail?.vehicle?.plate || "RAB-1234"}
+                            </div>
+                            <div className="p-2 text-xs">
+                                <span className="block text-gray-500 text-[10px]">引擎號碼</span>
+                                -
+                            </div>
+                            <div className="p-2 text-xs">
+                                <span className="block text-gray-500 text-[10px]">廠牌型式</span>
+                                {order.carType || "Toyota Camry"}
+                            </div>
+                        </div>
+
+                        {/* Row 4: Date Range */}
+                        <div className="border-b border-black p-2 flex items-center gap-2 bg-yellow-50/30">
+                            <span className="font-bold">租賃期間</span>
+                            <span className="mx-2">自民國 {y - 1911} 年 {m} 月 {d} 日 {startTime?.split(':')[0]} 時 {startTime?.split(':')[1]} 分起</span>
+                            <span className="mx-2">至民國 {y - 1911} 年 {m} 月 {d} 日 {endTime.split(':')[0]} 時 {endTime.split(':')[1]} 分止</span>
+                        </div>
+
+                        {/* Row 5: Rent & Fuel */}
+                        <div className="grid grid-cols-[40px_1fr_60px_1fr] border-b border-black divide-x divide-black">
+                            <div className="p-2 flex items-center justify-center font-bold bg-gray-50 text-xs text-center">租金</div>
+                            <div className="p-2 font-bold text-lg flex items-center">
+                                NT$ {(order.price || 0).toLocaleString()}
+                            </div>
+                            <div className="p-2 flex flex-col justify-center font-bold bg-gray-50 text-xs text-center">
+                                <span>里程</span><span>表數</span>
+                            </div>
+                            <div className="p-2 text-xs">
+                                <div className="border-b border-black border-dashed mb-1 pb-1 flex justify-between">
+                                    <span>起：</span><span>___________</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>還：</span><span>___________</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Row 6: Accessories (Simplified) */}
+                        <div className="grid grid-cols-[40px_1fr] border-b border-black divide-x divide-black">
+                            <div className="p-2 flex items-center justify-center font-bold bg-gray-50 text-xs text-center">車況<br />配件</div>
+                            <div className="p-2 text-[10px] grid grid-cols-4 gap-1">
+                                <span>☑ 懸掛號牌兩面</span>
+                                <span>☑ 行車執照乙枚</span>
+                                <span>☑ 強制汽車責任保險證乙枚</span>
+                                <span>☐ 故障標誌</span>
+                                <span>☐ 備胎工具</span>
+                                <span>☑ 音響設備</span>
+                            </div>
+                        </div>
+
+                        {/* Row 7: Rules */}
+                        <div className="grid grid-cols-[40px_1fr] border-b border-black divide-x divide-black relative">
+                            <div className="p-2 flex items-center justify-center font-bold bg-gray-50 text-xs text-center">規定<br />事項</div>
+                            <div className="p-2 text-[10px] leading-tight space-y-1">
+                                <p>(一) 租賃期間車輛行駛中途發生故障時，如因使用不當或應注意未注意等人為因素，由租車人負責。若為自然因素，由出租人負責。</p>
+                                <p>(二) 租賃期間駕駛車輛違反法令規定或發生失竊、毀損、肇事、罰單等責任，概由租車人負責。</p>
+                                <p>(三) 租車人不得利用所租車輛從事營業或供作違法行為之工具。</p>
+                                <p>(四) 租車人應隨身攜帶出租單以備查驗。</p>
+                                <p>(五) 其他未盡規定事項，以租車時由雙方另行議定。</p>
+
+                                <div className="absolute right-0 bottom-4 w-40 opacity-90 pointer-events-none rotate-[-5deg] mix-blend-multiply">
+                                    <img src="/stamp.png" alt="Company Stamp" className="w-full h-auto" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Signatures */}
+                        <div className="grid grid-cols-[40px_1fr_40px_1fr] divide-x divide-black">
+                            <div className="p-4 flex items-center justify-center font-bold bg-gray-50 text-center writing-vertical text-xs">出租車</div>
+                            <div className="p-2 space-y-8">
+                                <div className="text-xs">出租人簽名：<span className="font-script text-lg ml-2">柯忠儒</span></div>
+                                <div className="text-xs">租車人簽名：</div>
+                            </div>
+                            <div className="p-4 flex items-center justify-center font-bold bg-gray-50 text-center writing-vertical text-xs">還車</div>
+                            <div className="p-2 space-y-8">
+                                <div className="text-xs">出租人簽名：</div>
+                                <div className="text-xs">租車人簽名：</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Print Action */}
+                <div className="p-4 bg-gray-50 text-center print:hidden rounded-b-lg border-t border-gray-100">
+                    <button
+                        onClick={() => window.print()}
+                        className="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-blue-700 transition flex items-center gap-2 mx-auto inline-flex"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path></svg>
+                        列印 / 下載 PDF
+                    </button>
+                    <p className="text-xs text-gray-400 mt-2">請使用瀏覽器列印功能，並選擇「儲存為 PDF」或直接列印。</p>
+                </div>
+            </div>
+
+            <style jsx global>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    .fixed.inset-0, .fixed.inset-0 * {
+                        visibility: visible;
+                    }
+                    .fixed.inset-0 {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: white;
+                        display: block;
+                        padding: 0;
+                        overflow: visible;
+                    }
+                    button {
+                        display: none !important;
+                    }
+                }
+                .writing-vertical {
+                    writing-mode: vertical-rl;
+                    text-orientation: upright;
+                }
+                .font-script {
+                    font-family: 'Brush Script MT', cursive;
+                }
+            `}</style>
+        </div>
+    );
 }

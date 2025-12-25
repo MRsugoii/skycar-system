@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     MoreVertical, Mail, Phone, Calendar, Search, Filter, UserPlus,
     X, User, Clock, MapPin, DollarSign, Power, ShieldCheck,
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useSystemActivity } from "../context/SystemActivityContext";
 import { read, utils } from "xlsx";
+import { supabase } from "@/lib/supabase";
 
 // Define the User type with expanded details
 type User = {
@@ -60,7 +61,62 @@ const MOCK_USERS: User[] = [
 ];
 
 export default function UsersPage() {
-    const [users, setUsers] = useState<User[]>(MOCK_USERS);
+    const [users, setUsers] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            setIsLoading(true);
+            try {
+                // Fetch users from Supabase 'users' table or 'profiles' (adjust table name as needed)
+                const { data, error } = await supabase
+                    .from('users') // Assuming 'users' table exists in public schema
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error("Error fetching users:", error);
+                } else {
+                    const mappedUsers: User[] = (data || []).map((u: any) => ({
+                        id: u.id,
+                        name: u.name || u.full_name || "Unknown",
+                        email: u.email || "",
+                        phone: u.phone || "",
+                        joinDate: u.created_at ? new Date(u.created_at).toISOString().split('T')[0] : "",
+                        status: u.status === 'suspended' ? "Suspended" : "Active",
+                        dob: u.dob || "",
+                        address: u.address || "",
+                        lineId: u.line_id || "",
+                        whatsapp: u.whatsapp || "",
+                        totalSpending: u.total_spending || 0,
+                        totalRides: u.total_rides || 0,
+                        level: u.level || "C",
+                        nationalId: u.national_id || "",
+                        password: "", // Hide password
+                    }));
+                    setUsers(mappedUsers);
+                }
+            } catch (err) {
+                console.error("Unexpected error fetching users:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchUsers();
+
+        // Real-time subscription
+        const channel = supabase
+            .channel('users_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+                fetchUsers();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
     // Search States
     const [inputName, setInputName] = useState("");
     const [inputStatus, setInputStatus] = useState("");

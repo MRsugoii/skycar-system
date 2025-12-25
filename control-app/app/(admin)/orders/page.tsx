@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSystemActivity } from "../context/SystemActivityContext";
 import InvoicePreview from "@/components/InvoicePreview";
 import { read, utils } from "xlsx";
+import { supabase } from "@/lib/supabase";
 
 type Order = {
   id: string;
@@ -125,167 +126,72 @@ function OrdersContent() {
     e.target.value = "";
   };
 
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: "CH202511100099",
-      platform: "App",
-      user: "測試員",
-      phone: "0900-000-000",
-      email: "test@example.com",
-      driver: "陳自強",
-      from: "台北车站",
-      to: "桃园机场",
-      status: "completed",
-      amount: "1200元",
-      date: "2025/11/10",
-      time: "14:00",
-      createdAt: "2025-11-10 10:00",
-      paymentMethod: "Cash",
-      serviceType: "送机",
-      isBilled: false,
-      flightNumber: "",
-      departureTime: "2025/11/10 14:00",
-      arrivalTime: "2025/11/10 15:00",
-      passengerCount: "1",
-      luggageCount: "1",
-      specialRequests: {
-        carSeat: "无",
-        boosterSeat: "无",
-        vehicleType: "一般轿车",
-        signage: "不需要",
-        notes: "测试订单"
-      },
-      priceBreakdown: {
-        base: 1200,
-        vehicleType: 0,
-        night: 0,
-        holiday: 0,
-        carSeat: 0,
-        signage: 0,
-        area: 0,
-        crossDistrict: 0,
-        extraStop: 0,
-        offPeak: 0,
-        coupon: 0,
-        total: 1200
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  // Fetch initial data and subscribe to changes
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching orders:', error);
+      } else {
+        const mappedOrders: Order[] = (data || []).map((row: any) => ({
+          id: row.id,
+          platform: "App",
+          user: row.contact_name || row.user_id || "Unknown",
+          phone: row.contact_phone || "",
+          email: "",
+          driver: row.driver_id || "未指派",
+          from: row.pickup_address,
+          to: row.dropoff_address,
+          status: row.status,
+          amount: row.price?.toString() || "0",
+          date: new Date(row.pickup_time).toLocaleDateString(),
+          time: new Date(row.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          createdAt: new Date(row.created_at).toLocaleString(),
+          paymentMethod: row.payment_method || "Cash",
+          serviceType: row.vehicle_type || "接機",
+          flightNumber: row.flight_number || "",
+          departureTime: "",
+          arrivalTime: "",
+          passengerCount: row.passenger_count?.toString() || "1",
+          luggageCount: row.luggage_count?.toString() || "0",
+          specialRequests: {
+            carSeat: "無",
+            boosterSeat: "無",
+            vehicleType: row.vehicle_type,
+            signage: "無",
+            notes: row.note || "無"
+          },
+          priceBreakdown: {
+            base: Number(row.price) || 0,
+            vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0,
+            total: Number(row.price) || 0
+          }
+        }));
+        setOrders(mappedOrders);
       }
-    },
-    {
-      id: "CH202510160001",
-      platform: "馳航網站",
-      user: "王小明",
-      phone: "0906-916-715",
-      email: "xiaoming1126@gmail.com",
-      driver: "未指派",
-      from: "桃園機場第一航廈2號出口",
-      to: "台北市國光一路112巷21號",
-      status: "unconfirmed",
-      amount: "5500元",
-      date: "2025/11/10",
-      time: "10:00",
-      createdAt: "2025-10-16 10:00",
-      paymentMethod: "Cash",
-      serviceType: "接機",
-      isBilled: false,
-      flightNumber: "SCOOT-TR897",
-      departureTime: "2025/11/10 10:00",
-      arrivalTime: "2025/11/11 11:00",
-      passengerCount: "4人 (2大/2小)",
-      luggageCount: "20寸以下 1件, 21-25寸 1件, 26-28寸 1件",
-      specialRequests: {
-        carSeat: "後向式安全座椅 1張, 前向式安全座椅 1張",
-        boosterSeat: "增高座墊 1張",
-        vehicleType: "商務8人座",
-        signage: "不需要",
-        notes: "無"
-      },
-      priceBreakdown: {
-        base: 1500,
-        vehicleType: 0,
-        night: 0,
-        holiday: 0,
-        carSeat: 0,
-        signage: 0,
-        area: 0,
-        crossDistrict: 0,
-        extraStop: 0,
-        offPeak: 0,
-        coupon: 0,
-        total: 5500
-      }
-    },
-    {
-      id: "CH202510160002",
-      platform: "馳航網站",
-      user: "李美玲",
-      phone: "0912-345-678",
-      email: "mei@example.com",
-      driver: "林志豪",
-      from: "台北港",
-      to: "新竹科學園區",
-      status: "confirmed",
-      amount: "$2,500",
-      date: "2025/10/16",
-      time: "15:15",
-      createdAt: "2025-10-16 09:30",
-      paymentMethod: "Cash",
-      isBilled: true,
-      serviceType: "包車",
-      flightNumber: "-",
-      departureTime: "2025/10/16 15:15",
-      arrivalTime: "-",
-      passengerCount: "1人",
-      luggageCount: "無",
-      specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" },
-      priceBreakdown: { base: 2500, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 2500 }
-    },
-    {
-      id: "CH202510160003", platform: "App", user: "張建國", driver: "未指派", from: "松山機場 (TSA)", to: "內湖科學園區", status: "unconfirmed", amount: "$450", date: "2025/10/16", time: "15:45", createdAt: "2025-10-16 14:00", paymentMethod: "Line Pay", isBilled: false,
-      phone: "0912-345-678", email: "zhang@example.com", serviceType: "送機", flightNumber: "BR123", departureTime: "2025/10/16 15:00", arrivalTime: "2025/10/16 15:45", passengerCount: "2人 (2大/0小)", luggageCount: "20寸以下 2件", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" }, priceBreakdown: { base: 450, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 450 }
-    },
-    {
-      id: "CH202510160004-OC", platform: "電話預約", user: "陳怡君", driver: "黃國榮", from: "基隆港", to: "台北車站", status: "trash", amount: "$0", date: "2025/10/16", time: "12:00", createdAt: "2025-10-15 18:20", paymentMethod: "Cash", isBilled: false,
-      phone: "0912-345-678", email: "chen@example.com", serviceType: "港口接送", flightNumber: "-", departureTime: "2025/10/16 12:00", arrivalTime: "-", passengerCount: "3人 (3大/0小)", luggageCount: "21-25寸 3件", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" }, priceBreakdown: { base: 0, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 0 }
-    },
-    {
-      id: "CH202510160005", platform: "馳航網站", user: "劉志明", driver: "吳雅婷", from: "高雄小港機場 (KHH)", to: "高雄85大樓", status: "completed", amount: "$800", date: "2025/10/16", time: "11:20", createdAt: "2025-10-16 08:00", paymentMethod: "Credit Card", isBilled: true,
-      phone: "0912-345-678", email: "liu@example.com", serviceType: "接機", flightNumber: "CI301", departureTime: "2025/10/16 11:00", arrivalTime: "2025/10/16 11:20", passengerCount: "1人 (1大/0小)", luggageCount: "20寸以下 1件", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" }, priceBreakdown: { base: 800, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 800 }
-    },
-    {
-      id: "CH202510160006", platform: "App", user: "林怡君", driver: "張志明", from: "台中清泉崗機場 (RMQ)", to: "逢甲夜市", status: "refund", amount: "$600", date: "2025/10/16", time: "10:15", createdAt: "2025-10-16 09:00", paymentMethod: "Credit Card", isBilled: false,
-      phone: "0912-345-678", email: "lin@example.com", serviceType: "接機", flightNumber: "JX701", departureTime: "2025/10/16 10:00", arrivalTime: "2025/10/16 10:15", passengerCount: "2人 (2大/0小)", luggageCount: "21-25寸 2件", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" }, priceBreakdown: { base: 600, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 600 }
-    },
-    {
-      id: "CH202510160007", platform: "馳航網站", user: "王大文", driver: "未指派", from: "台北101", to: "故宮博物院", status: "unconfirmed", amount: "$500", date: "2025/10/16", time: "16:00", createdAt: "2025-10-16 15:30", paymentMethod: "Cash", isBilled: false,
-      phone: "0912-345-678", email: "wang@example.com", serviceType: "包車", flightNumber: "-", departureTime: "2025/10/16 16:00", arrivalTime: "-", passengerCount: "4人 (4大/0小)", luggageCount: "無", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "商務8人座", signage: "無", notes: "無" }, priceBreakdown: { base: 500, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 500 }
-    },
-    // Mock Data for Driver 劉曉明 (ID: 1) to match Finance Page (45 orders, ~13 unbilled)
-    ...Array.from({ length: 45 }).map((_, i) => ({
-      id: `CH202501${String(i + 1).padStart(3, '0')}-LX`,
-      platform: "App",
-      user: `客戶${i + 1}`,
-      phone: "0900-000-000",
-      email: `client${i + 1}@example.com`,
-      driver: "劉曉明",
-      from: "台北市",
-      to: "桃園機場",
-      status: i < 13 ? "completed" : "completed", // All completed, but billing differs
-      amount: "1300",
-      date: "2025/01/01",
-      time: "12:00",
-      createdAt: "2025-01-01 10:00",
-      paymentMethod: "Credit Card",
-      isBilled: i >= 13, // First 13 are unbilled
-      serviceType: "送機",
-      flightNumber: "",
-      departureTime: "",
-      arrivalTime: "",
-      passengerCount: "1",
-      luggageCount: "1",
-      specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" },
-      priceBreakdown: { base: 1300, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 1300 }
-    })),
-  ]);
+    };
+
+    fetchOrders();
+
+    const channel = supabase
+      .channel('orders_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        fetchOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Truck, Ticket, Search, Plus, Edit, Trash2, X, Save, Camera, Image as ImageIcon, MoreHorizontal, AlertCircle, Download, Calendar, FileText, DollarSign, Armchair, Users, Briefcase, Car, Plane, MapPin, Route, ChevronRight, ChevronDown } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 // Define Vehicle Type based on requirements
 interface VehicleType {
@@ -81,266 +82,83 @@ function VehiclesContent() {
   const currentTab = searchParams.get('tab') || 'vehicle'; // Default to vehicle management
 
   // --- 1. Vehicle Management Data & State ---
-  const [vehicles, setVehicles] = useState<VehicleType[]>([
-    {
-      id: 1,
-      name: "舒適四人座",
-      model: "Toyota Camry / Altis",
-      quantity: 15,
-      seats: 5,
-      maxPassengers: 4,
-      maxLuggage: 2,
-      dispatchPrice: 1200,
-      holidaySurcharge: 200,
-      nightSurcharge: 100,
-      baseDistance: 20,
-      basePrice: 1200,
-      overDistancePrice: 40,
-      holidaySurchargeUnder1k: 200,
-      holidaySurchargePer1k: 200,
-      modelSurcharge: 0,
-      offPeakDiscount: 0,
-      safetySeatInfantPrice: 200,
-      safetySeatInfantMax: 2,
-      safetySeatChildPrice: 200,
-      safetySeatChildMax: 2,
-      safetySeatBoosterPrice: 100,
-      safetySeatBoosterMax: 2,
-      signboardPrice: 100,
-      extraStopPrice: 200,
-      remoteAreaPrice: 300,
-      crossDistrictPrice: 500,
-      status: true,
-      lastModified: "2025/08/29",
-      modifier: "陳明",
-      image: "/placeholder-car.jpg"
-    },
-    {
-      id: 2,
-      name: "五人座休旅",
-      model: "Toyota RAV4 / CRV",
-      quantity: 10,
-      seats: 5,
-      maxPassengers: 4,
-      maxLuggage: 3,
-      dispatchPrice: 1400,
-      holidaySurcharge: 250,
-      nightSurcharge: 150,
-      baseDistance: 20,
-      basePrice: 1400,
-      overDistancePrice: 45,
-      holidaySurchargeUnder1k: 250,
-      holidaySurchargePer1k: 250,
-      modelSurcharge: 200,
-      offPeakDiscount: 0,
-      safetySeatInfantPrice: 200,
-      safetySeatInfantMax: 2,
-      safetySeatChildPrice: 200,
-      safetySeatChildMax: 2,
-      safetySeatBoosterPrice: 100,
-      safetySeatBoosterMax: 2,
-      signboardPrice: 100,
-      extraStopPrice: 250,
-      remoteAreaPrice: 350,
-      crossDistrictPrice: 600,
-      status: true,
-      lastModified: "2025/08/29",
-      modifier: "陳明",
-    },
-    {
-      id: 3,
-      name: "進口四人座",
-      model: "Tesla Model 3 / BMW 3",
-      quantity: 8,
-      seats: 5,
-      maxPassengers: 4,
-      maxLuggage: 2,
-      dispatchPrice: 1600,
-      holidaySurcharge: 300,
-      nightSurcharge: 200,
-      baseDistance: 20,
-      basePrice: 1600,
-      overDistancePrice: 50,
-      holidaySurchargeUnder1k: 300,
-      holidaySurchargePer1k: 300,
-      modelSurcharge: 400,
-      offPeakDiscount: 0,
-      safetySeatInfantPrice: 200,
-      safetySeatInfantMax: 2,
-      safetySeatChildPrice: 200,
-      safetySeatChildMax: 2,
-      safetySeatBoosterPrice: 100,
-      safetySeatBoosterMax: 2,
-      signboardPrice: 100,
-      extraStopPrice: 300,
-      remoteAreaPrice: 400,
-      crossDistrictPrice: 800,
-      status: true,
-      lastModified: "2025/07/15",
-      modifier: "陳明",
-    },
-    {
-      id: 4,
-      name: "商務九人座",
-      model: "Hyundai Staria / Ford Tourneo",
-      quantity: 6,
-      seats: 9,
-      maxPassengers: 8,
-      maxLuggage: 8,
-      dispatchPrice: 2000,
-      holidaySurcharge: 400,
-      nightSurcharge: 300,
-      baseDistance: 20,
-      basePrice: 2000,
-      overDistancePrice: 60,
-      holidaySurchargeUnder1k: 400,
-      holidaySurchargePer1k: 400,
-      modelSurcharge: 600,
-      offPeakDiscount: 0,
-      safetySeatInfantPrice: 200,
-      safetySeatInfantMax: 2,
-      safetySeatChildPrice: 200,
-      safetySeatChildMax: 2,
-      safetySeatBoosterPrice: 100,
-      safetySeatBoosterMax: 2,
-      signboardPrice: 100,
-      extraStopPrice: 400,
-      remoteAreaPrice: 500,
-      crossDistrictPrice: 1000,
-      status: true,
-      lastModified: "2025/06/10",
-      modifier: "陳明",
-    },
-    {
-      id: 5,
-      name: "賓士 VITO",
-      model: "Mercedes-Benz Vito",
-      quantity: 5,
-      seats: 9,
-      maxPassengers: 7,
-      maxLuggage: 7,
-      dispatchPrice: 2500,
-      holidaySurcharge: 500,
-      nightSurcharge: 400,
-      baseDistance: 20,
-      basePrice: 2500,
-      overDistancePrice: 70,
-      holidaySurchargeUnder1k: 500,
-      holidaySurchargePer1k: 500,
-      modelSurcharge: 1000,
-      offPeakDiscount: 0,
-      safetySeatInfantPrice: 200,
-      safetySeatInfantMax: 3,
-      safetySeatChildPrice: 200,
-      safetySeatChildMax: 3,
-      safetySeatBoosterPrice: 100,
-      safetySeatBoosterMax: 3,
-      signboardPrice: 200,
-      extraStopPrice: 500,
-      remoteAreaPrice: 600,
-      crossDistrictPrice: 1200,
-      status: true,
-      lastModified: "2025/03/01",
-      modifier: "陳明",
-    },
-    {
-      id: 6,
-      name: "賓士 V250d",
-      model: "Mercedes-Benz V250d",
-      quantity: 4,
-      seats: 8,
-      maxPassengers: 7,
-      maxLuggage: 6,
-      dispatchPrice: 3000,
-      holidaySurcharge: 600,
-      nightSurcharge: 500,
-      baseDistance: 20,
-      basePrice: 3000,
-      overDistancePrice: 80,
-      holidaySurchargeUnder1k: 600,
-      holidaySurchargePer1k: 600,
-      modelSurcharge: 1200,
-      offPeakDiscount: 0,
-      safetySeatInfantPrice: 200,
-      safetySeatInfantMax: 2,
-      safetySeatChildPrice: 200,
-      safetySeatChildMax: 2,
-      safetySeatBoosterPrice: 100,
-      safetySeatBoosterMax: 2,
-      signboardPrice: 200,
-      extraStopPrice: 600,
-      remoteAreaPrice: 700,
-      crossDistrictPrice: 1500,
-      status: true,
-      lastModified: "2025/02/20",
-      modifier: "陳明",
-    },
-    {
-      id: 7,
-      name: "賓士航空椅",
-      model: "Mercedes-Benz V-Class Luxury",
-      quantity: 2,
-      seats: 7,
-      maxPassengers: 6,
-      maxLuggage: 4,
-      dispatchPrice: 4000,
-      holidaySurcharge: 800,
-      nightSurcharge: 600,
-      baseDistance: 20,
-      basePrice: 4000,
-      overDistancePrice: 100,
-      holidaySurchargeUnder1k: 800,
-      holidaySurchargePer1k: 800,
-      modelSurcharge: 2000,
-      offPeakDiscount: 0,
-      safetySeatInfantPrice: 200,
-      safetySeatInfantMax: 2,
-      safetySeatChildPrice: 200,
-      safetySeatChildMax: 2,
-      safetySeatBoosterPrice: 100,
-      safetySeatBoosterMax: 2,
-      signboardPrice: 200,
-      extraStopPrice: 800,
-      remoteAreaPrice: 900,
-      crossDistrictPrice: 1800,
-      status: true,
-      lastModified: "2025/02/25",
-      modifier: "陳明",
-    },
-    {
-      id: 8,
-      name: "ALPHARD",
-      model: "Toyota Alphard",
-      quantity: 3,
-      seats: 7,
-      maxPassengers: 6,
-      maxLuggage: 6,
-      dispatchPrice: 5000,
-      holidaySurcharge: 1000,
-      nightSurcharge: 800,
-      baseDistance: 20,
-      basePrice: 5000,
-      overDistancePrice: 120,
-      holidaySurchargeUnder1k: 1000,
-      holidaySurchargePer1k: 1000,
-      modelSurcharge: 2500,
-      offPeakDiscount: 0,
-      safetySeatInfantPrice: 200,
-      safetySeatInfantMax: 3,
-      safetySeatChildPrice: 200,
-      safetySeatChildMax: 3,
-      safetySeatBoosterPrice: 100,
-      safetySeatBoosterMax: 3,
-      signboardPrice: 200,
-      extraStopPrice: 1000,
-      remoteAreaPrice: 1000,
-      crossDistrictPrice: 2000,
-      status: true,
-      lastModified: "2025/01/19",
-      modifier: "陳明",
-      image: "/placeholder-car.jpg"
-    }
-  ]);
+  const [vehicles, setVehicles] = useState<VehicleType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch Vehicles from Supabase
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("vehicle_types")
+          .select("*")
+          .order("id", { ascending: true });
+
+        if (error) {
+          console.error("Error fetching vehicles:", error);
+          // Optional: Add toast error here
+        } else {
+          // Map Supabase data to local interface if needed, or assume direct match
+          // Ideally, the DB schema should match VehicleType. 
+          // For now, we assume a direct match or close enough to render.
+          // Adjust mapping as needed based on actual DB schema.
+          const mappedVehicles: VehicleType[] = (data || []).map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            model: v.model,
+            quantity: v.quantity || 0,
+            seats: v.seats || 4,
+            maxPassengers: v.max_passengers || v.seats - 1,
+            maxLuggage: v.max_luggage || 2,
+            dispatchPrice: v.dispatch_price || 0,
+            holidaySurcharge: v.holiday_surcharge || 0,
+            nightSurcharge: v.night_surcharge || 0,
+            baseDistance: v.base_distance || 0,
+            basePrice: v.base_price || 0,
+            overDistancePrice: v.over_distance_price || 0,
+            holidaySurchargeUnder1k: v.holiday_surcharge_under_1k || 0,
+            holidaySurchargePer1k: v.holiday_surcharge_per_1k || 0,
+            modelSurcharge: v.model_surcharge || 0,
+            offPeakDiscount: v.off_peak_discount || 0,
+            safetySeatInfantPrice: v.safety_seat_infant_price || 0,
+            safetySeatInfantMax: v.safety_seat_infant_max || 0,
+            safetySeatChildPrice: v.safety_seat_child_price || 0,
+            safetySeatChildMax: v.safety_seat_child_max || 0,
+            safetySeatBoosterPrice: v.safety_seat_booster_price || 0,
+            safetySeatBoosterMax: v.safety_seat_booster_max || 0,
+            signboardPrice: v.signboard_price || 0,
+            extraStopPrice: v.extra_stop_price || 0,
+            remoteAreaPrice: v.remote_area_price || 0,
+            crossDistrictPrice: v.cross_district_price || 0,
+            status: v.status !== false, // Default to true if not defined
+            lastModified: v.updated_at ? new Date(v.updated_at).toLocaleDateString() : "",
+            modifier: v.last_modifier || "System",
+            image: v.image_url || "/placeholder-car.jpg"
+          }));
+          setVehicles(mappedVehicles);
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching vehicles:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVehicles();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('vehicle_types_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_types' }, () => {
+        fetchVehicles();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // --- 2. Holiday Settings Data ---
   const [holidays, setHolidays] = useState([
