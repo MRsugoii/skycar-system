@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { PageHeader } from "../../../components/PageHeader";
-import { Phone, Clock, MapPin, Navigation, FileText } from "lucide-react";
+import { Phone, Clock, MapPin, Navigation, FileText, X } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 
 export default function OrderDetailsPage() {
@@ -26,15 +26,16 @@ export default function OrderDetailsPage() {
         if (data) {
             // Map Supabase data to local shape
             const mapStatusToFlow = (s: string) => {
-                if (s === 'completed') return 'completed';
-                if (s === 'pickedUp') return 'picked'; // Map 'pickedUp' db status to 'picked' flow
-                if (s === 'en_route') return 'enRoute';
+                const ls = (s || "").toLowerCase();
+                if (ls === 'completed') return 'completed';
+                if (ls === 'pickedup') return 'picked';
+                if (ls === 'en_route' || ls === 'en-route') return 'enRoute';
                 return 'idle';
             };
 
             const mapped = {
                 id: data.id,
-                orderId: data.id,
+                orderId: (data.note && data.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? data.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (data.id.length > 20 ? "CH-訂單" : data.id),
                 status: data.status,
                 flow: mapStatusToFlow(data.status),
                 date: new Date(data.pickup_time).toLocaleDateString(),
@@ -50,12 +51,10 @@ export default function OrderDetailsPage() {
                     luggage: { count: data.luggage_count }
                 },
                 audit: {
-                    // StartTrip -> en_route
-                    enRouteAt: data.status === 'en_route' || data.status === 'pickedUp' || data.status === 'completed' ? data.updated_at : null,
-                    // PickedUp -> pickedUp
-                    pickedAt: data.status === 'pickedUp' || data.status === 'completed' ? data.updated_at : null,
-                    // Complete -> completed
-                    completedAt: data.status === 'completed' ? data.updated_at : null
+                    // Just use created_at as placeholder or null
+                    enRouteAt: ['en_route', 'pickedup', 'completed'].includes(data.status.toLowerCase()) ? data.created_at : null,
+                    pickedAt: ['pickedup', 'completed'].includes(data.status.toLowerCase()) ? data.created_at : null,
+                    completedAt: data.status.toLowerCase() === 'completed' ? data.created_at : null
                 }
             };
             setOrder(mapped);
@@ -81,18 +80,19 @@ export default function OrderDetailsPage() {
     const updateFlow = async (newFlow: string) => {
         let newStatus = 'confirmed';
         if (newFlow === 'enRoute') newStatus = 'en_route';
-        if (newFlow === 'picked') newStatus = 'pickedUp';
+        if (newFlow === 'picked') newStatus = 'pickedup';
         if (newFlow === 'completed') newStatus = 'completed';
 
         const { error } = await supabase
             .from('orders')
-            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .update({ status: newStatus })
             .eq('id', orderId);
 
         if (error) {
             console.error(error);
             alert('更新失敗');
         } else {
+            await fetchOrder(); // Refresh local state
             if (newFlow === 'completed') {
                 alert('訂單已完成！');
                 router.push('/dashboard');
@@ -136,7 +136,7 @@ export default function OrderDetailsPage() {
             <div className="relative z-10 flex flex-col min-h-screen">
                 <PageHeader title="訂單詳情" variant="ghost" />
 
-                <div className="px-4 pb-40"> {/* pb-40 ensures space for footer */}
+                <div className="px-4 pb-80"> {/* pb-80 ensures space for footer */}
 
                     {/* Main Card */}
                     <div className="bg-white rounded-2xl shadow-xl p-5 border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -243,8 +243,8 @@ export default function OrderDetailsPage() {
                         <ActionButton
                             label="【 汽車出租單 】"
                             onClick={() => setIsDocsOpen(true)}
-                            variant="indigo"
-                            icon={<FileText size={18} className="text-indigo-100" />}
+                            variant="outline"
+                            icon={<FileText size={18} className="text-gray-500" />}
                         />
                     </div>
                     <p className="text-[10px] text-center text-gray-400 mt-2 font-medium">請依序點擊按鈕以更新行程狀態</p>
@@ -282,6 +282,7 @@ function ActionButton({ label, onClick, disabled, variant, icon }: any) {
         if (variant === 'blue') bgClass = "bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-blue-200 shadow-md transform transition-all";
         if (variant === 'red') bgClass = "bg-red-500 text-white hover:bg-red-600 active:scale-[0.98] shadow-red-200 shadow-md transform transition-all";
         if (variant === 'indigo') bgClass = "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.98] shadow-indigo-200 shadow-md transform transition-all";
+        if (variant === 'outline') bgClass = "bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-[0.98] shadow-sm transform transition-all";
     }
 
     return (
@@ -313,32 +314,39 @@ function RentalContractModal({ order, onClose }: any) {
 
     return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white w-full max-w-lg max-h-[95vh] overflow-y-auto rounded-lg shadow-2xl relative">
+            <div className="bg-white w-full max-w-lg max-h-[95vh] overflow-y-auto rounded-[32px] shadow-2xl relative">
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute right-2 top-2 p-2 bg-gray-100/80 hover:bg-gray-200 rounded-full z-10 print:hidden"
+                    className="absolute right-5 top-5 p-2 text-gray-400 hover:text-gray-600 transition-colors z-10 print:hidden"
                 >
-                    <Navigation size={20} className="rotate-45" />
+                    <X size={24} strokeWidth={2.5} />
                 </button>
 
-                {/* Contract Content - Mimicking the Image Structure */}
-                <div className="p-8 text-gray-900 font-serif text-sm leading-relaxed border-[3px] border-double border-gray-400 m-2">
+                <div className="p-8 text-gray-900 font-serif text-sm leading-relaxed border-[3px] border-double border-gray-400 m-2 relative">
 
                     {/* Header */}
-                    <div className="text-center space-y-2 mb-6">
-                        <div className="flex justify-center border-b border-black pb-2 items-baseline">
+                    <div className="text-center space-y-2 mb-6 pt-0 relative">
+                        {/* Red ID - Moved to normal flow, top right alignment container */}
+                        <div className="flex justify-end mb-2">
+                            <div className="text-red-600 text-xl font-bold tracking-widest bg-white/80 px-2 rounded">
+                                {order.orderId ? order.orderId.replace('CH', '') : "000451"}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center border-b border-black pb-2 items-baseline pt-2">
                             <span className="text-xl font-bold mr-2">公司名稱：</span>
                             <span className="text-xl border-b border-black px-4 min-w-[200px]">馳航科技股份有限公司</span>
                         </div>
-                        <div className="flex justify-between items-end relative">
-                            <h1 className="text-3xl font-bold tracking-[1em] mx-auto">汽車出租單</h1>
-                            <div className="absolute right-0 top-0 text-red-600 text-xl font-bold tracking-widest">
-                                {order.orderId ? order.orderId.substring(2) : "000451"}
-                            </div>
+                        <div className="flex justify-center items-end relative">
+                            <h1 className="text-3xl font-bold tracking-[1em] mx-auto mt-2">汽車出租單</h1>
                         </div>
                         <div className="text-right mt-1">
                             中華民國 {y - 1911} 年 {m} 月 {d} 日
+                        </div>
+
+                        <div className="absolute right-0 bottom-4 w-40 opacity-90 pointer-events-none rotate-[-5deg] mix-blend-multiply">
+                            <img src="/stamp.png" alt="Company Stamp" className="w-full h-auto hidden" /> {/* Temporarily hidden */}
                         </div>
                     </div>
 
@@ -503,6 +511,6 @@ function RentalContractModal({ order, onClose }: any) {
                     font-family: 'Brush Script MT', cursive;
                 }
             `}</style>
-        </div>
+        </div >
     );
 }

@@ -111,8 +111,23 @@ export default function PaymentPage() {
         const vehicleName = VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name || 'Unknown';
 
         try {
+            let sbUserId = sessionStorage.getItem('supabaseUserId');
+
+            // If missing, attempt to find by phone (in case session cleared or guest logic)
+            if (!sbUserId) {
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('phone', contactInfo.phone)
+                    .single();
+                if (userData?.id) {
+                    sbUserId = userData.id;
+                    sessionStorage.setItem('supabaseUserId', userData.id);
+                }
+            }
+
             const { error } = await supabase.from('orders').insert({
-                user_id: memberAccount || contactInfo.name,
+                user_id: sbUserId || (memberAccount || contactInfo.name), // Fallback to name if totally unlinked
                 contact_name: contactInfo.name,
                 contact_phone: contactInfo.phone,
                 pickup_address: pickupAddr,
@@ -123,12 +138,13 @@ export default function PaymentPage() {
                 vehicle_type: vehicleName,
                 price: prices.total,
                 status: 'pending',
-                note: rideInfo.notes
+                note: (rideInfo.notes ? rideInfo.notes + " " : "") + `[ID: ${orderId}]`
             });
 
             if (error) {
-                console.error('Supabase error:', error);
-                throw error;
+                console.error('Supabase Insert Error:', error);
+                alert("建立訂單時發生錯誤: " + (error.message || "請檢查網路連線"));
+                return;
             }
 
             // Also keep local storage for Result page display if needed, or just rely on URL params

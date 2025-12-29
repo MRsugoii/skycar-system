@@ -107,13 +107,23 @@ export default function DashboardPage() {
         // 3. Load Orders (Hybrid: Local + Supabase)
         const loadOrders = async () => {
             let list: Order[] = [];
+            let currentSbId = sbUserId;
+
+            // Proactively find Supabase ID if missing
+            if (!currentSbId && acc) {
+                const { data: userData } = await supabase.from('users').select('id').eq('national_id', acc as string).single();
+                if (userData?.id) {
+                    currentSbId = userData.id;
+                    sessionStorage.setItem('supabaseUserId', userData.id);
+                }
+            }
 
             // A. Fetch from Supabase if linked
-            if (sbUserId) {
+            if (currentSbId) {
                 const { data: sbOrders, error } = await supabase
                     .from('orders')
                     .select('*')
-                    .eq('user_id', sbUserId)
+                    .eq('user_id', currentSbId)
                     .order('created_at', { ascending: false });
 
                 if (sbOrders) {
@@ -123,10 +133,10 @@ export default function DashboardPage() {
                         if (o.status === 'completed') st = 'done';
                         else if (o.status === 'cancelled') st = 'cancelled';
                         else if (o.status === 'refund_pending') st = 'refund_pending';
-                        else st = 'ing'; // confirmed, assigned, pickedUp
+                        else st = 'ing';
 
                         return {
-                            orderId: o.id, // Use UUID or substring? UUID is long. maybe formatting later.
+                            orderId: (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : o.id.substring(0, 8),
                             status: st,
                             type: o.vehicle_type || '接送',
                             date: new Date(o.pickup_time).toLocaleString('zh-TW', { hour12: false }).replace(/\//g, '-').slice(0, 16),
@@ -145,15 +155,15 @@ export default function DashboardPage() {
                     });
                     list = mapped;
                 }
-            } else {
-                // Fallback to local storage if no Supabase link
+            }
+
+            // B. Local Storage (Only if Supabase returned nothing or isn't linked)
+            if (list.length === 0) {
                 const oStr = localStorage.getItem(`orders_${acc}`);
                 list = oStr ? JSON.parse(oStr) : [];
             }
 
-            // If list is empty, falling back to demo logic for visual population if strictly needed?
-            // The prompt asks for "Demo orders visible".
-            // If Supabase has the 5 orders (which it does for Demo User), list won't be empty.
+            // C. Filter out internal logic duplicates and sort
             setOrders(list);
 
             // Realtime subscription for User
@@ -323,7 +333,7 @@ export default function DashboardPage() {
                             進行中的訂單
                         </h2>
                         <div className="space-y-3">
-                            {ongoingOrders.length > 0 ? ongoingOrders.slice(0, 1).map(o => (
+                            {ongoingOrders.length > 0 ? ongoingOrders.map(o => (
                                 <div key={o.orderId} onClick={() => setSelectedOrder(o)} className="bg-white p-5 rounded-xl shadow-md border border-blue-100 cursor-pointer hover:shadow-lg transition">
                                     <div className="flex justify-between items-center mb-3">
                                         <span className="font-bold text-gray-900">{o.orderId.substring(0, 8)}...</span>

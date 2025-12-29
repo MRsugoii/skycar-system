@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "../../components/PageHeader";
 import { ChevronDown } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 export default function HistoryPage() {
     const router = useRouter();
@@ -19,70 +20,64 @@ export default function HistoryPage() {
         // Check for Pending/Failed Account Logic FIRST
         const currentDriverId = sessionStorage.getItem("driverIdno");
         if (currentDriverId === 'C123456789') {
-            // Pending account should see NO history
             setOrders([]);
             setLoading(false);
             return;
         }
 
-        // Load orders
-        const local = JSON.parse(localStorage.getItem("orders") || "[]");
+        const fetchHistory = async () => {
+            // Get Driver Name first for mapping
+            const driverName = "王小明"; // Using default demo driver name for now as login is simplified
 
-        // Mock Verified History Data (Standardized IDs)
-        const mocks = [
-            {
-                id: "CH20251201001", status: "completed", isBilled: false, isPaid: false, date: "2025/12/01", time: "10:00",
-                price: 1500, serviceType: "接機", flow: "completed",
-                detail: { pax: { adult: 2, child: 0 }, luggage: { s20: 0, s25: 1, s28: 0 }, contact: { name: "陳先生", phone: "0912-345-678" } },
-                audit: { completedAt: "2025-12-01T10:00:00Z" }
-            },
-            {
-                id: "CH20251203002", status: "completed", isBilled: true, isPaid: false, date: "2025/12/03", time: "14:30",
-                price: 800, serviceType: "市區", flow: "completed",
-                detail: { pax: { adult: 1, child: 0 }, luggage: { s20: 1, s25: 0, s28: 0 }, contact: { name: "林小姐", phone: "0922-333-444" } },
-                audit: { completedAt: "2025-12-03T14:30:00Z" }
-            },
-            {
-                id: "CH20251205003", status: "completed", isBilled: true, isPaid: true, date: "2025/12/05", time: "09:00",
-                price: 2200, serviceType: "包車", flow: "completed",
-                detail: { pax: { adult: 4, child: 1 }, luggage: { s20: 2, s25: 2, s28: 0 }, contact: { name: "Customer", phone: "0900-000-000" } },
-                audit: { completedAt: "2025-12-05T09:00:00Z" }
+            // 1. Get Driver UUID
+            const { data: driverData, error: driverError } = await supabase
+                .from('drivers')
+                .select('id')
+                .eq('name', driverName)
+                .single();
+
+            if (driverError || !driverData) {
+                console.error("Could not find Supabase driver ID for", driverName);
+                setLoading(false);
+                return;
             }
-        ];
 
-        // Filter local to valid completed ones (Explicitly excluding active demo just in case)
-        // Also exclude any OLD mocks that might be lingering (HIST-xxx or old CHxx)
-        const mockIds = mocks.map(m => m.id);
-        const localClean = local.filter((o: any) =>
-            (o.status === 'completed' || o.flow === 'completed') &&
-            o.id !== 'CH20251208999' && // Active Demo
-            !o.id.startsWith('HIST-') && // Old Mocks
-            !mockIds.includes(o.id) // Avoid dupe of current mocks (will re-add fresh)
-        );
+            const driverId = driverData.id;
 
-        // Merge strategy: Use mocks + Clean Local
-        const combined = [...mocks, ...localClean];
+            // 2. Fetch Completed Orders from Supabase
+            const { data, error } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('driver_id', driverId)
+                .in('status', ['completed', 'cancelled']) // Fetch completed and cancelled
+                .order('pickup_time', { ascending: false });
 
-        // PERSIST CLEAN MOCKS TO LOCALSTORAGE
-        // We need to fetch FULL local list again to update it, not just completed
-        // Filter OUT old mocks from full list, then ADD new mocks
-        const fullLocal = JSON.parse(localStorage.getItem("orders") || "[]");
-        const fullLocalClean = fullLocal.filter((o: any) =>
-            !o.id.startsWith('HIST-') &&
-            !mockIds.includes(o.id)
-            // Don't delete Active Demo here, just mocks
-        );
-        const newFullLocal = [...fullLocalClean, ...mocks];
+            if (error) {
+                console.error('Error fetching history:', error);
+            } else {
+                const mappedOrders = (data || []).map((row: any) => ({
+                    id: (row.note && row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (row.id.length > 20 ? "CH-歷史訂單" : row.id),
+                    status: row.status,
+                    // Map to local fields for UI compatibility
+                    isBilled: false, // Default for now
+                    isPaid: false,  // Default for now
+                    date: row.pickup_time ? new Date(row.pickup_time).toLocaleDateString() : 'N/A', // Format: YYYY/M/D or similar
+                    time: row.pickup_time ? new Date(row.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+                    price: row.price,
+                    serviceType: row.vehicle_type || '接送',
+                    flow: row.status === 'completed' ? 'completed' : 'cancelled', // Derived flow
+                    detail: {
+                        pax: { adult: row.passenger_count || 1, child: 0 },
+                        luggage: { s20: 0, s25: row.luggage_count || 0, s28: 0 },
+                        contact: { name: row.contact_name, phone: row.contact_phone }
+                    }
+                }));
+                setOrders(mappedOrders);
+            }
+            setLoading(false);
+        };
 
-        // Save only if different? Just save to be safe and clean up
-        localStorage.setItem("orders", JSON.stringify(newFullLocal));
-
-        setOrders(combined);
-        setLoading(false);
-
-        // Set default month to current if not set? 
-        // For demo screenshot shows "2025" "12". I'll stick to hardcoded defaults or current.
-        // Let's use current date for defaults if we want to be smart, but "2025" is safe for this demo data.
+        fetchHistory();
     }, []);
 
     // Derived Years
@@ -91,21 +86,23 @@ export default function HistoryPage() {
 
     // Filter Logic
     const filtered = orders.filter(o => {
-        const [y, m] = (o.date || "").split(' ')[0].split('/'); // "2025/10/20" or "2025-10-20"
-        // Handle potential separator differences if any, strictly assuming / based on other files
-        // But some files had replace(/-/g, '/').
-        const dateStr = o.date.replace(/-/g, '/');
-        const parts = dateStr.split('/');
-        const oYear = parts[0];
-        const oMonth = parts[1];
+        // Standardize date parsing from LocaleDateString (could be 2025/12/01 or 12/1/2025 etc depending on locale, but standardizing to parts)
+        const dateStr = o.date.includes('/') ? o.date : o.date.replace(/-/g, '/');
+        const parts = dateStr.split(' ')[0].split('/');
+        // Simple check for YMD order. Assuming YYYY/MM/DD for now based on previous component logic
+        const oYear = parts[0].length === 4 ? parts[0] : parts[2];
+        const oMonth = parts[0].length === 4 ? parts[1] : parts[0];
 
         if (year && oYear !== year) return false;
-        if (month && oMonth !== month) return false;
 
-        // Status Filter Logic (Strict Separation)
-        // unreq: Not Applied (!isBilled AND !isPaid)
-        // requesting: Applying (isBilled AND !isPaid)
-        // paid: Completed (isPaid) - Admin has processed payment
+        // Month filter: padStart to ensure '01' matches '1' if needed, or loose match
+        if (month) {
+            const mInt = parseInt(oMonth, 10);
+            const targetInt = parseInt(month, 10);
+            if (mInt !== targetInt) return false;
+        }
+
+        // Status Filter Logic
         if (statusFilter === 'unreq') return !o.isBilled && !o.isPaid;
         if (statusFilter === 'requesting') return o.isBilled && !o.isPaid;
         if (statusFilter === 'paid') return o.isPaid;

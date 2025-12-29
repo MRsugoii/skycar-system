@@ -208,9 +208,36 @@ function DriversContent() {
         setCurrentDriver(null);
     };
 
-    const handleUpdateDriver = (updatedDriver: Driver) => {
+    const handleUpdateDriver = async (updatedDriver: Driver) => {
+        // Update local state first for responsiveness
         setDrivers(prev => prev.map(d => d.id === updatedDriver.id ? updatedDriver : d));
-        setCurrentDriver(updatedDriver); // Update the modal view as well
+        setCurrentDriver(updatedDriver);
+
+        // Persist to Supabase
+        try {
+            const { error } = await supabase
+                .from('drivers')
+                .update({
+                    status: updatedDriver.status,
+                    name: updatedDriver.name,
+                    phone: updatedDriver.phone,
+                    email: updatedDriver.email,
+                    national_id: updatedDriver.nationalId,
+                    address: updatedDriver.address,
+                    bank_account: updatedDriver.bankAccount,
+                    city: updatedDriver.location
+                })
+                .eq('id', updatedDriver.id);
+
+            if (error) {
+                console.error("Error updating driver in Supabase:", error);
+                alert("數據更新失敗");
+            } else {
+                addLog(`更新司機 ${updatedDriver.name} 的狀態為 ${updatedDriver.status}`, "success");
+            }
+        } catch (err) {
+            console.error("Unexpected error updating driver:", err);
+        }
     };
 
     const filteredDrivers = drivers.filter(d => {

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Car } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '../../lib/supabase';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -19,94 +20,53 @@ export default function LoginPage() {
             return;
         }
 
-        // Mock Login Logic
-        const key = "driver_" + idno;
-        const driverRaw = localStorage.getItem(key);
+        const login = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('drivers')
+                    .select('*')
+                    .eq('national_id', idno.trim())
+                    .single();
 
-        if (driverRaw) {
-            const driver = JSON.parse(driverRaw);
-            if (driver.password === password) {
-                // Determine redirect based on status
-                if (driver.status === '審核中' || driver.status === 'pending') {
-                    // Perhaps allow login but limited? User story implies login after register success is possible but maybe limited.
-                    // For now, standard behavior:
-                    sessionStorage.setItem("driverIdno", driver.idno);
-                    router.push('/dashboard');
-                } else if (driver.status === '停權') {
-                    alert("您的帳號已被停權，請聯繫客服。");
+                if (error || !data) {
+                    alert("找無此帳號，請確認身分證字號正確或先註冊。");
+                    return;
+                }
+
+                // Check password - in this demo, password is often the phone number
+                // Strip non-numeric chars from phone for comparison if needed, but let's assume exact match with input
+                const driverPhone = data.phone || "";
+                const cleanPhone = driverPhone.replace(/-/g, '');
+
+                if (password.trim() === cleanPhone || password.trim() === driverPhone) {
+                    // Success
+                    const driverData = {
+                        name: data.name,
+                        idno: data.national_id,
+                        status: data.status,
+                        phone: data.phone,
+                        email: data.email,
+                        // Add other fields as needed
+                    };
+                    localStorage.setItem("driver_" + data.national_id, JSON.stringify(driverData));
+                    sessionStorage.setItem("driverIdno", data.national_id);
+
+                    if (data.status === '停權') {
+                        alert("您的帳號已被停權，請聯繫客服。");
+                    } else {
+                        router.push('/dashboard');
+                    }
                 } else {
-                    sessionStorage.setItem("driverIdno", driver.idno);
-                    router.push('/dashboard');
+                    alert("密碼錯誤（預設密碼為手機號碼）");
                 }
-            } else {
-                alert("密碼錯誤（預設密碼為手機號碼）");
+            } catch (err) {
+                console.error("Login error:", err);
+                alert("登入發生錯誤，請稍後再試。");
             }
-        } else {
-            // Support hardcoded demo user if needed or just fail
-            if (idno.trim() === 'A123456789' && password.trim() === '0912345678') {
-                // Ensure default demo driver exists
-                const demoDriver = {
-                    name: "王小明",
-                    idno: "A123456789",
-                    status: "active",
-                    password: "0912345678",
-                    phone: "0912-345-678",
-                    email: "wang@example.com",
-                    addr: "台北市信義區",
-                    licenseExpire: "2030-01-01",
-                    insuranceExpire: "2030-01-01",
-                    docs: {
-                        license: { expire: "2030-01-01" },
-                        insurance: { expire: "2030-01-01" }
-                    },
-                    totalOrders: 15
-                };
-                localStorage.setItem("driver_A123456789", JSON.stringify(demoDriver));
+        };
 
-                // Also ensure this driver is in the main drivers list for consistency
-                const allDrivers = JSON.parse(localStorage.getItem("drivers") || "[]");
-                if (!allDrivers.find((d: any) => d.idno === 'A123456789')) {
-                    allDrivers.push(demoDriver);
-                    localStorage.setItem("drivers", JSON.stringify(allDrivers));
-                }
-
-                sessionStorage.setItem("driverIdno", "A123456789");
-                router.push('/dashboard');
-            } else if (idno.trim() === 'C123456789' && password.trim() === '0987654321') {
-                // Mock: Force "Docs Error" state
-                const demoDriver = {
-                    name: "孫小美",
-                    idno: "C123456789",
-                    status: "denied", // Triggers 'docs_error' or 'denied' alert in dashboard
-                    password: "0987654321", // Required for subsequent logins
-                    phone: "0987-654-321",
-                    email: "sun@example.com",
-                    addr: "台北市大安區",
-                    licenseExpire: "2024-12-31", // Expired or invalid implying why it failed
-                    insuranceExpire: "2024-12-31",
-                    docs: {
-                        license: { expire: "2024-12-31" },
-                        insurance: { expire: "2024-12-31" }
-                    },
-                    totalOrders: 0
-                };
-                localStorage.setItem("driver_C123456789", JSON.stringify(demoDriver));
-
-                // Also ensure this driver is in the main drivers list for consistency
-                const allDrivers = JSON.parse(localStorage.getItem("drivers") || "[]");
-                if (!allDrivers.find((d: any) => d.idno === 'C123456789')) {
-                    allDrivers.push(demoDriver);
-                    localStorage.setItem("drivers", JSON.stringify(allDrivers));
-                }
-
-                sessionStorage.setItem("driverIdno", "C123456789");
-                router.push('/dashboard');
-            } else {
-                alert("找無此帳號，請先註冊");
-            }
-        }
-
-    }
+        login();
+    };
 
 
     return (

@@ -28,25 +28,63 @@ export default function DriverDashboard() {
         else setGreeting("晚安");
     }, []);
 
-    const refreshDriver = () => {
+    const refreshDriver = async () => {
         const idno = sessionStorage.getItem("driverIdno");
         if (!idno) {
             router.push("/login");
             return;
         }
+
+        // 1. Load initial from localStorage to avoid flicker
         const driverDataStr = localStorage.getItem("driver_" + idno);
         if (driverDataStr) {
-            const d = JSON.parse(driverDataStr);
-            setDriver(d);
+            setDriver(JSON.parse(driverDataStr));
+        }
 
-            if (d.status === 'pending') setStatusAlert("pending");
-            else if (d.status === 'denied') setStatusAlert("denied");
-            else setStatusAlert("none");
+        // 2. Fetch fresh data from Supabase
+        try {
+            const { data, error } = await supabase
+                .from('drivers')
+                .select('*')
+                .eq('national_id', idno)
+                .single();
+
+            if (data && !error) {
+                const updated = {
+                    ...data,
+                    idno: data.national_id, // map for local logic
+                };
+                setDriver(updated);
+                localStorage.setItem("driver_" + idno, JSON.stringify(updated));
+
+                // Map status to UI alerts
+                if (data.status === '審核中') setStatusAlert("pending");
+                else if (data.status === '審核不通過' || data.status === '待補件') setStatusAlert("denied");
+                else setStatusAlert("none");
+            }
+        } catch (err) {
+            console.error("Error refreshing driver profile:", err);
         }
     };
 
     useEffect(() => {
         refreshDriver();
+
+        // Real-time subscription for driver profile changes
+        const idno = sessionStorage.getItem("driverIdno");
+        if (idno) {
+            const channel = supabase
+                .channel('driver_profile_changes')
+                .on('postgres_changes',
+                    { event: 'UPDATE', schema: 'public', table: 'drivers', filter: `national_id=eq.${idno}` },
+                    () => { refreshDriver(); }
+                )
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        }
     }, [router]);
 
     // Fetch Orders from Supabase
@@ -56,12 +94,11 @@ export default function DriverDashboard() {
         let channel: any;
 
         const fetchOrders = async () => {
-            // 1. Get Driver UUID
-            // We use simple name matching for this demo bridge
+            // 1. Get Driver UUID by national_id
             const { data: driverData, error: driverError } = await supabase
                 .from('drivers')
                 .select('id')
-                .eq('name', driver.name)
+                .eq('national_id', driver.idno)
                 .single();
 
             // If driver doesn't exist in Supabase yet (e.g. login allowed via mock headers), we might fail.
@@ -78,7 +115,7 @@ export default function DriverDashboard() {
                 .from('orders')
                 .select('*')
                 .eq('driver_id', driverId)
-                .in('status', ['confirmed', 'pickedUp', 'completed', 'assigned'])
+                .in('status', ['confirmed', 'pickedUp', 'completed', 'assigned', 'en_route'])
                 .order('pickup_time', { ascending: true });
 
             if (error) {
@@ -86,6 +123,7 @@ export default function DriverDashboard() {
             } else {
                 const mappedOrders = (data || []).map((row: any) => ({
                     id: row.id,
+                    displayId: (row.note && row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (row.id.length > 20 ? "CH-訂單" : row.id),
                     status: row.status,
                     price: row.price,
                     from: row.pickup_address,
@@ -125,25 +163,48 @@ export default function DriverDashboard() {
         router.push("/login");
     };
 
-    const handleSaveProfile = (updatedDriver: any) => {
+    const handleSaveProfile = async (updatedDriver: any) => {
         const idno = sessionStorage.getItem("driverIdno");
         if (idno) {
+            // Update Supabase
+            const { error } = await supabase
+                .from('drivers')
+                .update({
+                    name: updatedDriver.name,
+                    phone: updatedDriver.phone,
+                    email: updatedDriver.email,
+                    address: updatedDriver.addr || updatedDriver.address
+                })
+                .eq('national_id', idno);
+
+            if (error) {
+                alert("儲存失敗" + error.message);
+                return;
+            }
+
             localStorage.setItem("driver_" + idno, JSON.stringify(updatedDriver));
             refreshDriver();
             setIsEditModalOpen(false);
-            alert('已儲存資料（檔案將送審）。');
+            alert('已儲存資料。');
         }
     };
 
-    const handleSubmitDocs = (updatedDocs: any) => {
+    const handleSubmitDocs = async (updatedDocs: any) => {
         const idno = sessionStorage.getItem("driverIdno");
         if (idno && driver) {
-            const updatedDriver = {
-                ...driver,
-                status: 'pending', // Re-submit triggers pending
-                docs: { ...driver.docs, ...updatedDocs }
-            };
-            localStorage.setItem("driver_" + idno, JSON.stringify(updatedDriver));
+            // Update status to '審核中' in Supabase
+            const { error } = await supabase
+                .from('drivers')
+                .update({
+                    status: '審核中'
+                })
+                .eq('national_id', idno);
+
+            if (error) {
+                alert("提交失敗");
+                return;
+            }
+
             refreshDriver();
             setIsDocsModalOpen(false);
 
@@ -163,7 +224,10 @@ export default function DriverDashboard() {
     };
 
     // Find active order
-    const ongoingOrders = orders.filter(o => o.status === 'confirmed' || o.status === 'pickedUp');
+    const ongoingOrders = orders.filter(o => {
+        const s = (o.status || "").toLowerCase();
+        return ['confirmed', 'assigned', 'pickedup', 'pickedup', 'en_route', 'en-route'].includes(s);
+    });
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center pb-20 relative overflow-hidden font-sans">
@@ -186,22 +250,21 @@ export default function DriverDashboard() {
 
 
                     {/* 1. Alerts Section */}
-                    {statusAlert === 'pending' && (
-                        <div className="bg-red-50 rounded-xl p-6 text-center shadow-sm border border-red-100 animate-in zoom-in-95 duration-500">
-                            <div className="text-red-800 font-black text-lg mb-1">司機權限</div>
-                            <div className="text-red-600 font-bold">審查中，無法使用該權限。</div>
-                        </div>
-                    )}
-
-                    {(statusAlert === 'docs_error' || statusAlert === 'denied') && (
+                    {(statusAlert === 'pending' || statusAlert === 'docs_error' || statusAlert === 'denied') && (
                         <div className="bg-white rounded-xl p-5 shadow-lg shadow-red-50/50 border border-red-100 border-l-4 border-l-red-500 animate-in slide-in-from-bottom-5 duration-500 flex flex-col gap-4">
                             <div className="flex items-start gap-4">
                                 <div className="p-2.5 bg-red-50 rounded-full text-red-600 shrink-0">
                                     <AlertTriangle size={24} strokeWidth={2.5} />
                                 </div>
                                 <div className="flex-1 pt-0.5">
-                                    <h3 className="text-gray-900 font-bold text-lg leading-tight mb-1">需補交文件</h3>
-                                    <p className="text-red-600/90 text-sm font-medium leading-relaxed">您的文件審核未通過，請依指示重新上傳以啟用帳號。</p>
+                                    <h3 className="text-gray-900 font-bold text-lg leading-tight mb-1">
+                                        {statusAlert === 'pending' ? '司機權限審查中' : '需補交文件'}
+                                    </h3>
+                                    <p className="text-red-600/90 text-sm font-medium leading-relaxed">
+                                        {statusAlert === 'pending'
+                                            ? '您的帳號正在審核中，通過後方可啟用帳號並接單。'
+                                            : '您的文件審核未通過，請依指示重新上傳以啟用帳號。'}
+                                    </p>
                                 </div>
                             </div>
                             <button
@@ -257,7 +320,9 @@ export default function DriverDashboard() {
                                             onClick={() => router.push(`/order/${order.id}`)}
                                             className="bg-gray-50 border border-gray-100 rounded-xl p-4 grid grid-cols-[1fr_auto] gap-y-1 gap-x-3 cursor-pointer hover:bg-blue-50/50 hover:border-blue-100 transition-all group"
                                         >
-                                            <div className="font-black text-gray-900 text-lg group-hover:text-blue-700 transition-colors">{order.id.substring(0, 8)}...</div>
+                                            <div className="font-black text-gray-900 text-lg group-hover:text-blue-700 transition-colors">
+                                                {(order as any).displayId ? (order as any).displayId : order.id.substring(0, 8) + "..."}
+                                            </div>
                                             <div className="text-right font-black text-gray-900 text-lg">${order.price?.toLocaleString()}</div>
 
                                             <div className="text-sm font-bold text-gray-500 flex items-center gap-1">

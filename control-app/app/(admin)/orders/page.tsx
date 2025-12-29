@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 
 type Order = {
   id: string;
+  displayId: string;
   platform: string;
   user: string;
   phone: string;
@@ -86,6 +87,7 @@ function OrdersContent() {
 
       const newOrders: Order[] = jsonData.map((row: any, index: number) => ({
         id: row['訂單編號'] || `IMP${Date.now()}${index}`,
+        displayId: row['訂單編號'] || `IMP${Date.now()}${index}`,
         platform: row['平台'] || "Excel Import",
         user: row['客戶姓名'] || "Unknown",
         phone: row['電話'] || "",
@@ -127,6 +129,15 @@ function OrdersContent() {
   };
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [drivers, setDrivers] = useState<{ id: string, name: string }[]>([]);
+
+  useEffect(() => {
+    const fetchDrivers = async () => {
+      const { data } = await supabase.from('drivers').select('id, name');
+      if (data) setDrivers(data);
+    };
+    fetchDrivers();
+  }, []);
 
   // Fetch initial data and subscribe to changes
   useEffect(() => {
@@ -139,40 +150,64 @@ function OrdersContent() {
       if (error) {
         console.error('Error fetching orders:', error);
       } else {
-        const mappedOrders: Order[] = (data || []).map((row: any) => ({
-          id: row.id,
-          platform: "App",
-          user: row.contact_name || row.user_id || "Unknown",
-          phone: row.contact_phone || "",
-          email: "",
-          driver: row.driver_id || "未指派",
-          from: row.pickup_address,
-          to: row.dropoff_address,
-          status: row.status,
-          amount: row.price?.toString() || "0",
-          date: new Date(row.pickup_time).toLocaleDateString(),
-          time: new Date(row.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          createdAt: new Date(row.created_at).toLocaleString(),
-          paymentMethod: row.payment_method || "Cash",
-          serviceType: row.vehicle_type || "接機",
-          flightNumber: row.flight_number || "",
-          departureTime: "",
-          arrivalTime: "",
-          passengerCount: row.passenger_count?.toString() || "1",
-          luggageCount: row.luggage_count?.toString() || "0",
-          specialRequests: {
-            carSeat: "無",
-            boosterSeat: "無",
-            vehicleType: row.vehicle_type,
-            signage: "無",
-            notes: row.note || "無"
-          },
-          priceBreakdown: {
-            base: Number(row.price) || 0,
-            vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0,
-            total: Number(row.price) || 0
+        const mappedOrders: Order[] = (data || []).map((row: any) => {
+          // Debug Parsing
+          const noteContent = row.note || row.notes || row.memo || "";
+          const parsedId = (noteContent && noteContent.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/))
+            ? noteContent.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1]
+            : null;
+
+          // Smart Fallback
+          let fallbackId = row.id;
+          try {
+            // Ensure valid date
+            const d = row.created_at ? new Date(row.created_at) : new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const suffix = (row.id && row.id.length > 4) ? row.id.substring(0, 4).toUpperCase() : "XXXX";
+            fallbackId = `CH${yyyy}${mm}${dd}${suffix}`;
+          } catch (e) {
+            fallbackId = `CH-ERR-${row.id ? row.id.slice(0, 4) : 'NULL'}`;
           }
-        }));
+
+          return {
+            id: row.id,
+            displayId: parsedId || fallbackId,
+            platform: "App",
+            user: row.contact_name || row.user_id || "Unknown",
+            phone: row.contact_phone || "",
+            email: "",
+            driver: row.driver_id || "未指派",
+            from: row.pickup_address,
+            to: row.dropoff_address,
+            status: row.status,
+            amount: row.price?.toString() || "0",
+            date: new Date(row.pickup_time).toLocaleDateString(),
+            time: new Date(row.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            createdAt: new Date(row.created_at).toLocaleString(),
+            paymentMethod: row.payment_method || "Cash",
+            serviceType: row.vehicle_type || "接機",
+            flightNumber: row.flight_number || "",
+            departureTime: "",
+            arrivalTime: "",
+            passengerCount: row.passenger_count?.toString() || "1",
+            luggageCount: row.luggage_count?.toString() || "0",
+            specialRequests: {
+              carSeat: "無",
+              boosterSeat: "無",
+              vehicleType: row.vehicle_type,
+              signage: "無",
+              notes: row.note || "無"
+            },
+            priceBreakdown: {
+              base: Number(row.price) || 0,
+              vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0,
+              total: Number(row.price) || 0
+            }
+          };
+        });
+        console.log("MAPPED ORDERS:", mappedOrders);
         setOrders(mappedOrders);
       }
     };
@@ -398,6 +433,7 @@ function OrdersContent() {
   const handleCreateOrder = () => {
     const newOrder: Order = {
       id: `CH${new Date().getFullYear()}${String(orders.length + 1).padStart(6, '0')}`,
+      displayId: `CH${new Date().getFullYear()}${String(orders.length + 1).padStart(6, '0')}`,
       platform: "App",
       user: "",
       phone: "",
@@ -428,35 +464,107 @@ function OrdersContent() {
     setIsModalOpen(true);
   };
 
-  const handleSaveOrder = () => {
+  const handleSaveOrder = async () => {
     if (!editForm) return;
 
-    if (isNewOrder) {
-      setOrders([editForm, ...orders]);
-      addLog(`新增訂單 #${editForm.id}`, "success");
-    } else {
-      setOrders(orders.map(o => o.id === editForm.id ? editForm : o));
-      addLog(`更新訂單 #${editForm.id} 內容`, "info");
+    try {
+      if (isNewOrder) {
+        // Simple create logic if needed, but for now we focus on update
+        setOrders([editForm, ...orders]);
+        addLog(`新增訂單 #${editForm.id}`, "success");
+      } else {
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            pickup_address: editForm.from,
+            dropoff_address: editForm.to,
+            price: Number(editForm.amount),
+            contact_name: editForm.user,
+            contact_phone: editForm.phone
+          })
+          .eq('id', editForm.id);
+
+        if (error) throw error;
+        setOrders(orders.map(o => o.id === editForm.id ? editForm : o));
+        addLog(`更新訂單 #${editForm.id} 內容完成`, "info");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("儲存失敗");
     }
     handleCloseModal();
   };
 
-  const handleDeleteOrder = () => {
+  const handleCancelOrder = async () => {
     if (!currentOrder) return;
-    if (confirm("確定要刪除此訂單嗎？")) {
-      setOrders(orders.filter(o => o.id !== currentOrder.id));
-      addLog(`刪除訂單 #${currentOrder.id}`, "warning");
+    if (confirm("確定要取消此訂單嗎？(將標記為 -OC)")) {
+      const newDisplayId = (currentOrder.displayId || currentOrder.id) + "-OC";
+
+      const { data: orderData } = await supabase.from('orders').select('note').eq('id', currentOrder.id).single();
+      let note = orderData?.note || "";
+      // Replace or Add ID tag
+      if (note.includes('[ID:')) {
+        note = note.replace(/\[ID: (CH\d+)\]/, `[ID: ${newDisplayId}]`);
+      } else {
+        note += ` [ID: ${newDisplayId}]`;
+      }
+
+      await supabase.from('orders').update({
+        status: 'cancelled',
+        note: note
+      }).eq('id', currentOrder.id);
+
+      const updatedOrder = {
+        ...currentOrder,
+        status: "cancelled",
+        displayId: newDisplayId
+      };
+      setOrders(orders.map(o => o.id === currentOrder.id ? updatedOrder : o));
+      addLog(`訂單已取消並標記為 -OC`, "warning");
       handleCloseModal();
     }
   };
 
-  const handleAssignDriver = () => {
+  const handleAssignDriver = async () => {
     if (!currentOrder) return;
-    const driverName = prompt("請輸入司機姓名：", "林志豪");
+    const driverName = prompt("請輸入司機姓名：", "王小明");
     if (driverName) {
-      const updatedOrder = { ...currentOrder, driver: driverName, status: "confirmed" };
+      // Find driver ID
+      const { data: dData } = await supabase.from('drivers').select('id').eq('name', driverName).single();
+      if (!dData) {
+        alert("找不到此司機名，請確認司機管理中姓名正確。");
+        return;
+      }
+
+      // Ensure we have a formatted ID in the note
+      const { data: orderData } = await supabase.from('orders').select('note').eq('id', currentOrder.id).single();
+      let note = orderData?.note || "";
+      let displayId = currentOrder.displayId;
+
+      if (!note.includes('[ID:')) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const serial = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+        displayId = `CH${y}${m}${d}${serial}`;
+        note = (note ? note + " " : "") + `[ID: ${displayId}]`;
+      }
+
+      const { error } = await supabase.from('orders').update({
+        driver_id: dData.id,
+        status: 'confirmed',
+        note: note
+      }).eq('id', currentOrder.id);
+
+      if (error) {
+        alert("指派失敗: " + error.message);
+        return;
+      }
+
+      const updatedOrder = { ...currentOrder, driver: driverName, status: "confirmed", displayId, note };
       setOrders(orders.map(o => o.id === currentOrder.id ? updatedOrder : o));
-      addLog(`指派司機 ${driverName} 給訂單 #${currentOrder.id}`, "info");
+      addLog(`指派司機 ${driverName} 給訂單 #${displayId}`, "info");
       handleCloseModal();
     }
   };
@@ -517,7 +625,12 @@ function OrdersContent() {
       if (currentStatus === 'statements') return false; // Don't show orders in statements tab
       // 'all' is true
     } else {
-      statusMatch = (currentStatus === 'all' || !currentStatus) ? true : o.status === currentStatus;
+      statusMatch = (currentStatus === 'all' || !currentStatus) ? true : (
+        o.status.toLowerCase() === currentStatus.toLowerCase() ||
+        (currentStatus === 'unconfirmed' && o.status.toLowerCase() === 'pending') ||
+        (currentStatus === 'confirmed' && ['assigned', 'pickedup', 'pickedUp', 'en_route', 'en-route'].includes(o.status.toLowerCase())) ||
+        (currentStatus === 'trash' && o.status.toLowerCase() === 'cancelled')
+      );
     }
 
     const nameMatch = o.user.toLowerCase().includes(activeSearch.name.toLowerCase());
@@ -537,7 +650,7 @@ function OrdersContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {currentDriver ? "司機訂單" : "訂單管理"}
+            {currentDriver ? "司機訂單" : "訂單管理 (CH)"}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             {currentDriver ? `查看 ${currentDriver} 的所有行程與帳務狀態。` : "查看所有訂單狀態、派遣車輛與詳細內容。"}
@@ -603,7 +716,13 @@ function OrdersContent() {
                 )}
                 {!currentDriver && tab.id !== 'all' && (
                   <span className={`px-2 py-0.5 rounded-full text-xs ${isActive ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
-                    {orders.filter(o => o.status === tab.id).length}
+                    {orders.filter(o => {
+                      const s = (o.status || "").toLowerCase();
+                      if (tab.id === 'unconfirmed') return s === 'unconfirmed' || s === 'pending';
+                      if (tab.id === 'confirmed') return s === 'confirmed' || ['assigned', 'pickedup', 'pickedup', 'en_route', 'en-route'].includes(s);
+                      if (tab.id === 'trash') return s === 'trash' || s === 'cancelled';
+                      return s === tab.id;
+                    }).length}
                   </span>
                 )}
                 {/* For driver tabs, we could calculate counts dynamically if needed, skipping for now */}
@@ -837,7 +956,7 @@ function OrdersContent() {
                     />
                   </th>
                 )}
-                <th className="px-6 py-4">訂單資訊</th>
+                <th className="px-6 py-4">訂單編號 (CH)</th>
                 {isFinanceMode && <th className="px-6 py-4">出帳狀態</th>}
                 <th className="px-6 py-4">客戶資料</th>
                 <th className="px-6 py-4">行程內容</th>
@@ -879,7 +998,7 @@ function OrdersContent() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="font-mono text-sm font-medium text-gray-900 group-hover:text-blue-700 transition-colors">
-                          {order.id}
+                          {order.displayId || order.id}
                         </span>
                         <span className={`text-xs mt-0.5 w-fit px-1.5 py-0.5 rounded border ${order.platform === 'App' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                           order.platform === '馳航網站' ? 'bg-cyan-50 text-cyan-600 border-cyan-100' :
@@ -941,7 +1060,7 @@ function OrdersContent() {
                     <td className="px-6 py-4 font-bold text-gray-900">{order.amount}</td>
                     {!isFinanceMode && (
                       <td className="px-6 py-4">
-                        <StatusBadge order={order} />
+                        <OrderStatusTag status={order.status} orderId={order.displayId} />
                       </td>
                     )}
                     <td className="px-6 py-4 text-right">
@@ -972,7 +1091,7 @@ function OrdersContent() {
                   <h3 className="text-xl font-bold text-gray-900">
                     {isNewOrder ? "新增訂單" : (isEditing ? "編輯訂單內容" : "訂單詳情")}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-0.5">訂單編號 #{currentOrder.id}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">訂單編號 {currentOrder.displayId || currentOrder.id}</p>
                 </div>
                 <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-500 transition-colors">
                   <X size={24} />
@@ -989,7 +1108,7 @@ function OrdersContent() {
                     訂單明細
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                    <DetailRow label="訂單編號" value={editForm.id} />
+                    <DetailRow label="訂單編號" value={editForm.displayId || editForm.id} />
                     <DetailRow
                       label="接案平台"
                       value={editForm.platform}
@@ -1197,13 +1316,14 @@ function OrdersContent() {
               {/* New Section: Buttons */}
               <div className="pt-2 flex justify-end gap-3 sticky bottom-0 bg-white p-4 items-center z-10 border-t border-gray-100">
                 {/* Delete Button */}
-                {!isNewOrder && isEditing && (
+                {/* Delete/Cancel Button */}
+                {!isNewOrder && (isEditing || currentOrder.status === 'unconfirmed' || currentOrder.status === 'pending') && (
                   <button
-                    onClick={handleDeleteOrder}
+                    onClick={handleCancelOrder}
                     className="mr-auto px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
                   >
-                    <Trash2 size={16} />
-                    刪除訂單
+                    <Ban size={16} />
+                    取消訂單 (-OC)
                   </button>
                 )}
 
@@ -1244,10 +1364,11 @@ function OrdersContent() {
                           className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors shadow-sm">
                           修改訂單
                         </button>
-                        {currentOrder.status === 'unconfirmed' && (
+                        {(currentOrder.status === 'unconfirmed' || currentOrder.status === 'pending') && (
                           <button
                             onClick={handleAssignDriver}
-                            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200">
+                            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200 flex items-center gap-2">
+                            <Car size={18} />
                             分配司機
                           </button>
                         )}
@@ -1420,42 +1541,36 @@ function PriceRow({ label, value, isEditing = false, onChange }: { label: string
   );
 }
 
-function StatusBadge({ order }: { order: Order }) {
-  let statusKey = order.status;
+const OrderStatusTag = ({ status, orderId }: { status: string, orderId: string }) => {
+  const normalizedStatus = (status || "").toLowerCase().trim();
 
-  // Custom logic for completed orders with specific ID suffixes
-  if (order.status === 'completed') {
-    if (order.id.endsWith('-RF')) {
-      statusKey = 'refunded';
-    } else if (order.id.endsWith('-NA')) {
-      statusKey = 'refund_rejected';
-    }
-  }
+  // Suffix overrides
+  let finalStatus = normalizedStatus;
+  if (orderId && orderId.includes('-RF')) finalStatus = 'refunded';
+  if (orderId && orderId.includes('-NA')) finalStatus = 'refund_rejected';
+  if (orderId && orderId.includes('-OC')) finalStatus = 'cancelled';
 
-  const styles: any = {
-    "completed": "bg-green-100 text-green-700 border-green-200",
-    "confirmed": "bg-blue-100 text-blue-700 border-blue-200",
-    "unconfirmed": "bg-yellow-100 text-yellow-700 border-yellow-200",
-    "refund": "bg-purple-100 text-purple-700 border-purple-200",
-    "trash": "bg-red-50 text-red-600 border-red-100",
-    "refunded": "bg-gray-100 text-gray-600 border-gray-200 decoration-slice",
-    "refund_rejected": "bg-red-50 text-red-700 border-red-100",
+  const config: Record<string, { label: string; className: string }> = {
+    "completed": { label: "已完成", className: "bg-green-100 text-green-700 border-green-200" },
+    "unconfirmed": { label: "未確認", className: "bg-red-50 text-red-600 border-red-200" },
+    "pending": { label: "未確認", className: "bg-red-50 text-red-600 border-red-200" },
+    "confirmed": { label: "已確認", className: "bg-blue-100 text-blue-700 border-blue-200" },
+    "assigned": { label: "已確認", className: "bg-blue-100 text-blue-700 border-blue-200" },
+    "pickedup": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200 animate-pulse" },
+    "en_route": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200 animate-pulse" },
+    "en-route": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200 animate-pulse" },
+    "refund": { label: "退費審核", className: "bg-purple-100 text-purple-700 border-purple-200" },
+    "trash": { label: "已取消", className: "bg-gray-100 text-gray-500 border-gray-200" },
+    "refunded": { label: "已退費", className: "bg-gray-100 text-gray-500 border-gray-200" },
+    "refund_rejected": { label: "不予退費", className: "bg-gray-100 text-gray-500 border-gray-200" },
+    "cancelled": { label: "已取消", className: "bg-gray-100 text-gray-500 border-gray-200" },
   };
 
-  const labels: any = {
-    "completed": "已完成",
-    "confirmed": "已確認",
-    "unconfirmed": "未確認",
-    "refund": "退費審核",
-    "trash": "垃圾桶",
-    "refunded": "已退費",
-    "refund_rejected": "不予退費",
-  }
+  const current = config[finalStatus] || { label: status || "未知", className: "bg-gray-100 text-gray-500 border-gray-200" };
 
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${styles[statusKey] || "bg-gray-100 text-gray-700 border-gray-200"}`}>
-      {labels[statusKey] || statusKey}
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${current.className}`}>
+      {current.label}
     </span>
   );
-}
-
+};

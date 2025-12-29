@@ -1,44 +1,95 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, MoreHorizontal, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+
+interface DriverFinance {
+    id: string;
+    name: string;
+    totalOrders: number;
+    totalRevenue: number;
+    platformFee: number;
+    netPayable: number;
+    unbilledCount: number;
+    lastBillingDate: string;
+}
 
 export default function FinanceContent() {
-    // Mock Data - Consistent with Drivers Page
-    const drivers = [
-        { id: "1", name: "劉曉明" },
-        { id: "2", name: "陳大華" },
-        { id: "3", name: "林志豪" },
-        { id: "4", name: "吳雅婷" },
-        { id: "5", name: "張建國" },
-        { id: "6", name: "陳小美" },
-    ];
-
-    // Mock Finance Data linked to drivers
-    const initialFinanceData = [
-        { driverId: "1", lastBillingDate: "2025-01-01", unbilledCount: 13, totalOrders: 45, totalRevenue: 58500, platformFee: 8775, netPayable: 49725 },
-        { driverId: "2", lastBillingDate: "2025-01-02", unbilledCount: 0, totalOrders: 32, totalRevenue: 41600, platformFee: 6240, netPayable: 35360 },
-        { driverId: "3", lastBillingDate: "2025-01-02", unbilledCount: 0, totalOrders: 28, totalRevenue: 36400, platformFee: 5460, netPayable: 30940 },
-        { driverId: "4", lastBillingDate: "2025-01-02", unbilledCount: 0, totalOrders: 50, totalRevenue: 65000, platformFee: 9750, netPayable: 55250 },
-        { driverId: "5", lastBillingDate: "2025-01-03", unbilledCount: 0, totalOrders: 42, totalRevenue: 54600, platformFee: 8190, netPayable: 46410 },
-        { driverId: "6", lastBillingDate: "2025-01-03", unbilledCount: 0, totalOrders: 15, totalRevenue: 19500, platformFee: 2925, netPayable: 16575 },
-    ];
-
+    const [financeData, setFinanceData] = useState<DriverFinance[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [inputDriverName, setInputDriverName] = useState("");
     const router = useRouter();
 
-    // Filter Logic
-    const filteredData = initialFinanceData.filter(item => {
-        const driver = drivers.find(d => d.id === item.driverId);
-        const matchName = driver ? driver.name.includes(inputDriverName) : false;
-        return matchName;
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                // 1. Fetch Drivers
+                const { data: drivers, error: driverError } = await supabase
+                    .from('drivers')
+                    .select('id, name')
+                    .eq('status', 'active');
+
+                if (driverError) throw driverError;
+
+                // 2. Fetch Orders
+                const { data: orders, error: orderError } = await supabase
+                    .from('orders')
+                    .select('driver_id, price, status')
+                    .not('driver_id', 'is', null);
+
+                if (orderError) throw orderError;
+
+                // 3. Aggregate Data
+                const stats: Record<string, { count: number, revenue: number }> = {};
+
+                orders?.forEach((o: any) => {
+                    if (!o.driver_id) return;
+                    if (!stats[o.driver_id]) stats[o.driver_id] = { count: 0, revenue: 0 };
+
+                    stats[o.driver_id].count += 1;
+                    stats[o.driver_id].revenue += (o.price || 0);
+                });
+
+                // 4. Map
+                const mapped: DriverFinance[] = (drivers || []).map(d => {
+                    const s = stats[d.id] || { count: 0, revenue: 0 };
+                    const fee = Math.round(s.revenue * 0.15); // 15% Platform Fee
+                    return {
+                        id: d.id,
+                        name: d.name,
+                        totalOrders: s.count,
+                        totalRevenue: s.revenue,
+                        platformFee: fee,
+                        netPayable: s.revenue - fee,
+                        unbilledCount: s.count,
+                        lastBillingDate: new Date().toISOString().split('T')[0]
+                    };
+                });
+
+                setFinanceData(mapped);
+
+            } catch (err) {
+                console.error("Error fetching finance data:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const filteredData = financeData.filter(item => {
+        return item.name.includes(inputDriverName);
     });
 
     const handleBillingOperation = (driverName: string) => {
-        // Redirect to Orders page filtered by Driver Name with finance mode
         router.push(`/orders?driver=${driverName}&mode=finance`);
     };
+
+    if (isLoading) return <div className="p-10 text-center text-gray-500">載入財務資料中...</div>;
 
     return (
         <div className="space-y-6">
@@ -77,44 +128,42 @@ export default function FinanceContent() {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-gray-50/50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold whitespace-nowrap">
-                            <th className="py-4 px-6 text-left">編號</th>
-                            <th className="py-4 px-6 text-left">司機姓名</th>
+                            <th className="py-4 px-6 text-left">司機</th>
                             <th className="py-4 px-6 text-center">總單數</th>
                             <th className="py-4 px-6 text-center">總營收 (NT$)</th>
                             <th className="py-4 px-6 text-center">平台抽成 (NT$)</th>
                             <th className="py-4 px-6 text-center">應付金額 (NT$)</th>
                             <th className="py-4 px-6 text-center">未出帳</th>
-                            <th className="py-4 px-6 text-center">最新操作出帳時間</th>
+                            <th className="py-4 px-6 text-center">出帳日期</th>
                             <th className="py-4 px-6 text-right">操作</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {filteredData.map((item) => {
-                            const driver = drivers.find(d => d.id === item.driverId);
-                            return (
-                                <tr key={item.driverId} className="hover:bg-blue-50/30 transition-colors">
-                                    <td className="py-4 px-6 text-sm text-gray-600 text-left">#{item.driverId}</td>
-                                    <td className="py-4 px-6 text-sm font-medium text-gray-900 text-left">{driver?.name}</td>
-                                    <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.totalOrders}</td>
-                                    <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.totalRevenue.toLocaleString()}</td>
-                                    <td className="py-4 px-6 text-sm text-red-500 text-center">- {item.platformFee.toLocaleString()}</td>
-                                    <td className="py-4 px-6 text-sm font-bold text-emerald-600 text-center">{item.netPayable.toLocaleString()}</td>
-                                    <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.unbilledCount}</td>
-                                    <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.lastBillingDate}</td>
-                                    <td className="py-4 px-6 text-right">
-                                        <button
-                                            onClick={() => handleBillingOperation(driver?.name || "")}
-                                            className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
-                                        >
-                                            <MoreHorizontal size={18} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
+                        {filteredData.map((item) => (
+                            <tr key={item.id} className="hover:bg-blue-50/30 transition-colors">
+                                <td className="py-4 px-6 text-sm font-medium text-gray-900 text-left">
+                                    {item.name}
+                                    <div className="text-xs text-gray-400 font-normal font-mono">#{item.id.slice(0, 6)}...</div>
+                                </td>
+                                <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.totalOrders}</td>
+                                <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.totalRevenue.toLocaleString()}</td>
+                                <td className="py-4 px-6 text-sm text-red-500 text-center">- {item.platformFee.toLocaleString()}</td>
+                                <td className="py-4 px-6 text-sm font-bold text-emerald-600 text-center">{item.netPayable.toLocaleString()}</td>
+                                <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.unbilledCount}</td>
+                                <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.lastBillingDate}</td>
+                                <td className="py-4 px-6 text-right">
+                                    <button
+                                        onClick={() => handleBillingOperation(item.name)}
+                                        className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                                    >
+                                        <MoreHorizontal size={18} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
                         {filteredData.length === 0 && (
                             <tr>
-                                <td colSpan={9} className="py-12 text-center text-gray-400 text-sm">
+                                <td colSpan={8} className="py-12 text-center text-gray-400 text-sm">
                                     查無資料
                                 </td>
                             </tr>

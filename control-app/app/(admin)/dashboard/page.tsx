@@ -50,7 +50,7 @@ export default function DashboardPage() {
             const { count: userCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
 
             // 3. Active Drivers
-            const { count: driverCount } = await supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'active');
+            const { count: driverCount } = await supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', '正常');
 
             // 4. Revenue & Recent Orders
             const { data: orderData } = await supabase
@@ -189,9 +189,9 @@ export default function DashboardPage() {
                                     <div className="text-right shrink-0 ml-2">
                                         <p className="text-sm font-bold text-gray-900">${o.price}</p>
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${o.status === 'confirmed' || o.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
-                                                o.status === 'pickedUp' ? 'bg-blue-100 text-blue-700' :
-                                                    o.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                        'bg-gray-100 text-gray-600'
+                                            o.status === 'pickedUp' ? 'bg-blue-100 text-blue-700' :
+                                                o.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                    'bg-gray-100 text-gray-600'
                                             }`}>
                                             {o.status === 'confirmed' ? '待執行' :
                                                 o.status === 'assigned' ? '已派單' :
