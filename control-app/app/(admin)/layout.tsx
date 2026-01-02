@@ -48,7 +48,7 @@ export default function AdminLayout({
                             <NavItem href="/dashboard" icon={<LayoutDashboard size={20} />} label="儀表板" />
 
                             <Suspense fallback={<div className="h-10 bg-gray-800/50 rounded animate-pulse" />}>
-                                <NavGroup icon={<ClipboardList size={20} />} label="訂單管理 (Test)" basePath="/orders" mainHref="/orders?status=unconfirmed">
+                                <NavGroup icon={<ClipboardList size={20} />} label="訂單管理" basePath="/orders" mainHref="/orders?status=unconfirmed">
                                     <SubNavItem href="/orders?status=unconfirmed" label="未確認訂單" />
                                     <SubNavItem href="/orders?status=confirmed" label="已確認訂單" />
                                     <SubNavItem href="/orders?status=completed" label="已完成訂單" />

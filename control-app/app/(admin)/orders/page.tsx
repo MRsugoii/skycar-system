@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, MoreHorizontal, Download, Plus, X, Save, Check, Trash2, RefreshCcw, Calendar, User, FileText, Car, DollarSign, Briefcase, MapPin, Clock, ArrowRight, Ban, CheckCircle, Smartphone, Globe } from "lucide-react";
+import { Search, Filter, MoreHorizontal, Download, Plus, X, Save, Check, Trash2, RefreshCcw, Calendar, User, FileText, Car, DollarSign, Briefcase, MapPin, Clock, ArrowRight, Ban, CheckCircle, Smartphone, Globe, Upload } from "lucide-react";
 import Link from "next/link";
 import { useSystemActivity } from "../context/SystemActivityContext";
 import InvoicePreview from "@/components/InvoicePreview";
@@ -207,8 +207,36 @@ function OrdersContent() {
             }
           };
         });
-        console.log("MAPPED ORDERS:", mappedOrders);
-        setOrders(mappedOrders);
+        // Inject Mock Orders for "王小明" (Wang Xiaoming)
+        const mockOrders: Order[] = [
+          {
+            id: "MOCK-001", displayId: "CH20251225001", platform: "App", user: "測試用戶A", phone: "0912345678", email: "",
+            driver: "王小明", from: "台北車站", to: "桃園機場", status: "completed", amount: "1200", date: "2025/12/25", time: "10:00",
+            createdAt: "2025/12/25 09:00:00", paymentMethod: "Cash", serviceType: "接機", flightNumber: "", departureTime: "", arrivalTime: "",
+            passengerCount: "1", luggageCount: "1", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" },
+            priceBreakdown: { base: 1200, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 1200 },
+            isBilled: true // Billed
+          },
+          {
+            id: "MOCK-002", displayId: "CH20251226002", platform: "App", user: "測試用戶B", phone: "0987654321", email: "",
+            driver: "王小明", from: "松山機場", to: "信義區", status: "completed", amount: "800", date: "2025/12/26", time: "14:00",
+            createdAt: "2025/12/26 13:00:00", paymentMethod: "Cash", serviceType: "送機", flightNumber: "", departureTime: "", arrivalTime: "",
+            passengerCount: "2", luggageCount: "2", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" },
+            priceBreakdown: { base: 800, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 800 },
+            isBilled: false // Unbilled
+          },
+          {
+            id: "MOCK-003", displayId: "CH20251227003", platform: "App", user: "測試用戶C", phone: "0911223344", email: "",
+            driver: "王小明", from: "南港展覽館", to: "桃園機場", status: "completed", amount: "1500", date: "2025/12/27", time: "09:00",
+            createdAt: "2025/12/27 08:00:00", paymentMethod: "Credit Card", serviceType: "接機", flightNumber: "", departureTime: "", arrivalTime: "",
+            passengerCount: "3", luggageCount: "3", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "七人座", signage: "無", notes: "無" },
+            priceBreakdown: { base: 1500, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 1500 },
+            isBilled: false // Unbilled
+          }
+        ];
+
+        // Merge Mock Orders
+        setOrders([...mappedOrders, ...mockOrders]);
       }
     };
 
@@ -669,7 +697,7 @@ function OrdersContent() {
               onClick={handleImportClick}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
             >
-              <FileText size={16} />
+              <Upload size={16} />
               匯入訂單
             </button>
             <button
@@ -685,6 +713,26 @@ function OrdersContent() {
               <Plus size={16} />
               新增訂單
             </button>
+          </div>
+        )}
+        {currentDriver && isFinanceMode && (
+          <div className="flex gap-3">
+            <button
+              onClick={handleBulkExport}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
+            >
+              <Download size={16} />
+              匯出選取訂單
+            </button>
+            {currentStatus === 'unbilled' && (
+              <button
+                onClick={handleOpenInvoicePreview}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium shadow-sm shadow-emerald-200"
+              >
+                <DollarSign size={16} />
+                產生出帳單
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -746,27 +794,7 @@ function OrdersContent() {
           })}
         </nav>
 
-        {/* Bulk Actions for Driver View (Finance Mode Only) */}
-        {currentDriver && isFinanceMode && (
-          <div className="flex gap-3 pb-2">
-            <button
-              onClick={handleBulkExport}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium shadow-sm"
-            >
-              <Download size={14} />
-              匯出選取訂單
-            </button>
-            {currentStatus === 'unbilled' && (
-              <button
-                onClick={handleOpenInvoicePreview}
-                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-medium shadow-sm shadow-emerald-200"
-              >
-                <DollarSign size={14} />
-                產生出帳單
-              </button>
-            )}
-          </div>
-        )}
+
       </div>
 
       {/* Advanced Search - Standardized Layout */}
@@ -778,7 +806,7 @@ function OrdersContent() {
                 <label className="text-xs font-medium text-gray-500">會員姓名</label>
                 <div className="relative">
                   <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                    <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-10 h-10 text-gray-400 flex items-center justify-center">
                       <User size={18} />
                     </div>
                     <input
@@ -795,7 +823,7 @@ function OrdersContent() {
                 <label className="text-xs font-medium text-gray-500">訂單編號</label>
                 <div className="relative">
                   <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                    <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-10 h-10 text-gray-400 flex items-center justify-center">
                       <FileText size={18} />
                     </div>
                     <input
@@ -815,7 +843,7 @@ function OrdersContent() {
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                  <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-10 h-10 text-gray-400 flex items-center justify-center">
                     <Calendar size={18} />
                   </div>
                   <input
@@ -829,7 +857,7 @@ function OrdersContent() {
               <span className="text-gray-400">-</span>
               <div className="relative flex-1">
                 <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                  <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-10 h-10 text-gray-400 flex items-center justify-center">
                     <Calendar size={18} />
                   </div>
                   <input
@@ -1468,36 +1496,38 @@ function OrdersContent() {
       }
 
       {/* Payment Confirmation Modal */}
-      {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm animate-in fade-in zoom-in duration-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">確認出納</h3>
-            <p className="text-sm text-gray-500 mb-4">請輸入經手出納的同仁姓名：</p>
-            <input
-              type="text"
-              value={paymentHandlerName}
-              onChange={(e) => setPaymentHandlerName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="例如：財務行政"
-              autoFocus
-            />
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setIsPaymentModalOpen(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleSubmitPayment}
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors shadow-sm"
-              >
-                確認
-              </button>
+      {
+        isPaymentModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm animate-in fade-in zoom-in duration-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">確認出納</h3>
+              <p className="text-sm text-gray-500 mb-4">請輸入經手出納的同仁姓名：</p>
+              <input
+                type="text"
+                value={paymentHandlerName}
+                onChange={(e) => setPaymentHandlerName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="例如：財務行政"
+                autoFocus
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setIsPaymentModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleSubmitPayment}
+                  className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                >
+                  確認
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
     </div >
   );
 }

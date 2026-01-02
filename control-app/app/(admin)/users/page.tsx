@@ -5,7 +5,7 @@ import {
     MoreVertical, Mail, Phone, Calendar, Search, Filter, UserPlus,
     X, User, Clock, MapPin, DollarSign, Power, ShieldCheck,
     ChevronLeft, ChevronRight, FileText, Download, ClipboardList,
-    Car, Briefcase, MoreHorizontal, Save, Edit, AlertTriangle, RefreshCcw
+    Car, Briefcase, MoreHorizontal, Save, Edit, AlertTriangle, RefreshCcw, Upload
 } from "lucide-react";
 import { useSystemActivity } from "../context/SystemActivityContext";
 import { read, utils } from "xlsx";
@@ -242,7 +242,7 @@ export default function UsersPage() {
                         onClick={handleImportClick}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
                     >
-                        <FileText size={16} />
+                        <Upload size={16} />
                         匯入用戶
                     </button>
                     <button
@@ -261,11 +261,11 @@ export default function UsersPage() {
             {/* Advanced Search */}
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                         <label className="text-xs font-medium text-gray-500">用戶姓名</label>
                         <div className="relative">
                             <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                                <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
+                                <div className="flex-shrink-0 w-10 h-10 text-gray-400 flex items-center justify-center">
                                     <User size={18} />
                                 </div>
                                 <input
@@ -273,23 +273,6 @@ export default function UsersPage() {
                                     value={inputName}
                                     onChange={(e) => setInputName(e.target.value)}
                                     placeholder="輸入姓名"
-                                    className="w-full h-full text-sm outline-none border-none bg-transparent text-gray-900 placeholder-gray-400"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-500">用戶狀態</label>
-                        <div className="relative">
-                            <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                                <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
-                                    <ShieldCheck size={18} />
-                                </div>
-                                <input
-                                    type="text"
-                                    value={inputStatus}
-                                    onChange={(e) => setInputStatus(e.target.value)}
-                                    placeholder="輸入狀態"
                                     className="w-full h-full text-sm outline-none border-none bg-transparent text-gray-900 placeholder-gray-400"
                                 />
                             </div>
@@ -360,7 +343,7 @@ export default function UsersPage() {
                                 <td className="px-6 py-4">
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${user.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
                                         }`}>
-                                        {user.status === 'Active' ? '啟用中' : '已停權'}
+                                        {user.status === 'Active' ? '正常' : '已停權'}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-right">

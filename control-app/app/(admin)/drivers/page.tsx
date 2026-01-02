@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, MoreHorizontal, Download, Plus, X, Save, Check, Trash2, RefreshCcw, Calendar, User, FileText, Car, DollarSign, Briefcase, MapPin, Clock, ArrowRight, Ban, CheckCircle, Smartphone, Globe, ShieldCheck, ClipboardList, Power, ChevronLeft, ChevronRight, Eye, Mail, Phone, Edit } from "lucide-react";
+import { Search, Filter, MoreHorizontal, Download, Plus, X, Save, Check, Trash2, RefreshCcw, Calendar, User, Upload, Car, DollarSign, Briefcase, MapPin, Clock, FileText, ArrowRight, Ban, CheckCircle, Smartphone, Globe, ShieldCheck, ClipboardList, Power, ChevronLeft, ChevronRight, Eye, Mail, Phone, Edit } from "lucide-react";
 import Link from "next/link";
 import { useSystemActivity } from "../context/SystemActivityContext";
 import { read, utils } from "xlsx";
@@ -286,7 +286,7 @@ function DriversContent() {
                         onClick={handleImportClick}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
                     >
-                        <FileText size={16} />
+                        <Upload size={16} />
                         匯入司機
                     </button>
                     <button
@@ -334,35 +334,18 @@ function DriversContent() {
             {/* Advanced Search */}
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                         <label className="text-xs font-medium text-gray-500">司機姓名</label>
                         <div className="relative">
                             <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                                <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
+                                <div className="flex-shrink-0 w-10 h-10 text-gray-400 flex items-center justify-center">
                                     <User size={18} />
                                 </div>
                                 <input
                                     type="text"
                                     value={inputName}
                                     onChange={(e) => setInputName(e.target.value)}
-                                    placeholder="輸入姓名"
-                                    className="w-full h-full text-sm outline-none border-none bg-transparent text-gray-900 placeholder-gray-400"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-500">司機狀態</label>
-                        <div className="relative">
-                            <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                                <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
-                                    <ShieldCheck size={18} />
-                                </div>
-                                <input
-                                    type="text"
-                                    value={inputStatus}
-                                    onChange={(e) => setInputStatus(e.target.value)}
-                                    placeholder="輸入狀態"
+                                    placeholder="請輸入司機姓名"
                                     className="w-full h-full text-sm outline-none border-none bg-transparent text-gray-900 placeholder-gray-400"
                                 />
                             </div>
@@ -387,7 +370,6 @@ function DriversContent() {
                             <th className="px-6 py-4">用戶姓名</th>
                             <th className="px-6 py-4">聯絡資訊</th>
                             <th className="px-6 py-4">加入時間</th>
-                            <th className="px-6 py-4">累積消費</th>
                             <th className="px-6 py-4">狀態</th>
                             <th className="px-6 py-4 text-right">操作</th>
                         </tr>
@@ -427,9 +409,6 @@ function DriversContent() {
                                             <Calendar size={14} className="text-gray-400" />
                                             {driver.joinDate}
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                                        NT$ {driver.totalEarnings.toLocaleString()}
                                     </td>
                                     <td className="px-6 py-4">
                                         <DriverStatusBadge status={driver.status} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, MoreHorizontal, Search } from "lucide-react";
+import { User, MoreHorizontal, Search, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -69,6 +69,21 @@ export default function FinanceContent() {
                     };
                 });
 
+                // Inject Mock Driver "王小明" if not present
+                const mockDriverName = "王小明";
+                if (!mapped.some(d => d.name === mockDriverName)) {
+                    mapped.unshift({
+                        id: "mock_driver_wang",
+                        name: mockDriverName,
+                        totalOrders: 12,
+                        totalRevenue: 36500,
+                        platformFee: 5475,
+                        netPayable: 31025,
+                        unbilledCount: 4,
+                        lastBillingDate: new Date().toISOString().split('T')[0]
+                    });
+                }
+
                 setFinanceData(mapped);
 
             } catch (err) {
@@ -101,17 +116,21 @@ export default function FinanceContent() {
             {/* Filters */}
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                         <label className="text-xs font-medium text-gray-500">司機姓名</label>
                         <div className="relative">
-                            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                            <input
-                                type="text"
-                                placeholder="請輸入司機姓名"
-                                value={inputDriverName}
-                                onChange={(e) => setInputDriverName(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
+                            <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
+                                <div className="flex-shrink-0 w-10 h-10 text-gray-400 flex items-center justify-center">
+                                    <User size={18} />
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="請輸入司機姓名"
+                                    value={inputDriverName}
+                                    onChange={(e) => setInputDriverName(e.target.value)}
+                                    className="w-full h-full text-sm outline-none border-none bg-transparent text-gray-900 placeholder-gray-400"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -140,7 +159,11 @@ export default function FinanceContent() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {filteredData.map((item) => (
-                            <tr key={item.id} className="hover:bg-blue-50/30 transition-colors">
+                            <tr
+                                key={item.id}
+                                onClick={() => handleBillingOperation(item.name)}
+                                className="hover:bg-blue-50/30 transition-colors cursor-pointer"
+                            >
                                 <td className="py-4 px-6 text-sm font-medium text-gray-900 text-left">
                                     {item.name}
                                     <div className="text-xs text-gray-400 font-normal font-mono">#{item.id.slice(0, 6)}...</div>
@@ -152,12 +175,18 @@ export default function FinanceContent() {
                                 <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.unbilledCount}</td>
                                 <td className="py-4 px-6 text-sm text-gray-600 text-center">{item.lastBillingDate}</td>
                                 <td className="py-4 px-6 text-right">
-                                    <button
-                                        onClick={() => handleBillingOperation(item.name)}
-                                        className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
-                                    >
-                                        <MoreHorizontal size={18} />
-                                    </button>
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleBillingOperation(item.name);
+                                            }}
+                                            className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-xs font-medium shadow-sm flex items-center gap-1"
+                                        >
+                                            <FileText size={14} />
+                                            查看帳務
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

@@ -154,11 +154,11 @@ export default function NotificationsPage() {
             {/* Search Bar - Standardized Layout */}
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1 md:col-span-2">
                         <label className="text-xs font-medium text-gray-500">信息類型</label>
                         <div className="relative">
                             <div className="flex items-center w-full h-10 border border-gray-200 rounded-lg hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 bg-white transition-all overflow-hidden">
-                                <div className="flex-shrink-0 pl-3 pr-2 text-gray-400 flex items-center justify-center">
+                                <div className="flex-shrink-0 w-10 h-10 text-gray-400 flex items-center justify-center">
                                     <Search size={18} />
                                 </div>
                                 <input
