@@ -99,31 +99,42 @@ export default function PaymentPage() {
             }
         }
 
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const d = String(now.getDate()).padStart(2, '0');
-        const nextSerial = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); // 4 digits
-        const orderId = `CH${y}${m}${d}${nextSerial}`;
-
-        const isPickup = basicInfo.type === 'pickup';
-        const pickupAddr = isPickup
-            ? `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`
-            : `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`;
-        const dropoffAddr = isPickup
-            ? `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`
-            : `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`;
-
-        // Determine correct date/time to use
-        const dateStr = basicInfo.pickupTime?.date || basicInfo.flightInfo?.date;
-        const timeStr = basicInfo.pickupTime?.time || basicInfo.flightInfo?.time;
-        const pickupTime = new Date(`${dateStr}T${timeStr}:00`).toISOString();
-
-        const passengerCount = (rideInfo.passengers?.adults || 0) + (rideInfo.passengers?.children || 0);
-        const luggageCount = (rideInfo.luggage?.s || 0) + (rideInfo.luggage?.m || 0) + (rideInfo.luggage?.l || 0);
-        const vehicleName = VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name || 'Unknown';
-
         try {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const nextSerial = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); // 4 digits
+            const orderId = `CH${y}${m}${d}${nextSerial}`;
+
+            const isPickup = basicInfo.type === 'pickup';
+            const pickupAddr = isPickup
+                ? `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`
+                : `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`;
+            const dropoffAddr = isPickup
+                ? `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`
+                : `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`;
+
+            // Determine correct date/time to use
+            const dateStr = basicInfo.pickupTime?.date || basicInfo.flightInfo?.date;
+            const timeStr = basicInfo.pickupTime?.time || basicInfo.flightInfo?.time;
+
+            // Safe date parsing
+            let pickupTime: string;
+            try {
+                if (!dateStr || !timeStr) throw new Error("Missing date/time");
+                const d = new Date(`${dateStr}T${timeStr}:00`);
+                if (isNaN(d.getTime())) throw new Error("Invalid date");
+                pickupTime = d.toISOString();
+            } catch (e) {
+                console.error("Date parsing error:", e);
+                pickupTime = new Date().toISOString(); // Fallback to now to prevent crash, or handle explicitly
+            }
+
+            const passengerCount = (rideInfo.passengers?.adults || 0) + (rideInfo.passengers?.children || 0);
+            const luggageCount = (rideInfo.luggage?.s || 0) + (rideInfo.luggage?.m || 0) + (rideInfo.luggage?.l || 0);
+            const vehicleName = VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name || 'Unknown';
+
             let sbUserId = sessionStorage.getItem('supabaseUserId');
 
             // If missing, attempt to find by phone (in case session cleared or guest logic)
@@ -182,9 +193,9 @@ export default function PaymentPage() {
             alert("付款成功！訂單已成立。");
             router.push(`/booking/result?status=success&orderId=${orderId}`);
 
-        } catch (err) {
-            console.error(err);
-            alert("訂單建立失敗，請稍後再試。");
+        } catch (err: any) {
+            console.error("Submit Error:", err);
+            alert("訂單建立失敗: " + (err.message || "未知錯誤"));
         }
     };
 
