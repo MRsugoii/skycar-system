@@ -92,7 +92,8 @@ export default function PaymentPage() {
         }
 
         if (paymentMethod === 'creditcard') {
-            if (cardNumber.length < 16 || !cardExpiry || !cardCvc) {
+            const cleanCardNum = cardNumber.replace(/\D/g, '');
+            if (cleanCardNum.length < 16 || !cardExpiry || !cardCvc) {
                 alert("請輸入完整的信用卡資訊");
                 return;
             }
