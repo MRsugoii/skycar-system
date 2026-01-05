@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronDown, ChevronUp, CheckCircle2, User, CreditCard, LogOut, X } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp, CheckCircle2, User, LogOut, X } from "lucide-react";
 import { VEHICLES } from "../ride-info/data";
 import { supabase } from "../../../lib/supabase";
 
@@ -361,7 +361,7 @@ export default function PaymentPage() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">信用卡號碼</label>
-                            <div className="relative">
+                            <div className="">
                                 <input
                                     type="text"
                                     placeholder="0000 0000 0000 0000"
@@ -371,9 +371,8 @@ export default function PaymentPage() {
                                         setCardNumber(v.replace(/(\d{4})(?=\d)/g, '$1 '));
                                         setPaymentMethod('creditcard');
                                     }}
-                                    className="w-full p-4 pl-12 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
+                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
                                 />
-                                <CreditCard className="absolute left-4 top-[48%] -translate-y-1/2 text-gray-400" size={20} />
                             </div>
                         </div>
 
