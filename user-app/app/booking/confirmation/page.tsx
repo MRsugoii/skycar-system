@@ -325,7 +325,29 @@ export default function BookingConfirmationPage() {
                         </div>
                         <input type="checkbox" className="hidden" checked={term1} onChange={e => setTerm1(e.target.checked)} />
                         <span className="text-xs text-gray-500 font-medium leading-relaxed">
-                            我已閱覽並同意 <span className="text-blue-600 underline">預約條款</span> 與 <span className="text-blue-600 underline">隱私政策</span>。本人確認以上行程資訊皆正確無誤。
+                            我已閱覽並同意
+                            <span
+                                className="text-blue-600 underline px-1 hover:text-blue-800 transition-colors"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.open('/legal/terms', '_blank');
+                                }}
+                            >
+                                預約條款
+                            </span>
+                            與
+                            <span
+                                className="text-blue-600 underline px-1 hover:text-blue-800 transition-colors"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.open('/legal/privacy', '_blank');
+                                }}
+                            >
+                                隱私政策
+                            </span>
+                            。本人確認以上行程資訊皆正確無誤。
                         </span>
                     </label>
                     <label className="flex items-start gap-4 cursor-pointer group">
