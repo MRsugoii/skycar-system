@@ -30,7 +30,12 @@ export default function PaymentPage() {
     // Form State
     const [invoiceType, setInvoiceType] = useState("electronic"); // electronic, mobile, taxId, donation
     const [invoiceValue, setInvoiceValue] = useState(""); // taxId or mobile code
-    const [paymentMethod, setPaymentMethod] = useState(""); // creditcard, cash
+    const [paymentMethod, setPaymentMethod] = useState("creditcard"); // default to creditcard
+
+    // Card State
+    const [cardNumber, setCardNumber] = useState("");
+    const [cardExpiry, setCardExpiry] = useState("");
+    const [cardCvc, setCardCvc] = useState("");
 
     // Auth State
     const [memberAccount, setMemberAccount] = useState<string | null>(null);
@@ -84,6 +89,13 @@ export default function PaymentPage() {
         if (!paymentMethod) {
             alert("請選擇付款方式");
             return;
+        }
+
+        if (paymentMethod === 'creditcard') {
+            if (cardNumber.length < 16 || !cardExpiry || !cardCvc) {
+                alert("請輸入完整的信用卡資訊");
+                return;
+            }
         }
 
         const now = new Date();
@@ -342,17 +354,55 @@ export default function PaymentPage() {
                     )}
                 </div>
 
-                {/* 4. Payment Method */}
+                {/* 4. Payment Details */}
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4">
-                    <h2 className="text-lg font-bold text-gray-900">付款方式</h2>
-                    <div className="space-y-3">
-                        <PaymentOption
-                            id="creditcard"
-                            label="信用卡 / 簽帳卡"
-                            selected={paymentMethod === 'creditcard'}
-                            onSelect={() => setPaymentMethod('creditcard')}
-                        />
-                        {/* Cash option removed */}
+                    <h2 className="text-lg font-bold text-gray-900">付款資訊</h2>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">信用卡號碼</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="0000 0000 0000 0000"
+                                    value={cardNumber}
+                                    onChange={(e) => {
+                                        const v = e.target.value.replace(/\D/g, '').slice(0, 16);
+                                        setCardNumber(v.replace(/(\d{4})(?=\d)/g, '$1 '));
+                                        setPaymentMethod('creditcard');
+                                    }}
+                                    className="w-full p-4 pl-12 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
+                                />
+                                <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <div className="space-y-2 w-1/2">
+                                <label className="text-sm font-bold text-gray-700">有效期限</label>
+                                <input
+                                    type="text"
+                                    placeholder="MM/YY"
+                                    value={cardExpiry}
+                                    onChange={(e) => {
+                                        let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                        if (v.length >= 2) v = v.slice(0, 2) + '/' + v.slice(2);
+                                        setCardExpiry(v);
+                                    }}
+                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-center font-mono text-lg"
+                                />
+                            </div>
+                            <div className="space-y-2 w-1/2">
+                                <label className="text-sm font-bold text-gray-700">CVC / CVV</label>
+                                <input
+                                    type="text"
+                                    placeholder="123"
+                                    value={cardCvc}
+                                    onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-center font-mono text-lg"
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
