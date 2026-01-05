@@ -373,7 +373,7 @@ export default function PaymentPage() {
                                     }}
                                     className="w-full p-4 pl-12 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
                                 />
-                                <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <CreditCard className="absolute left-4 top-[48%] -translate-y-1/2 text-gray-400" size={20} />
                             </div>
                         </div>
 
