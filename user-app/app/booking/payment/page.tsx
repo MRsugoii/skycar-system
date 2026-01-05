@@ -352,12 +352,7 @@ export default function PaymentPage() {
                             selected={paymentMethod === 'creditcard'}
                             onSelect={() => setPaymentMethod('creditcard')}
                         />
-                        <PaymentOption
-                            id="cash"
-                            label="現金"
-                            selected={paymentMethod === 'cash'}
-                            onSelect={() => setPaymentMethod('cash')}
-                        />
+                        {/* Cash option removed */}
                     </div>
                 </div>
 
