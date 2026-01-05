@@ -464,12 +464,7 @@ function VehiclesContent() {
 
 
 
-  const handleToggleRouteStatus = async (id: number) => {
-    const r = routePrices.find(x => x.id === id);
-    if (r) {
-      await supabase.from('route_prices').update({ status: !r.status }).eq('id', id);
-    }
-  };
+
 
   const handleSaveRoute = async () => {
     try {
@@ -1037,6 +1032,41 @@ function VehiclesContent() {
   const handleCloseRouteModal = () => {
     setIsRouteModalOpen(false);
     setEditingRoute(null);
+  };
+
+  const handleToggleRouteStatus = async (id: number) => {
+    // Optimistic Update
+    const currentRoute = routePrices.find(r => r.id === id);
+    if (!currentRoute) return;
+
+    setRoutePrices(prev => prev.map(r => r.id === id ? { ...r, status: !r.status } : r));
+
+    try {
+      const { error } = await supabase
+        .from('route_prices')
+        .update({ status: !currentRoute.status })
+        .eq('id', id);
+
+      if (error) {
+        // Suppress error if table is missing (Mock Data Mode)
+        // Check both Postgres 42P01 and PostgREST schema cache error messages
+        if (error.code === '42P01' || error.message?.includes('Could not find the table')) {
+          console.warn("Route Table missing, operating in Mock Mode");
+          return;
+        }
+        throw error;
+      }
+    } catch (e: any) {
+      console.error(e);
+      // Suppress alert for same errors if caught in catch block
+      if (e.message?.includes('Could not find the table') || e.code === '42P01') {
+        return;
+      }
+
+      alert("更新狀態失敗: " + (e.message || "未知錯誤"));
+      // Revert local state only for real errors
+      setRoutePrices(prev => prev.map(r => r.id === id ? { ...r, status: currentRoute.status } : r));
+    }
   };
 
   const handleSearch = () => {
@@ -1692,19 +1722,7 @@ function VehiclesContent() {
 
   const renderRouteTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <button
-          onClick={() => {
-            setEditingRoute(null);
-            setRouteFormData(initialRouteFormState);
-            setIsRouteModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          <Plus size={18} />
-          新增道路
-        </button>
-      </div>
+
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold">
