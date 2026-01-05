@@ -81,12 +81,45 @@ export default function RideInfoPage() {
     const totalPassengers = adults + children;
 
     // -- Calculated Limits --
+    // -- Calculated Limits --
     const maxPax = selectedVehicle?.max_passengers || 4;
     const baseLuggageLimit = selectedVehicle?.max_luggage || 2;
 
-    // Dynamic Luggage Bonus: 1 extra luggage for each empty seat
-    const emptySeats = Math.max(0, maxPax - totalPassengers);
-    const dynamicLuggageLimit = baseLuggageLimit + emptySeats;
+    // Custom Luggage Rules
+    // Group A: 經濟四人座, 豪華轎車, 電動專車 ({4:3, 3:3, 2:4, 1:5})
+    // Group B: 商務七人座 ({6:0, 5:2, 4:4, 3:4, 2:5, 1:6})
+    const LUGGAGE_RULES: Record<string, Record<number, number>> = {
+        "經濟四人座": { 4: 3, 3: 3, 2: 4, 1: 5 },
+        "豪華轎車": { 4: 3, 3: 3, 2: 4, 1: 5 },
+        "電動專車": { 4: 3, 3: 3, 2: 4, 1: 5 },
+        "商務七人座": { 6: 0, 5: 2, 4: 4, 3: 4, 2: 5, 1: 6 }
+    };
+
+    let dynamicLuggageLimit = baseLuggageLimit;
+    let isCustomRule = false;
+
+    if (selectedVehicle && LUGGAGE_RULES[selectedVehicle.name]) {
+        // Use specific rule
+        // If passenger count is not explicit in rule, fallback to closest or base?
+        // The rules cover 1-4 or 1-6. If 0 pax?? (impossible due to min 1 adult)
+        // If pax > max defined in rule, treat as max pax in rule or 0?
+        // Let's safe access.
+        const rule = LUGGAGE_RULES[selectedVehicle.name];
+        // Find exact match or fallback
+        if (rule[totalPassengers] !== undefined) {
+            dynamicLuggageLimit = rule[totalPassengers];
+            isCustomRule = true;
+        } else {
+            // Fallback: mostly for > max scenarios (already blocked by validation)
+            // or if rule missing. We stick to base logic if not found.
+            const emptySeats = Math.max(0, maxPax - totalPassengers);
+            dynamicLuggageLimit = baseLuggageLimit + emptySeats;
+        }
+    } else {
+        // Default Logic: 1 extra luggage per empty seat
+        const emptySeats = Math.max(0, maxPax - totalPassengers);
+        dynamicLuggageLimit = baseLuggageLimit + emptySeats;
+    }
 
     const totalLuggage = luggageS + luggageM + luggageL;
     const totalSafetySeats = infantSeats + childSeats + boosters;
@@ -128,7 +161,11 @@ export default function RideInfoPage() {
 
         // Validation: Luggage Limit
         if (totalLuggage > dynamicLuggageLimit) {
-            alert(`目前人數 (${totalPassengers}人) 下，總行李上限為 ${dynamicLuggageLimit} 件 (含座位區加載)`);
+            if (isCustomRule) {
+                alert(`目前 ${totalPassengers} 位乘客，依照車型配置最多僅能攜帶 ${dynamicLuggageLimit} 件行李`);
+            } else {
+                alert(`目前人數 (${totalPassengers}人) 下，總行李上限為 ${dynamicLuggageLimit} 件 (含座位區加載)`);
+            }
             return;
         }
 
@@ -289,13 +326,22 @@ export default function RideInfoPage() {
                             <span className="text-xs text-blue-600">件</span>
                         </div>
                     </div>
-                    {emptySeats > 0 && (
+                    {isCustomRule ? (
                         <div className="bg-blue-50 p-3 rounded-2xl flex items-start gap-2 border border-blue-100 animate-in fade-in duration-300">
                             <AlertCircle size={14} className="text-blue-500 mt-0.5 shrink-0" />
                             <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
-                                偵測到有空位！已為您自動增加 <span className="underline font-bold text-blue-800">{emptySeats} 件</span> 行李扣度 (可放置於座位區)。
+                                依照此車型配置，<span className="font-bold">{totalPassengers} 人</span> 最多可攜帶 <span className="font-bold text-blue-800 underline">{dynamicLuggageLimit} 件</span> 行李。
                             </p>
                         </div>
+                    ) : (
+                        (maxPax - totalPassengers) > 0 && (
+                            <div className="bg-blue-50 p-3 rounded-2xl flex items-start gap-2 border border-blue-100 animate-in fade-in duration-300">
+                                <AlertCircle size={14} className="text-blue-500 mt-0.5 shrink-0" />
+                                <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
+                                    偵測到有空位！已為您自動增加 <span className="underline font-bold text-blue-800">{Math.max(0, maxPax - totalPassengers)} 件</span> 行李扣度 (可放置於座位區)。
+                                </p>
+                            </div>
+                        )
                     )}
 
                     <LuggageRow label="20 吋以下" value={luggageS} onChange={setLuggageS} />
