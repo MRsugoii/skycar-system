@@ -24,9 +24,7 @@ export default function RideInfoPage() {
     const [boosters, setBoosters] = useState(0);       // 4-12 yo
 
     // Luggage
-    const [luggageS, setLuggageS] = useState(0); // 20 inch below
-    const [luggageM, setLuggageM] = useState(0); // 21-25 inch
-    const [luggageL, setLuggageL] = useState(0); // 26-28 inch
+    const [luggageCount, setLuggageCount] = useState(0);
 
     // Other
     const [notes, setNotes] = useState("");
@@ -57,9 +55,7 @@ export default function RideInfoPage() {
                     setInfantSeats(data.seats?.infant || 0);
                     setChildSeats(data.seats?.child || 0);
                     setBoosters(data.seats?.booster || 0);
-                    setLuggageS(data.luggage?.s || 0);
-                    setLuggageM(data.luggage?.m || 0);
-                    setLuggageL(data.luggage?.l || 0);
+                    setLuggageCount(data.luggage?.total || 0);
                     setNotes(data.notes || "");
                     if (data.signboard?.needed) {
                         setIsSignboard(true);
@@ -81,7 +77,6 @@ export default function RideInfoPage() {
     const totalPassengers = adults + children;
 
     // -- Calculated Limits --
-    // -- Calculated Limits --
     const maxPax = selectedVehicle?.max_passengers || 4;
     const baseLuggageLimit = selectedVehicle?.max_luggage || 2;
 
@@ -99,29 +94,28 @@ export default function RideInfoPage() {
     let isCustomRule = false;
 
     if (selectedVehicle && LUGGAGE_RULES[selectedVehicle.name]) {
-        // Use specific rule
-        // If passenger count is not explicit in rule, fallback to closest or base?
-        // The rules cover 1-4 or 1-6. If 0 pax?? (impossible due to min 1 adult)
-        // If pax > max defined in rule, treat as max pax in rule or 0?
-        // Let's safe access.
         const rule = LUGGAGE_RULES[selectedVehicle.name];
-        // Find exact match or fallback
         if (rule[totalPassengers] !== undefined) {
             dynamicLuggageLimit = rule[totalPassengers];
             isCustomRule = true;
         } else {
-            // Fallback: mostly for > max scenarios (already blocked by validation)
-            // or if rule missing. We stick to base logic if not found.
             const emptySeats = Math.max(0, maxPax - totalPassengers);
             dynamicLuggageLimit = baseLuggageLimit + emptySeats;
         }
     } else {
-        // Default Logic: 1 extra luggage per empty seat
         const emptySeats = Math.max(0, maxPax - totalPassengers);
         dynamicLuggageLimit = baseLuggageLimit + emptySeats;
     }
 
-    const totalLuggage = luggageS + luggageM + luggageL;
+    // Auto-clamp luggage count if it exceeds limit when conditions change (e.g. passengers inc)
+    // NOTE: User wants "No Fool-proofing" as complaint that it allowed excess. 
+    // So we should enforce it.
+    useEffect(() => {
+        if (luggageCount > dynamicLuggageLimit) {
+            setLuggageCount(dynamicLuggageLimit);
+        }
+    }, [dynamicLuggageLimit, luggageCount]);
+
     const totalSafetySeats = infantSeats + childSeats + boosters;
 
     // -- Handlers --
@@ -160,7 +154,7 @@ export default function RideInfoPage() {
         }
 
         // Validation: Luggage Limit
-        if (totalLuggage > dynamicLuggageLimit) {
+        if (luggageCount > dynamicLuggageLimit) {
             if (isCustomRule) {
                 alert(`目前 ${totalPassengers} 位乘客，依照車型配置最多僅能攜帶 ${dynamicLuggageLimit} 件行李`);
             } else {
@@ -174,7 +168,7 @@ export default function RideInfoPage() {
             vehicleId: selectedVehicleId,
             passengers: { adults, children },
             seats: { infant: infantSeats, child: childSeats, booster: boosters },
-            luggage: { s: luggageS, m: luggageM, l: luggageL },
+            luggage: { total: luggageCount },
             notes,
             signboard: isSignboard ? {
                 needed: true,
@@ -344,9 +338,30 @@ export default function RideInfoPage() {
                         )
                     )}
 
-                    <LuggageRow label="20 吋以下" value={luggageS} onChange={setLuggageS} />
-                    <LuggageRow label="21–25 吋" value={luggageM} onChange={setLuggageM} />
-                    <LuggageRow label="26–28 吋" value={luggageL} onChange={setLuggageL} />
+                    {/* Unified Luggage Input */}
+                    <div className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0">
+                        <div>
+                            <div className="font-bold text-gray-900">總行李數</div>
+                            <div className="text-[10px] text-gray-400 font-medium">請輸入總件數</div>
+                        </div>
+                        <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+                            <button
+                                onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))}
+                                disabled={luggageCount <= 0}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${luggageCount <= 0 ? 'text-gray-300 cursor-not-allowed' : 'bg-white text-gray-700 shadow-sm hover:scale-105'}`}
+                            >
+                                <Minus size={18} strokeWidth={3} />
+                            </button>
+                            <span className="w-6 text-center font-black text-lg text-gray-900">{luggageCount}</span>
+                            <button
+                                onClick={() => setLuggageCount(Math.min(dynamicLuggageLimit, luggageCount + 1))}
+                                disabled={luggageCount >= dynamicLuggageLimit}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${luggageCount >= dynamicLuggageLimit ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white shadow-lg shadow-blue-100 hover:scale-105'}`}
+                            >
+                                <Plus size={18} strokeWidth={3} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* 5. Other Requests */}
@@ -481,33 +496,4 @@ function IconCounterRow({ label, subLabel, value, onChange, icon, limit }: any) 
     )
 }
 
-function LuggageRow({ label, value, onChange }: any) {
-    return (
-        <div className="flex justify-between items-center py-2.5">
-            <div className="font-bold text-gray-700 text-sm">{label}</div>
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-4 bg-gray-50/50 p-1 rounded-xl border border-gray-100">
-                    <button
-                        onClick={() => onChange(Math.max(0, value - 1))}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${value === 0 ? 'text-gray-300' : 'bg-white text-gray-400 shadow-sm'}`}
-                    >
-                        <Minus size={16} strokeWidth={3} />
-                    </button>
-                    <input
-                        type="number"
-                        className="w-8 text-center bg-transparent font-bold text-gray-900 outline-none"
-                        value={value}
-                        onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-                    />
-                    <button
-                        onClick={() => onChange(value + 1)}
-                        className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-md"
-                    >
-                        <Plus size={16} strokeWidth={3} />
-                    </button>
-                </div>
-                <span className="text-[10px] text-gray-400 font-bold w-4">件</span>
-            </div>
-        </div>
-    )
-}
+
