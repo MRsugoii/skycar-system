@@ -125,7 +125,7 @@ export default function RideInfoPage() {
         "電動專車": 2,
         "商務七人座": 4
     };
-    const vehicleSeatLimit = SAFETY_SEAT_TOTAL_RULES[selectedVehicle.name] || 2; // Default to 2
+    const vehicleSeatLimit = SAFETY_SEAT_TOTAL_RULES[selectedVehicle?.name || ''] || 2; // Default to 2
 
     // -- Handlers --
 
