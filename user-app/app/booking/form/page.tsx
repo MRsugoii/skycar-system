@@ -158,6 +158,7 @@ function BookingForm() {
                 </h1>
             </div>
 
+            {/* Unified Container for all cards */}
             <div className="px-4 relative z-10 pt-4 space-y-4">
 
                 {/* Airport Card */}
@@ -182,11 +183,6 @@ function BookingForm() {
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
                     </div>
                 </div>
-            </div>
-
-            {/* REPLACED CONTENT STARTS HERE (Merged Card) */}
-            <div className="px-4 relative z-10 space-y-4">
-                {/* Airport Card is above this block, check StartLine */}
 
                 {/* Combined Flight Info / Booking Method Card */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
@@ -448,8 +444,6 @@ function BookingForm() {
             </div>
 
             {/* Bottom Actions */}
-
-
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 z-20">
                 <div className="max-w-[420px] mx-auto">
                     <button
