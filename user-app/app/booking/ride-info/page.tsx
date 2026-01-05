@@ -118,6 +118,15 @@ export default function RideInfoPage() {
 
     const totalSafetySeats = infantSeats + childSeats + boosters;
 
+    // Safety Seat Total Limits
+    const SAFETY_SEAT_TOTAL_RULES: Record<string, number> = {
+        "經濟四人座": 2,
+        "豪華轎車": 2,
+        "電動專車": 2,
+        "商務七人座": 4
+    };
+    const vehicleSeatLimit = SAFETY_SEAT_TOTAL_RULES[selectedVehicle.name] || 2; // Default to 2
+
     // -- Handlers --
 
     const handleNext = () => {
@@ -138,17 +147,6 @@ export default function RideInfoPage() {
             alert(`安全座椅總量不能超過總人數減一（需保留一位成人座位）`);
             return;
         }
-
-        // Validation: Total Safety Seat Limit (Physical Capacity)
-        // Economy/Luxury/Electric: Max 2
-        // Business 7: Max 4
-        const SAFETY_SEAT_TOTAL_RULES: Record<string, number> = {
-            "經濟四人座": 2,
-            "豪華轎車": 2,
-            "電動專車": 2,
-            "商務七人座": 4
-        };
-        const vehicleSeatLimit = SAFETY_SEAT_TOTAL_RULES[selectedVehicle.name] || 2; // Default to 2
 
         if (totalSafetySeats > vehicleSeatLimit) {
             alert(`${selectedVehicle.name} 受限於車內空間，最多僅能安裝 ${vehicleSeatLimit} 張安全座椅`);
@@ -349,7 +347,12 @@ export default function RideInfoPage() {
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
                     <div className="border-l-4 border-blue-500 pl-3">
                         <h2 className="text-lg font-bold text-gray-900">安全座椅</h2>
-                        <p className="text-xs text-blue-600 font-bold mt-1">依規定 4 歲或體重未達 18 公斤需使用</p>
+                        <p className="text-xs text-blue-600 font-bold mt-1">
+                            依規定 4 歲或體重未達 18 公斤需使用
+                            <span className="text-gray-400 font-normal ml-2 list-none">
+                                (本車型最多可裝 {vehicleSeatLimit} 張)
+                            </span>
+                        </p>
                     </div>
 
                     <IconCounterRow
@@ -358,7 +361,7 @@ export default function RideInfoPage() {
                         value={infantSeats}
                         onChange={setInfantSeats}
                         icon={<Armchair size={18} className="text-blue-500" />}
-                        limit={selectedVehicle?.safety_seat_infant_max || 0}
+                        limit={Math.min(selectedVehicle?.safety_seat_infant_max || 0, infantSeats + (vehicleSeatLimit - totalSafetySeats))}
                     />
 
                     <IconCounterRow
@@ -367,7 +370,7 @@ export default function RideInfoPage() {
                         value={childSeats}
                         onChange={setChildSeats}
                         icon={<Armchair size={18} className="text-blue-600" />}
-                        limit={selectedVehicle?.safety_seat_child_max || 0}
+                        limit={Math.min(selectedVehicle?.safety_seat_child_max || 0, childSeats + (vehicleSeatLimit - totalSafetySeats))}
                     />
 
                     <IconCounterRow
@@ -376,7 +379,7 @@ export default function RideInfoPage() {
                         value={boosters}
                         onChange={setBoosters}
                         icon={<Armchair size={18} className="text-indigo-600" />}
-                        limit={selectedVehicle?.safety_seat_booster_max || 0}
+                        limit={Math.min(selectedVehicle?.safety_seat_booster_max || 0, boosters + (vehicleSeatLimit - totalSafetySeats))}
                     />
                 </div>
 
