@@ -452,18 +452,6 @@ function BookingForm() {
                                     placeholder="詳細地址（路 / 巷 / 弄 / 號 / 樓）(必填)"
                                     className="w-full p-3.5 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400 min-h-[80px] resize-none"
                                 />
-                                {/* Common Locations Mock */}
-                                <div className="flex flex-wrap gap-2">
-                                    {COMMON_LOCATIONS.map(place => (
-                                        <button
-                                            key={place}
-                                            onClick={() => updateLocation(loc.id, 'address', place)}
-                                            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded-md transition"
-                                        >
-                                            {place}
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
                         </div>
                     ))}
