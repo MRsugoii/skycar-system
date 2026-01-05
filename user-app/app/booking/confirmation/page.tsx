@@ -222,18 +222,7 @@ export default function BookingConfirmationPage() {
 
             <div className="px-4 relative z-10 pt-4 space-y-4">
 
-                {/* 1. Category Badge */}
-                <div className="flex justify-center">
-                    <div className={`px-4 py-1.5 rounded-full text-xs font-black shadow-sm flex items-center gap-2 border ${prices.category === 'weekday' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                        prices.category === 'holiday' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                            'bg-amber-50 text-amber-700 border-amber-100'
-                        }`}>
-                        <div className={`w-2 h-2 rounded-full animate-pulse ${prices.category === 'weekday' ? 'bg-emerald-500' :
-                            prices.category === 'holiday' ? 'bg-blue-500' : 'bg-amber-500'
-                            }`} />
-                        適用計價：{categoryLabels[prices.category]}
-                    </div>
-                </div>
+
 
                 {/* 2. Contact Info */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
