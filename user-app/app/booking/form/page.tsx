@@ -26,7 +26,6 @@ function BookingForm() {
     const [flightNumber, setFlightNumber] = useState("");
     const [airport, setAirport] = useState("");
     const [flightError, setFlightError] = useState("");
-    const [arrivalTimeMsg, setArrivalTimeMsg] = useState("");
 
     // Multiple Dropoff Locations
     const [locations, setLocations] = useState([
@@ -95,27 +94,14 @@ function BookingForm() {
 
     const handleFlightBlur = () => {
         setFlightError("");
-        setArrivalTimeMsg("");
 
         if (!flightNumber) return;
 
-        // 1. Validation (Alphanumeric, 2-8 chars)
-        const isValid = /^[a-zA-Z0-9]{2,10}$/.test(flightNumber);
+        // 1. Validation (Alphanumeric + Dash, 2-20 chars for Flight/Ship)
+        const isValid = /^[a-zA-Z0-9-]{2,20}$/.test(flightNumber);
         if (!isValid) {
-            setFlightError("航班編號格式錯誤 (僅限英數字)");
+            setFlightError("航班/船班編號格式錯誤 (僅限英數字與橫線)");
             return;
-        }
-
-        // 2. Mock Arrival Time (Only for 'flight' mode and Pickup)
-        if (isPickup && bookingMode === 'flight') {
-            // Mock logic: Current time + 2 hours (or specific logic)
-            // Just for demo, we pick a random time or standard time?
-            // "填寫了航班號出現飛機抵達時間" -> User implies auto-fill.
-            const mockHour = "14";
-            const mockMinute = "30";
-            setHour(mockHour);
-            setMinute(mockMinute);
-            setArrivalTimeMsg(`預計抵達時間: ${mockHour}:${mockMinute}`);
         }
     };
 
@@ -312,12 +298,6 @@ function BookingForm() {
                             />
                             {flightError && (
                                 <p className="text-xs text-red-500 font-medium">{flightError}</p>
-                            )}
-                            {arrivalTimeMsg && !flightError && (
-                                <p className="text-xs text-blue-600 font-medium flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                    {arrivalTimeMsg}
-                                </p>
                             )}
                         </div>
 
