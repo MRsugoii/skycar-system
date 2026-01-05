@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronDown, ChevronUp, CheckCircle2, User, Ticket, LogOut, X } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp, CheckCircle2, User, CreditCard, LogOut, X } from "lucide-react";
 import { VEHICLES } from "../ride-info/data";
 import { supabase } from "../../../lib/supabase";
 
@@ -373,7 +373,7 @@ export default function PaymentPage() {
                                     }}
                                     className="w-full p-4 pl-12 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
                                 />
-                                <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                             </div>
                         </div>
 
