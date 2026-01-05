@@ -10,6 +10,9 @@ function BookingForm() {
     const type = searchParams.get('type') || 'pickup';
     const isPickup = type === 'pickup';
 
+    // Booking Mode State
+    const [bookingMode, setBookingMode] = useState<'flight' | 'time'>('flight');
+
     // State
     const [date, setDate] = useState("");
     const [hour, setHour] = useState("");
@@ -28,12 +31,16 @@ function BookingForm() {
         { id: 1, city: "", district: "", address: "" }
     ]);
 
-    // Restore state from sessionStorage on mount
+    // Restore state from sessionStorage on mount (Update to restore bookingMode)
     useEffect(() => {
         const savedBasic = sessionStorage.getItem('booking_basic_info');
         if (savedBasic) {
             try {
                 const data = JSON.parse(savedBasic);
+
+                if (data.bookingMode) {
+                    setBookingMode(data.bookingMode);
+                }
 
                 if (data.flightInfo) {
                     setDate(data.flightInfo.date || "");
@@ -99,10 +106,17 @@ function BookingForm() {
 
     const handleNext = () => {
         // Validation basic
-        if (!date || !hour || !minute || !flightNumber || !airport) {
+        if (!date || !flightNumber || !airport) {
             alert("請填寫完整航班資訊");
             return;
         }
+
+        // Validate time only if in 'specific time' mode
+        if (bookingMode === 'time' && (!hour || !minute)) {
+            alert("請填寫完整時間");
+            return;
+        }
+
         if (!isPickup && (!pickupDate || !pickupHour || !pickupMinute)) {
             alert("請填寫完整乘車時間");
             return;
@@ -117,7 +131,8 @@ function BookingForm() {
         // Save basic info to storage
         const bookingDraft = {
             type,
-            flightInfo: { date, time: `${hour}:${minute}`, flightNumber, airport },
+            bookingMode, // Save mode
+            flightInfo: { date, time: bookingMode === 'time' ? `${hour}:${minute}` : null, flightNumber, airport },
             pickupTime: isPickup ? null : { date: pickupDate, time: `${pickupHour}:${pickupMinute}` },
             locations
         };
@@ -145,17 +160,72 @@ function BookingForm() {
 
             <div className="px-4 relative z-10 pt-4 space-y-4">
 
-                {/* Flight Info Card */}
-                <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
+                {/* Airport Card */}
+                <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-2">
                     <div className="border-l-4 border-blue-500 pl-3">
-                        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                            {isPickup ? '航班 / 船班抵達時間' : '航班 / 船班起飛時間'}
-                        </h2>
+                        <h2 className="text-lg font-bold text-gray-900">機場 / 港口</h2>
+                    </div>
+                    <div className="relative">
+                        <select
+                            value={airport}
+                            onChange={e => setAirport(e.target.value)}
+                            className="w-full p-3.5 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500 text-gray-900"
+                        >
+                            <option value="" disabled>請選擇航站</option>
+                            <option value="tpe1">桃園機場 第一航廈</option>
+                            <option value="tpe2">桃園機場 第二航廈</option>
+                            <option value="tsa">松山機場</option>
+                            <option value="rmq">台中清泉崗機場</option>
+                            <option value="khh">高雄小港機場</option>
+                            <option value="kel">基隆港</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                    </div>
+                </div>
+            </div>
+
+            {/* REPLACED CONTENT STARTS HERE (Merged Card) */}
+            <div className="px-4 relative z-10 space-y-4">
+                {/* Airport Card is above this block, check StartLine */}
+
+                {/* Combined Flight Info / Booking Method Card */}
+                <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
+                    <div className="flex items-center gap-4">
+                        <label className="text-base font-bold text-gray-900">預約方式</label>
+                        <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="bookingMode"
+                                    value="flight"
+                                    checked={bookingMode === 'flight'}
+                                    onChange={() => setBookingMode('flight')}
+                                    className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                />
+                                <span className={`text-sm font-medium ${bookingMode === 'flight' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                    依航班時間
+                                </span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="bookingMode"
+                                    value="time"
+                                    checked={bookingMode === 'time'}
+                                    onChange={() => setBookingMode('time')}
+                                    className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                />
+                                <span className={`text-sm font-medium ${bookingMode === 'time' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                    指定時間
+                                </span>
+                            </label>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-[1.5fr_1fr_1fr] gap-3">
+                    <div className="space-y-4">
+                        {/* Date Input (Always Visible) */}
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500">日期</label>
+                            {/* <label className="text-xs font-bold text-gray-500">日期</label> */}
                             <input
                                 type="date"
                                 value={date}
@@ -163,38 +233,55 @@ function BookingForm() {
                                 className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500"
                             />
                         </div>
+
+                        {/* Flight Number Input (Always Visible) */}
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500">時</label>
-                            <div className="relative">
-                                <select
-                                    value={hour}
-                                    onChange={e => setHour(e.target.value)}
-                                    className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
-                                >
-                                    <option value="" disabled>時</option>
-                                    {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                                        <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            </div>
+                            <input
+                                type="text"
+                                value={flightNumber}
+                                onChange={e => setFlightNumber(e.target.value)}
+                                placeholder={`請輸入${isPickup ? '航班' : '航班'}編號`}
+                                className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400"
+                            />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500">分</label>
-                            <div className="relative">
-                                <select
-                                    value={minute}
-                                    onChange={e => setMinute(e.target.value)}
-                                    className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
-                                >
-                                    <option value="" disabled>分</option>
-                                    {['00', '15', '30', '45'].map(m => (
-                                        <option key={m} value={m}>{m}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+
+                        {/* Time Inputs (Visible only if Specific Time) */}
+                        {bookingMode === 'time' && (
+                            <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500">時</label>
+                                    <div className="relative">
+                                        <select
+                                            value={hour}
+                                            onChange={e => setHour(e.target.value)}
+                                            className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
+                                        >
+                                            <option value="" disabled>時</option>
+                                            {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                                                <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500">分</label>
+                                    <div className="relative">
+                                        <select
+                                            value={minute}
+                                            onChange={e => setMinute(e.target.value)}
+                                            className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
+                                        >
+                                            <option value="" disabled>分</option>
+                                            {['00', '15', '30', '45'].map(m => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 
@@ -253,43 +340,6 @@ function BookingForm() {
                         <p className="text-xs text-gray-400 text-right">※ 系統預設乘車時間為起飛 5 小時以前 (可修改)</p>
                     </div>
                 )}
-
-                {/* Flight Number Card */}
-                <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-2">
-                    <div className="border-l-4 border-blue-500 pl-3">
-                        <h2 className="text-lg font-bold text-gray-900">航班 / 船班編號</h2>
-                    </div>
-                    <input
-                        type="text"
-                        value={flightNumber}
-                        onChange={e => setFlightNumber(e.target.value)}
-                        placeholder={`例如：${isPickup ? 'TR897 / BR186' : 'BR225 / TR897'} （必填）`}
-                        className="w-full p-3.5 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400"
-                    />
-                </div>
-
-                {/* Airport Card */}
-                <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-2">
-                    <div className="border-l-4 border-blue-500 pl-3">
-                        <h2 className="text-lg font-bold text-gray-900">機場 / 港口</h2>
-                    </div>
-                    <div className="relative">
-                        <select
-                            value={airport}
-                            onChange={e => setAirport(e.target.value)}
-                            className="w-full p-3.5 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500 text-gray-900"
-                        >
-                            <option value="" disabled>請選擇航站</option>
-                            <option value="tpe1">桃園機場 第一航廈</option>
-                            <option value="tpe2">桃園機場 第二航廈</option>
-                            <option value="tsa">松山機場</option>
-                            <option value="rmq">台中清泉崗機場</option>
-                            <option value="khh">高雄小港機場</option>
-                            <option value="kel">基隆港</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                    </div>
-                </div>
 
                 {/* Locations Card (Dynamic) */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
