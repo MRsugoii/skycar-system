@@ -246,7 +246,7 @@ function BookingForm() {
                                 type="text"
                                 value={flightNumber}
                                 onChange={e => setFlightNumber(e.target.value)}
-                                placeholder={`請輸入${isPickup ? '航班' : '航班'}編號`}
+                                placeholder="請輸入航班和船班編號"
                                 className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400"
                             />
                         </div>
