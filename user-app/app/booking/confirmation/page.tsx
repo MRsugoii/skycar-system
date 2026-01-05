@@ -2,16 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, CheckCircle2 } from "lucide-react";
-import { VEHICLES } from "../ride-info/data";
+import { ChevronLeft, CheckCircle2, AlertTriangle, ShieldCheck, Car } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export default function BookingConfirmationPage() {
     const router = useRouter();
     const [isLoaded, setIsLoaded] = useState(false);
+    const [isCalculating, setIsCalculating] = useState(true);
 
     // Data from Session
     const [basicInfo, setBasicInfo] = useState<any>(null);
     const [rideInfo, setRideInfo] = useState<any>(null);
+    const [vehicle, setVehicle] = useState<any>(null);
 
     // User Input State
     const [contactName, setContactName] = useState("");
@@ -22,79 +24,147 @@ export default function BookingConfirmationPage() {
     const [term1, setTerm1] = useState(false);
     const [term2, setTerm2] = useState(false);
 
-    // Pricing
+    // Pricing Breakdown
     const [prices, setPrices] = useState({
         base: 0,
         modelSurcharge: 0,
         nightSurcharge: 0,
-        holidaySurcharge: 0,
+        holidayMatrixSurcharge: 0,
         remoteSurcharge: 0,
-        stopSurcharge: 0,
+        extraStopSurcharge: 0,
+        routeSurcharge: 0,
         safetySeats: 0,
         signboard: 0,
         discount: 0,
-        total: 0
+        total: 0,
+        category: 'weekday'
     });
 
     useEffect(() => {
-        // Load data
-        const basicStr = sessionStorage.getItem('booking_basic_info');
-        const rideStr = sessionStorage.getItem('booking_ride_info');
+        const loadAndCalculate = async () => {
+            setIsCalculating(true);
+            const basicStr = sessionStorage.getItem('booking_basic_info');
+            const rideStr = sessionStorage.getItem('booking_ride_info');
 
-        if (basicStr && rideStr) {
-            const bInfo = JSON.parse(basicStr);
-            const rInfo = JSON.parse(rideStr);
-            setBasicInfo(bInfo);
-            setRideInfo(rInfo);
+            if (basicStr && rideStr) {
+                const bInfo = JSON.parse(basicStr);
+                const rInfo = JSON.parse(rideStr);
+                setBasicInfo(bInfo);
+                setRideInfo(rInfo);
 
-            // Calculate Price
-            calculatePrice(bInfo, rInfo);
+                // 1. Fetch Vehicle & Extra Settings
+                const { data: vData } = await supabase.from("vehicle_types").select("*").eq("id", rInfo.vehicleId).single();
+                const { data: eData } = await supabase.from("extra_settings").select("*").single();
+                setVehicle(vData);
 
-            setIsLoaded(true);
-        } else {
-            // Redirect if execution missing
-            // router.push('/booking');
-        }
+                if (vData && eData) {
+                    await calculateFinalPrice(bInfo, rInfo, vData, eData);
+                }
+                setIsLoaded(true);
+            }
+            setIsCalculating(false);
+        };
+        loadAndCalculate();
     }, []);
 
-    const calculatePrice = (bInfo: any, rInfo: any) => {
-        const vehicle = VEHICLES.find(v => v.id === rInfo.vehicleId);
-        if (!vehicle) return;
+    const calculateFinalPrice = async (bInfo: any, rInfo: any, vehicle: any, settings: any) => {
+        const bookingDate = bInfo.flightInfo?.date || bInfo.pickupTime?.date;
+        const bookingTime = bInfo.pickupTime?.time || bInfo.flightInfo?.time;
 
-        const base = vehicle.dispatchPrice;
-        const modelSurcharge = vehicle.modelSurcharge;
+        // --- Step 1: Determine Price Category ---
+        let category = 'weekday';
+        const { data: holiday } = await supabase
+            .from("holidays")
+            .select("price_category")
+            .lte("start_date", bookingDate)
+            .gte("end_date", bookingDate)
+            .eq("status", true)
+            .maybeSingle(); // Use maybeSingle to avoid errors if no holiday found
 
-        // Safety Seats
-        const seatCost =
-            ((rInfo.seats?.infant || 0) * vehicle.safetySeatInfantPrice) +
-            ((rInfo.seats?.child || 0) * vehicle.safetySeatChildPrice) +
-            ((rInfo.seats?.booster || 0) * vehicle.safetySeatBoosterPrice);
+        if (holiday) {
+            category = holiday.price_category;
+        } else {
+            const day = new Date(bookingDate).getDay();
+            if (day === 0 || day === 6) category = 'holiday'; // Weekend default
+        }
 
-        // Signboard
-        const signboardCost = rInfo.signboard?.needed ? vehicle.signboardPrice : 0;
+        // Map UI value to Database value
+        const uiAirport = bInfo.flightInfo?.airport;
+        let dbAirport = uiAirport;
+        if (uiAirport?.startsWith('tpe')) dbAirport = '桃園機場';
+        else if (uiAirport === 'tsa') dbAirport = '松山機場';
+        else if (uiAirport === 'rmq') dbAirport = '台中清泉崗機場';
+        else if (uiAirport === 'khh') dbAirport = '高雄小港機場';
 
-        // Mock Surcharges (TODO: Real logic)
-        const night = 0;
-        const holiday = 0;
-        const remote = 0; // rInfo.locations logic ??
-        const stop = 0;   // rInfo.locations.length ...
+        // --- Step 2: Fetch Matrix Base Price ---
+        const mainLoc = bInfo.locations[0];
+        const { data: matrix } = await supabase
+            .from("airport_prices")
+            .select("*")
+            .eq("airport", dbAirport)
+            .eq("region", mainLoc.district)
+            .eq("category", category)
+            .eq("status", true)
+            .maybeSingle();
 
-        // Discount (Mock)
-        const discount = 0;
+        const basePrice = matrix?.prices?.[vehicle.id] || 1000; // Fallback
+        const remotePrice = Number(matrix?.remote_surcharge || 0);
 
-        const total = base + modelSurcharge + seatCost + signboardCost + night + holiday + remote + stop - discount;
+        // --- Step 3: Extra Services ---
+        const safetySeatCost =
+            ((rInfo.seats?.infant || 0) * Number(settings.safety_seat_infant_price)) +
+            ((rInfo.seats?.child || 0) * Number(settings.safety_seat_child_price)) +
+            ((rInfo.seats?.booster || 0) * Number(settings.safety_seat_booster_price));
+
+        const signboardCost = rInfo.signboard?.needed ? Number(settings.signboard_price) : 0;
+
+        // --- Step 4: Time-based Adjustments ---
+        let nightSurcharge = 0;
+        let offPeakDiscount = 0;
+
+        if (bookingTime && vehicle.night_surcharge > 0) {
+            if (bookingTime >= (vehicle.night_surcharge_start || "23:00") || bookingTime <= (vehicle.night_surcharge_end || "06:00")) {
+                nightSurcharge = Number(vehicle.night_surcharge);
+            }
+        }
+
+        if (bookingTime && vehicle.off_peak_discount > 0) {
+            if (bookingTime >= (vehicle.off_peak_discount_start || "10:00") && bookingTime <= (vehicle.off_peak_discount_end || "16:00")) {
+                offPeakDiscount = Number(vehicle.off_peak_discount);
+            }
+        }
+
+        // --- Step 5: Route & Multi-stop Surcharges ---
+        let routeSurcharge = 0;
+        const { data: routes } = await supabase.from("route_prices").select("*").eq("status", true);
+        if (routes) {
+            const locationStr = `${mainLoc.city}${mainLoc.district}${mainLoc.address}`;
+            const matchedRoute = routes.find(r => locationStr.includes(r.start_location) || locationStr.includes(r.end_location));
+            if (matchedRoute) {
+                routeSurcharge = Number(matchedRoute.fixed_price);
+            }
+        }
+
+        const extraLocations = bInfo.locations.length - 1;
+        const extraStopSurcharge = extraLocations * Number(vehicle.extra_stop_price || 0);
+
+        const modelSurcharge = Number(vehicle.model_surcharge || 0);
+
+        const total = basePrice + modelSurcharge + nightSurcharge + remotePrice + extraStopSurcharge + routeSurcharge + safetySeatCost + signboardCost - offPeakDiscount;
 
         setPrices({
-            base,
+            base: basePrice,
             modelSurcharge,
-            nightSurcharge: night,
-            holidaySurcharge: holiday,
-            remoteSurcharge: remote,
-            stopSurcharge: stop,
-            safetySeats: seatCost,
+            nightSurcharge,
+            holidayMatrixSurcharge: 0,
+            remoteSurcharge: remotePrice,
+            extraStopSurcharge,
+            routeSurcharge,
+            safetySeats: safetySeatCost,
             signboard: signboardCost,
-            discount,
-            total
+            discount: offPeakDiscount,
+            total,
+            category
         });
     };
 
@@ -108,7 +178,6 @@ export default function BookingConfirmationPage() {
             return;
         }
 
-        // Save Contact & Price info to session for Payment Page
         sessionStorage.setItem('booking_contact_info', JSON.stringify({
             name: contactName,
             phone: contactPhone,
@@ -119,15 +188,23 @@ export default function BookingConfirmationPage() {
         router.push('/booking/payment');
     };
 
-    if (!isLoaded) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
+    if (!isLoaded || isCalculating) return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-500 font-bold animate-pulse">正在精算您的旅程金額...</p>
+        </div>
+    );
 
     const isPickup = basicInfo.type === 'pickup';
-    const vehicle = VEHICLES.find(v => v.id === rideInfo.vehicleId);
-
-    // Address formatter
     const mainLocation = basicInfo.locations[0];
     const locationStr = `${mainLocation.city}${mainLocation.district}${mainLocation.address}`;
-    const extraLocations = basicInfo.locations.slice(1).length;
+    const extraLocationsCount = basicInfo.locations.length - 1;
+
+    const categoryLabels: Record<string, string> = {
+        'weekday': '平日價格',
+        'holiday': '假日/週末價格',
+        'special': '特殊節日價格'
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 pb-32 text-gray-900 max-w-[420px] mx-auto relative overflow-hidden flex flex-col">
@@ -136,20 +213,33 @@ export default function BookingConfirmationPage() {
             <div className="bg-blue-600 px-4 pt-8 pb-10 text-white rounded-b-[40px] shadow-lg relative z-0 mb-[-40px]">
                 <button
                     onClick={() => router.push('/booking/ride-info')}
-                    className="absolute left-6 top-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition"
+                    className="absolute left-6 top-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition shadow-inner"
                 >
                     <ChevronLeft size={24} className="text-white" />
                 </button>
-                <h1 className="text-lg font-bold text-center mt-2">訂單資訊</h1>
+                <h1 className="text-lg font-bold text-center mt-2">訂單確認</h1>
             </div>
 
             <div className="px-4 relative z-10 pt-4 space-y-4">
 
-                {/* 1. Contact Info */}
+                {/* 1. Category Badge */}
+                <div className="flex justify-center">
+                    <div className={`px-4 py-1.5 rounded-full text-xs font-black shadow-sm flex items-center gap-2 border ${prices.category === 'weekday' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                        prices.category === 'holiday' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                            'bg-amber-50 text-amber-700 border-amber-100'
+                        }`}>
+                        <div className={`w-2 h-2 rounded-full animate-pulse ${prices.category === 'weekday' ? 'bg-emerald-500' :
+                            prices.category === 'holiday' ? 'bg-blue-500' : 'bg-amber-500'
+                            }`} />
+                        適用計價：{categoryLabels[prices.category]}
+                    </div>
+                </div>
+
+                {/* 2. Contact Info */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
                     <div className="border-l-4 border-blue-500 pl-3">
                         <h2 className="text-lg font-bold text-gray-900">聯絡資訊</h2>
-                        <p className="text-xs text-gray-500 mt-1">請留下可聯絡的姓名、手機與 Email (避免 Hotmail)</p>
+                        <p className="text-xs text-gray-500 mt-1">司機將聯繫此資訊</p>
                     </div>
 
                     <div className="space-y-3">
@@ -158,155 +248,120 @@ export default function BookingConfirmationPage() {
                             placeholder="姓名"
                             value={contactName}
                             onChange={(e) => setContactName(e.target.value)}
-                            className="w-full p-3.5 border border-gray-300 rounded-xl text-sm font-medium outline-none focus:border-blue-500"
+                            className="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         />
                         <input
                             type="tel"
                             placeholder="手機號碼 (例如 0912345678)"
                             value={contactPhone}
                             onChange={(e) => setContactPhone(e.target.value)}
-                            className="w-full p-3.5 border border-gray-300 rounded-xl text-sm font-medium outline-none focus:border-blue-500"
+                            className="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         />
                         <input
                             type="email"
                             placeholder="Email"
                             value={contactEmail}
                             onChange={(e) => setContactEmail(e.target.value)}
-                            className="w-full p-3.5 border border-gray-300 rounded-xl text-sm font-medium outline-none focus:border-blue-500"
+                            className="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         />
                     </div>
                 </div>
 
-                {/* 2. Order Summary */}
+                {/* 3. Order Summary */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
                     <div className="border-l-4 border-blue-500 pl-3">
-                        <h2 className="text-lg font-bold text-gray-900">訂單明細</h2>
-                        <p className="text-xs text-gray-500 mt-1">請再次確認服務類型、上下車地點、時間與乘車需求</p>
+                        <h2 className="text-lg font-bold text-gray-900">行程摘要</h2>
                     </div>
 
-                    <div>
-                        {/* Personal Info Mirror */}
-                        <div className="divide-y divide-gray-100">
-                            <SummaryRowSimple label="乘客姓名" value={contactName || "-"} />
-                            <SummaryRowSimple label="手機號碼" value={contactPhone || "-"} />
-                            <SummaryRowSimple label="Email" value={contactEmail || "-"} />
-                        </div>
+                    <div className="divide-y divide-gray-50">
+                        <SummaryRow label="服務車型" value={vehicle?.name} icon={<Car size={14} />} />
+                        <SummaryRow label="預約時間" value={`${basicInfo?.flightInfo?.date || basicInfo?.pickupTime?.date} ${basicInfo?.pickupTime?.time || basicInfo?.flightInfo?.time}`} />
+                        <SummaryRow label="出發地點" value={isPickup ? basicInfo?.flightInfo?.airport : locationStr} />
+                        <SummaryRow label="到達地點" value={!isPickup ? basicInfo?.flightInfo?.airport : locationStr} />
 
-                        <div className="my-4 border-t border-dashed border-gray-200"></div>
+                        {extraLocationsCount > 0 && (
+                            <SummaryRow label="額外加點" value={`共 ${extraLocationsCount} 個停靠點`} />
+                        )}
 
-                        {/* Service Info */}
-                        <div className="divide-y divide-gray-100">
-                            <SummaryRowSimple label="服務類型" value={isPickup ? "回國接機 / 港口接送" : "出國送機 / 送到港口"} />
-                            <SummaryRowSimple
-                                label="起點"
-                                value={isPickup
-                                    ? `${basicInfo?.flightInfo?.airport} ${basicInfo?.flightInfo?.flightNumber ? `(${basicInfo?.flightInfo?.flightNumber})` : ''}`
-                                    : locationStr + (extraLocations > 0 ? ` (+${extraLocations}點)` : '')
-                                }
-                            />
-                            <SummaryRowSimple
-                                label="終點"
-                                value={!isPickup
-                                    ? `${basicInfo?.flightInfo?.airport} ${basicInfo?.flightInfo?.flightNumber ? `(${basicInfo?.flightInfo?.flightNumber})` : ''}`
-                                    : locationStr + (extraLocations > 0 ? ` (+${extraLocations}點)` : '')
-                                }
-                            />
-                            {!isPickup && (
-                                <SummaryRowSimple label="指定乘車時間" value={`${basicInfo?.pickupTime?.date} ${basicInfo?.pickupTime?.time}`} />
-                            )}
-                            <SummaryRowSimple
-                                label={isPickup ? "航班抵達" : "航班起飛"}
-                                value={`${basicInfo?.flightInfo?.date} ${basicInfo?.flightInfo?.time}`}
-                            />
-                            <SummaryRowSimple label="航班 / 船班" value={basicInfo?.flightInfo?.flightNumber} />
-                        </div>
+                        <SummaryRow label="乘車人數" value={`${(rideInfo?.passengers?.adults || 0) + (rideInfo?.passengers?.children || 0)} 人 (含 ${rideInfo?.passengers?.adults || 0} 成 ${rideInfo?.passengers?.children || 0} 孩)`} />
 
-                        <div className="my-4 border-t border-dashed border-gray-200"></div>
+                        {(rideInfo?.seats?.infant > 0 || rideInfo?.seats?.child > 0 || rideInfo?.seats?.booster > 0) && (
+                            <SummaryRow label="安全座椅" value={`已選購 ${rideInfo?.seats?.infant + rideInfo?.seats?.child + rideInfo?.seats?.booster} 張`} />
+                        )}
 
-                        {/* Ride Requirements (Text Removed as requested) */}
-
-                        <div className="divide-y divide-gray-100">
-                            <SummaryRowSimple label="乘客人數" value={`${(rideInfo?.passengers?.adults || 0) + (rideInfo?.passengers?.children || 0)} 人`} />
-                            <SummaryRowSimple label="成人 / 小孩" value={`${rideInfo?.passengers?.adults || 0} 位 / ${rideInfo?.passengers?.children || 0} 位`} />
-                            <SummaryRowSimple label="行李件數" value={`20吋以下 ${rideInfo?.luggage?.s || 0} 件 ; 21-25吋 ${rideInfo?.luggage?.m || 0} 件 ; 26-28吋 ${rideInfo?.luggage?.l || 0} 件`} />
-                            <SummaryRowSimple label="安全座椅" value={`後向式 ${rideInfo?.seats?.infant || 0} 張 ; 前向式 ${rideInfo?.seats?.child || 0} 張 ; 增高墊 ${rideInfo?.seats?.booster || 0} 張`} />
-                            <SummaryRowSimple label="選擇車型" value={vehicle?.name || '-'} />
-                            <SummaryRowSimple label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要 (${rideInfo?.signboard?.title})` : "不需要"} />
-                            <SummaryRowSimple label="備註" value={rideInfo?.notes || "-"} />
-                        </div>
+                        <SummaryRow label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要` : "不需要"} />
                     </div>
                 </div>
 
-                {/* 3. Pricing */}
+                {/* 4. Pricing Details */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
-                    <div className="border-l-4 border-blue-500 pl-3">
-                        <h2 className="text-lg font-bold text-gray-900">金額</h2>
-                        <p className="text-xs text-gray-500 mt-1">請再次確認應付金額</p>
+                    <div className="border-l-4 border-blue-500 pl-3 flex justify-between items-center">
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900">金額結算</h2>
+                            <p className="text-xs text-gray-500 mt-1">根據後台設定精確計算</p>
+                        </div>
+                        <ShieldCheck className="text-blue-500" size={24} />
                     </div>
 
-                    <div>
-                        {/* Items */}
-                        <div className="divide-y divide-gray-100">
-                            <PriceRow label="基本服務" price={prices.base} isShowZero />
-                            <PriceRow label="車型加價" price={prices.modelSurcharge} isShowZero />
-                            <PriceRow label="夜間加價" price={prices.nightSurcharge} isShowZero />
-                            <PriceRow label="連續假期加價" price={prices.holidaySurcharge} isShowZero />
-                            <PriceRow label="特定地區加價" price={prices.remoteSurcharge} isShowZero />
-                            <PriceRow label="跨區自費加價" price={prices.stopSurcharge} isShowZero />
-                            <PriceRow label="加點加價" price={prices.stopSurcharge} isShowZero />
+                    <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                        <PriceDetailRow label="基礎矩陣運價" value={prices.base} subLabel={categoryLabels[prices.category]} />
+                        <PriceDetailRow label="高級車種加價" value={prices.modelSurcharge} />
+                        <PriceDetailRow label="夜間服務加價" value={prices.nightSurcharge} />
+                        <PriceDetailRow label="偏遠地區加價" value={prices.remoteSurcharge} />
+                        <PriceDetailRow label="加點與停靠" value={prices.extraStopSurcharge} />
+                        <PriceDetailRow label="特定路段加價" value={prices.routeSurcharge} />
+                        <PriceDetailRow label="安全座椅/舉牌" value={prices.safetySeats + prices.signboard} />
 
-                            <PriceRow label="安全座椅加價" price={prices.safetySeats} isShowZero />
-                            <PriceRow label="舉牌加價" price={prices.signboard} isShowZero />
-                        </div>
+                        {prices.discount > 0 && (
+                            <div className="flex justify-between items-center py-1">
+                                <span className="text-sm text-red-500 font-bold">離峰時段優惠</span>
+                                <span className="text-sm text-red-600 font-black">- NT$ {prices.discount}</span>
+                            </div>
+                        )}
 
-                        <div className="my-2 border-t border-dashed border-gray-200"></div>
-
-                        <div className="divide-y divide-gray-100">
-                            <PriceRow label="離峰優惠" price={-prices.discount} isDiscount isShowZero />
-                            <PriceRow label="優惠券折抵" price={0} isDiscount isShowZero />
-                        </div>
-
-                        {/* Total */}
-                        <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
-                            <div className="font-bold text-gray-900 text-lg">總金額</div>
-                            <div className="font-bold text-2xl text-blue-600">
-                                {prices.total.toLocaleString()} <span className="text-sm text-gray-500 font-medium">元</span>
+                        <div className="pt-3 border-t border-gray-200 mt-2 flex justify-between items-end">
+                            <span className="font-black text-gray-900">應付總額</span>
+                            <div className="text-right">
+                                <span className="text-3xl font-black text-blue-600">NT$ {prices.total.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 4. Terms */}
-
-                <div className="space-y-3 px-2">
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                        <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${term1 ? 'bg-blue-600 border-blue-600' : 'border-gray-400 bg-white'}`}>
-                            {term1 && <CheckCircle2 size={14} className="text-white" />}
+                {/* 5. Terms */}
+                <div className="space-y-3 px-2 pt-2">
+                    <label className="flex items-start gap-4 cursor-pointer group">
+                        <div className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${term1 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 bg-white group-hover:border-blue-300'}`}>
+                            {term1 && <CheckCircle2 size={16} />}
                         </div>
                         <input type="checkbox" className="hidden" checked={term1} onChange={e => setTerm1(e.target.checked)} />
-                        <span className="text-sm text-gray-600 group-hover:text-gray-900">我已了解預約條款與隱私政策。</span>
+                        <span className="text-xs text-gray-500 font-medium leading-relaxed">
+                            我已閱覽並同意 <span className="text-blue-600 underline">預約條款</span> 與 <span className="text-blue-600 underline">隱私政策</span>。本人確認以上行程資訊皆正確無誤。
+                        </span>
                     </label>
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                        <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${term2 ? 'bg-blue-600 border-blue-600' : 'border-gray-400 bg-white'}`}>
-                            {term2 && <CheckCircle2 size={14} className="text-white" />}
+                    <label className="flex items-start gap-4 cursor-pointer group">
+                        <div className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${term2 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 bg-white group-hover:border-blue-300'}`}>
+                            {term2 && <CheckCircle2 size={16} />}
                         </div>
                         <input type="checkbox" className="hidden" checked={term2} onChange={e => setTerm2(e.target.checked)} />
-                        <span className="text-sm text-gray-600 group-hover:text-gray-900">同意馳航團隊代為處理金額與收據相關事宜。</span>
+                        <span className="text-xs text-gray-500 font-medium leading-relaxed">
+                            同意由馳航派車團隊代為開立代收代付收據，並授權於完成行程後自動結算相關費用。
+                        </span>
                     </label>
                 </div>
 
             </div>
 
             {/* Bottom Actions */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 z-20 flex gap-3 justify-center">
+            <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-4 pb-8 z-30 flex justify-center">
                 <div className="w-full max-w-[420px]">
                     <button
                         onClick={handleSubmit}
-                        className={`w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg transition flex items-center justify-center gap-2 ${(contactName && contactPhone && contactEmail && term1 && term2)
-                            ? 'bg-blue-600 shadow-blue-200 hover:bg-blue-700 active:scale-95'
-                            : 'bg-gray-400 cursor-not-allowed'
-                            }`}
                         disabled={!contactName || !contactPhone || !contactEmail || !term1 || !term2}
+                        className={`w-full py-4 rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center gap-2 ${(contactName && contactPhone && contactEmail && term1 && term2)
+                            ? 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700 active:scale-95'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            }`}
                     >
                         送出訂單
                     </button>
@@ -317,31 +372,30 @@ export default function BookingConfirmationPage() {
     );
 }
 
-function SummaryRowSimple({ label, value }: { label: string, value: string | undefined | null }) {
-    if (!value || value === '-' || value === '0 件' || value === '0 張' || value === '0 位 / 0 位') return null;
+function SummaryRow({ label, value, icon }: any) {
+    if (!value) return null;
     return (
-        <div className="flex justify-between py-2 items-start">
-            <div className="text-sm text-gray-700 shrink-0 w-24">
+        <div className="flex justify-between py-3 items-center">
+            <div className="flex items-center gap-2 text-xs text-gray-400 font-bold uppercase tracking-wider">
+                {icon}
                 {label}
             </div>
-            <div className="text-sm font-bold text-gray-900 text-right flex-1 break-words">
+            <div className="text-sm font-black text-gray-800 text-right max-w-[180px] break-words">
                 {value}
             </div>
         </div>
-    )
+    );
 }
 
-function PriceRow({ label, price, isBold = false, isDiscount = false, isShowZero = false }: any) {
-    if (price === 0 && !isDiscount && !isShowZero) return null; // Hide 0 cost items unless flag is set
-    // Screenshots show 0 value items, so we should often show them
+function PriceDetailRow({ label, value, subLabel }: any) {
+    if (value === 0) return null;
     return (
-        <div className="flex justify-between py-2 items-center">
-            <div className={`text-sm text-gray-700 ${isBold ? 'font-bold' : ''}`}>
-                {label}
+        <div className="flex justify-between items-start">
+            <div>
+                <span className="text-sm text-gray-600 font-medium">{label}</span>
+                {subLabel && <p className="text-[10px] text-blue-500 font-bold">{subLabel}</p>}
             </div>
-            <div className={`text-sm font-bold ${isDiscount ? 'text-red-500' : 'text-gray-900'}`}>
-                {isDiscount ? '- ' : ''} {Math.abs(price).toLocaleString()} 元
-            </div>
+            <span className="text-sm font-bold text-gray-900">NT$ {value.toLocaleString()}</span>
         </div>
-    )
+    );
 }

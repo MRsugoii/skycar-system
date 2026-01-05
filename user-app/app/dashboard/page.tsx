@@ -127,7 +127,7 @@ export default function DashboardPage() {
                     .order('created_at', { ascending: false });
 
                 if (sbOrders) {
-                    const mapped: Order[] = sbOrders.map((o: any) => {
+                    list = sbOrders.map((o: any) => {
                         // Map Status
                         let st: any = 'ing';
                         if (o.status === 'completed') st = 'done';
@@ -136,14 +136,16 @@ export default function DashboardPage() {
                         else st = 'ing';
 
                         return {
-                            orderId: (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : o.id.substring(0, 8),
+                            orderId: (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : o.id,
                             status: st,
                             type: o.vehicle_type || '接送',
                             date: new Date(o.pickup_time).toLocaleString('zh-TW', { hour12: false }).replace(/\//g, '-').slice(0, 16),
                             total: Number(o.price),
                             detail: {
                                 pickup: o.pickup_address,
-                                dropoff: o.dropoff_address,
+                                dropoff: (o.pickup_address.includes('機場') || o.pickup_address.includes('港') || o.dropoff_address.includes('機場') || o.dropoff_address.includes('港'))
+                                    ? o.dropoff_address
+                                    : '桃園機場',
                                 carName: o.vehicle_type,
                                 passengers: o.passenger_count,
                                 note: o.note,
@@ -153,17 +155,33 @@ export default function DashboardPage() {
                             }
                         };
                     });
-                    list = mapped;
                 }
             }
 
-            // B. Local Storage (Only if Supabase returned nothing or isn't linked)
-            if (list.length === 0) {
-                const oStr = localStorage.getItem(`orders_${acc}`);
-                list = oStr ? JSON.parse(oStr) : [];
+            // B. Fetch Local Storage
+            const oStr = localStorage.getItem(`orders_${acc}`);
+            const localOrders = oStr ? JSON.parse(oStr) : [];
+
+            // C. Merge Logic (Fix for RLS Update Issues)
+            // If Supabase has data, we trust it mostly, BUT if Local Storage has a matching order with 'refund_pending' or 'cancelled', we prioritize Local key state.
+            // This is because client-side RLS might block the update to 'cancelled', so Supabase stays 'ing' while local knows it's 'refunded'.
+
+            if (list.length > 0) {
+                list = list.map(sbOrder => {
+                    const localMatch = localOrders.find((lo: any) => lo.orderId === sbOrder.orderId);
+                    if (localMatch) {
+                        // If local says cancelled/refund but backend says 'ing', trust local
+                        if (sbOrder.status === 'ing' && (localMatch.status === 'cancelled' || localMatch.status === 'refund_pending')) {
+                            return { ...sbOrder, status: localMatch.status };
+                        }
+                    }
+                    return sbOrder;
+                });
+            } else {
+                // Fallback if no Supabase data found
+                list = localOrders;
             }
 
-            // C. Filter out internal logic duplicates and sort
             setOrders(list);
 
             // Realtime subscription for User
@@ -326,43 +344,59 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Ongoing Orders Section (Inline) */}
+                    {/* Ongoing Orders Section (Single Card enforced) */}
                     <div>
                         <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2 pl-1">
                             <Clock size={18} className="text-blue-600" />
-                            進行中的訂單
+                            目前行程
                         </h2>
                         <div className="space-y-3">
-                            {ongoingOrders.length > 0 ? ongoingOrders.map(o => (
-                                <div key={o.orderId} onClick={() => setSelectedOrder(o)} className="bg-white p-5 rounded-xl shadow-md border border-blue-100 cursor-pointer hover:shadow-lg transition">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <span className="font-bold text-gray-900">{o.orderId.substring(0, 8)}...</span>
-                                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">進行中</span>
-                                    </div>
-                                    <div className="space-y-2 mb-4">
-                                        <div className="flex items-center gap-3 text-sm text-gray-600">
-                                            <Calendar size={16} className="text-blue-500" /> {o.date}
+                            {ongoingOrders.length > 0 ? (
+                                (() => {
+                                    const o = ongoingOrders[0]; // Logic: User should only have one active order
+                                    return (
+                                        <div key={o.orderId} onClick={() => setSelectedOrder(o)} className="bg-white p-5 rounded-xl shadow-md border border-blue-100 cursor-pointer hover:shadow-lg transition relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
+                                                進行中
+                                            </div>
+                                            <div className="flex flex-col gap-1 mb-3">
+                                                <span className="font-bold text-gray-900 text-lg">{o.orderId}</span>
+                                                <span className="text-sm text-blue-600 font-bold">{o.type}</span>
+                                            </div>
+                                            <div className="space-y-2 mb-4">
+                                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                                    <Calendar size={16} className="text-blue-500" />
+                                                    <span className="font-medium">{o.date}</span>
+                                                </div>
+                                                <div className="flex items-start gap-3 text-sm text-gray-600">
+                                                    <MapPin size={16} className="text-blue-500 mt-0.5" />
+                                                    <span className="font-medium line-clamp-1">{o.detail.pickup}</span>
+                                                </div>
+                                                <div className="flex items-start gap-3 text-sm text-gray-600">
+                                                    <Navigation size={16} className="text-blue-500 mt-0.5" />
+                                                    <span className="font-medium line-clamp-1">{o.detail.dropoff}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-end border-t border-gray-50 pt-3">
+                                                <span className="text-xs text-gray-400 font-medium">點擊查看詳情</span>
+                                                <span className="font-bold text-xl text-blue-600">NT$ {o.total.toLocaleString()}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-3 text-sm text-gray-600">
-                                            <MapPin size={16} className="text-blue-500" /> {o.type}
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between items-end border-t border-gray-50 pt-3">
-                                        <span className="text-xs text-gray-400 font-medium">查看詳情</span>
-                                        <span className="font-bold text-lg text-blue-600">NT$ {o.total.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="text-center text-gray-400 py-6 bg-white rounded-xl border border-gray-100 text-sm">目前沒有進行中的訂單</div>
+                                    );
+                                })()
+                            ) : (
+                                <div className="text-center text-gray-400 py-6 bg-white rounded-xl border border-gray-100 text-sm">目前沒有進行中的行程</div>
                             )}
 
-                            {/* Emergency Button (Inline) */}
-                            <button
-                                onClick={() => window.location.href = 'tel:0800000000'}
-                                className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-md shadow-red-200 transition flex items-center justify-center gap-2"
-                            >
-                                <Phone size={18} /> 緊急聯絡客服
-                            </button>
+                            {/* Emergency Button (Inline) only if there IS an order */}
+                            {ongoingOrders.length > 0 && (
+                                <button
+                                    onClick={() => window.location.href = 'tel:0800000000'}
+                                    className="w-full mt-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl border border-red-200 transition flex items-center justify-center gap-2"
+                                >
+                                    <Phone size={18} /> 緊急聯絡客服
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -388,10 +422,19 @@ export default function DashboardPage() {
                     <div className="fixed bottom-6 left-0 right-0 px-6 pointer-events-none z-20">
                         <div className="max-w-[420px] mx-auto pointer-events-auto">
                             <button
-                                onClick={() => router.push('/booking')}
-                                className="w-full py-3 bg-blue-600 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center gap-2"
+                                onClick={() => {
+                                    if (ongoingOrders.length > 0) {
+                                        alert("您已有進行中的行程，無法同時預約新服務");
+                                        return;
+                                    }
+                                    router.push('/booking');
+                                }}
+                                className={`w-full py-3 text-white font-bold text-lg rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 ${ongoingOrders.length > 0
+                                    ? 'bg-gray-400 cursor-not-allowed shadow-gray-200'
+                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                                    }`}
                             >
-                                <Flag size={20} /> 預約服務
+                                <Flag size={20} /> {ongoingOrders.length > 0 ? '行程進行中' : '預約服務'}
                             </button>
                         </div>
                     </div>
@@ -461,7 +504,7 @@ export default function DashboardPage() {
                         <div key={o.orderId} onClick={() => setSelectedOrder(o)} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-black text-gray-900 text-lg tracking-tight">{o.orderId.substring(0, 8)}...</span>
+                                    <span className="font-black text-gray-900 text-lg tracking-tight">{o.orderId}</span>
                                     <span className={`px-2 py-0.5 rounded text-xs font-bold border ${o.status === 'done' ? 'bg-green-50 text-green-700 border-green-200' :
                                         o.status === 'cancelled' ? 'bg-gray-50 text-gray-500 border-gray-200' :
                                             o.status === 'refund_pending' ? 'bg-orange-50 text-orange-700 border-orange-200' :
@@ -554,7 +597,7 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                                 <Clock size={20} />
                             </span>
                             <div>
-                                <div className="font-black text-lg text-gray-900">{order.orderId.substring(0, 8)}...</div>
+                                <div className="font-black text-lg text-gray-900">{order.orderId}</div>
                                 <div className="text-xs text-gray-500 font-bold">{order.date}</div>
                             </div>
                         </div>

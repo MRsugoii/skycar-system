@@ -1974,37 +1974,20 @@ function VehiclesContent() {
       <div className="mb-6">
         <div className="bg-gray-50 rounded-lg p-2 inline-flex items-center gap-2 border border-gray-200 overflow-x-auto max-w-full">
           <Link
-            href="/vehicles"
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${(!currentTab || currentTab === 'vehicle') ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
-          >
-            <Car size={16} />
-            1. 車輛管理
-          </Link>
-          <div className="text-gray-300"><ChevronRight size={16} /></div>
-
-          <Link
-            href="/vehicles?tab=extra"
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${currentTab === 'extra' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
-          >
-            <Settings size={16} />
-            2. 額外設定
-          </Link>
-          <div className="text-gray-300"><ChevronRight size={16} /></div>
-
-          <Link
             href="/vehicles?tab=holiday"
             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${currentTab === 'holiday' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
           >
             <Calendar size={16} />
-            3. 假期特價
+            1. 假期特價
           </Link>
           <div className="text-gray-300"><ChevronRight size={16} /></div>
+
           <Link
             href="/vehicles?tab=airport"
             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${currentTab === 'airport' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
           >
             <Plane size={16} />
-            4. 機場/港口
+            2. 機場/港口
           </Link>
           <div className="text-gray-300"><ChevronRight size={16} /></div>
 
@@ -2013,7 +1996,25 @@ function VehiclesContent() {
             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${currentTab === 'route' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
           >
             <MapPin size={16} />
-            5. 特定路段
+            3. 特定路段
+          </Link>
+          <div className="text-gray-300"><ChevronRight size={16} /></div>
+
+          <Link
+            href="/vehicles"
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${(!currentTab || currentTab === 'vehicle') ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
+          >
+            <Car size={16} />
+            4. 車輛管理
+          </Link>
+          <div className="text-gray-300"><ChevronRight size={16} /></div>
+
+          <Link
+            href="/vehicles?tab=extra"
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${currentTab === 'extra' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
+          >
+            <Settings size={16} />
+            5. 額外設定
           </Link>
         </div>
       </div>

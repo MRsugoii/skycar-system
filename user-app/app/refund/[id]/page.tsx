@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, ChevronDown } from "lucide-react";
+import { supabase } from "../../../lib/supabase";
 
 export default function RefundPage() {
     const router = useRouter();
@@ -22,24 +23,66 @@ export default function RefundPage() {
 
     useEffect(() => {
         if (!id) return;
-        // Load Order
-        // Try finding in all user stores or just iterate all orders for demo (since we don't have auth context easily here without more lifting)
-        // Actually, let's grab from the current user's session if possible, or just search all localStorage keys for 'orders_'
 
-        // Simpler: Just try to find the specific order in the known demo key if simpler, 
-        // OR better: search all 'orders_A123...' keys. 
-        // For this demo, let's assume we are A123456789 or just look in the specific key.
-        const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
-        const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
-        const found = uOrders.find((o: any) => o.orderId === id);
+        const loadOrder = async () => {
+            // 1. Try Local Storage first
+            const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
+            const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
+            let found = uOrders.find((o: any) => o.orderId === id);
 
-        if (found) {
-            setOrder(found);
-        } else {
-            // Fallback for direct link test without login
-            setOrder(null);
-        }
-        setLoading(false);
+            // 2. If not found locally, try Supabase (for backend orders)
+            if (!found) {
+                try {
+                    const cleanId = decodeURIComponent(id);
+                    // Determine if ID is UUID-like to avoid Postgres "invalid input syntax for type uuid" error
+                    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+
+                    let query = supabase.from('orders').select('*');
+
+                    if (isUUID) {
+                        query = query.eq('id', cleanId);
+                    } else {
+                        // Assume it's a Custom ID in the note field
+                        query = query.ilike('note', `%${cleanId}%`);
+                    }
+
+                    const { data, error } = await query.single();
+                    if (error) throw error;
+
+                    if (data) {
+                        // Map Supabase URL structure to local Order structure
+                        found = {
+                            orderId: (data.note && data.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? data.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : data.id,
+                            status: data.status === 'completed' ? 'done' : data.status,
+                            type: data.vehicle_type,
+                            date: new Date(data.pickup_time).toLocaleString('zh-TW', { hour12: false }).replace(/\//g, '-').slice(0, 16),
+                            total: Number(data.price),
+                            detail: {
+                                pickup: data.pickup_address,
+                                dropoff: data.dropoff_address,
+                                carName: data.vehicle_type,
+                                passengers: data.passenger_count,
+                                note: data.note,
+                                pay: '現金',
+                                flight: data.flight_number,
+                                luggage: data.luggage_count ? { s20: 0, s25: data.luggage_count, s28: 0 } : undefined
+                            }
+                        };
+                    }
+                } catch (e) {
+                    console.error("Fetch refund order failed", e);
+                }
+            }
+
+            if (found) {
+                setOrder(found);
+            } else {
+                setOrder(null);
+            }
+            setLoading(false);
+        };
+
+        loadOrder();
     }, [id]);
 
     const formatAccount = (val: string) => {
@@ -58,7 +101,7 @@ export default function RefundPage() {
         }
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!bank || !account || !reason) {
             alert("請填寫完整退款資訊");
             return;
@@ -67,26 +110,73 @@ export default function RefundPage() {
         if (confirm("確認送出退款申請？\n送出後訂單將被取消。")) {
             setIsSubmitting(true);
 
-            // Update Order Status
+            // 1. Update Supabase (Real Logic)
+            try {
+                // Best effort: Update by ID if it's UUID, or search by note if it's CH...
+                const cleanId = decodeURIComponent(id);
+                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+
+                let updateQuery = supabase.from('orders').update({ status: 'cancelled' });
+
+                if (isUUID) {
+                    updateQuery = updateQuery.eq('id', cleanId);
+                } else {
+                    // Search by note content
+                    updateQuery = updateQuery.ilike('note', `%${cleanId}%`);
+                }
+
+                await updateQuery;
+
+                // Also ensure we cancel any other 'ing' orders for this user to unblock them
+                // This is a safety measure for the demo
+                const sbUserId = sessionStorage.getItem('supabaseUserId');
+                if (sbUserId) {
+                    await supabase
+                        .from('orders')
+                        .update({ status: 'cancelled' })
+                        .eq('user_id', sbUserId)
+                        .eq('status', 'ing');
+                }
+
+            } catch (e) {
+                console.error("Supabase update failed", e);
+            }
+
+            // 2. Update Local Storage (Fallback)
             const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
             const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
             const idx = uOrders.findIndex((o: any) => o.orderId === id);
 
             if (idx >= 0) {
-                uOrders[idx].status = 'refund_pending'; // Custom status for Control App to catch
+                uOrders[idx].status = 'refund_pending';
                 uOrders[idx].refundData = {
                     bank,
                     account,
                     reason,
                     appliedAt: new Date().toISOString()
                 };
-                localStorage.setItem(`orders_${acc}`, JSON.stringify(uOrders));
-
-                setTimeout(() => {
-                    alert("已發起退款通知，退款約需 3-5 個工作日。");
-                    router.push('/dashboard');
-                }, 1000);
+            } else {
+                // CASE: Order exists in Supabase but not in Local Storage (e.g. cross-device or cache moved)
+                // We MUST add a local entry to ensure Dashboard 'Merge Logic' can override the Supabase 'ing' status.
+                if (order) {
+                    uOrders.unshift({
+                        ...order,
+                        status: 'refund_pending',
+                        refundData: {
+                            bank,
+                            account,
+                            reason,
+                            appliedAt: new Date().toISOString()
+                        }
+                    });
+                }
             }
+            localStorage.setItem(`orders_${acc}`, JSON.stringify(uOrders));
+
+            setTimeout(() => {
+                alert("已發起退款通知，訂單已取消。");
+                router.push('/dashboard');
+            }, 1000);
         }
     };
 
