@@ -388,7 +388,7 @@ export default function PaymentPage() {
                                         if (v.length >= 2) v = v.slice(0, 2) + '/' + v.slice(2);
                                         setCardExpiry(v);
                                     }}
-                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-center font-mono text-lg"
+                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
                                 />
                             </div>
                             <div className="space-y-2 w-1/2">
@@ -398,7 +398,7 @@ export default function PaymentPage() {
                                     placeholder="123"
                                     value={cardCvc}
                                     onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-center font-mono text-lg"
+                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
                                 />
                             </div>
                         </div>
