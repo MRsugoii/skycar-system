@@ -25,11 +25,21 @@ function BookingForm() {
 
     const [flightNumber, setFlightNumber] = useState("");
     const [airport, setAirport] = useState("");
+    const [flightError, setFlightError] = useState("");
+    const [arrivalTimeMsg, setArrivalTimeMsg] = useState("");
 
     // Multiple Dropoff Locations
     const [locations, setLocations] = useState([
         { id: 1, city: "", district: "", address: "" }
     ]);
+
+    const COMMON_LOCATIONS = [
+        "台北 101",
+        "西門町",
+        "台北車站",
+        "南港展覽館",
+        "信義區商圈"
+    ];
 
     // Force specific time mode for dropoff
     useEffect(() => {
@@ -83,6 +93,32 @@ function BookingForm() {
         // Disabled auto-calculation as requested by user - relying on manual input in main card for dropoff
     }, [isPickup, date, hour, minute]);
 
+    const handleFlightBlur = () => {
+        setFlightError("");
+        setArrivalTimeMsg("");
+
+        if (!flightNumber) return;
+
+        // 1. Validation (Alphanumeric, 2-8 chars)
+        const isValid = /^[a-zA-Z0-9]{2,10}$/.test(flightNumber);
+        if (!isValid) {
+            setFlightError("航班編號格式錯誤 (僅限英數字)");
+            return;
+        }
+
+        // 2. Mock Arrival Time (Only for 'flight' mode and Pickup)
+        if (isPickup && bookingMode === 'flight') {
+            // Mock logic: Current time + 2 hours (or specific logic)
+            // Just for demo, we pick a random time or standard time?
+            // "填寫了航班號出現飛機抵達時間" -> User implies auto-fill.
+            const mockHour = "14";
+            const mockMinute = "30";
+            setHour(mockHour);
+            setMinute(mockMinute);
+            setArrivalTimeMsg(`預計抵達時間: ${mockHour}:${mockMinute}`);
+        }
+    };
+
     const addLocation = () => {
         setLocations([...locations, { id: Date.now(), city: "", district: "", address: "" }]);
     };
@@ -101,6 +137,11 @@ function BookingForm() {
         // Validation basic
         if (!date || !flightNumber || !airport) {
             alert("請填寫完整航班資訊");
+            return;
+        }
+
+        if (flightError) {
+            alert("請修正航班編號錯誤");
             return;
         }
 
@@ -141,6 +182,25 @@ function BookingForm() {
 
         // Proceed to Ride Info page
         router.push('/booking/ride-info');
+    };
+
+    const getFreeWaitPolicy = () => {
+        if (!isPickup) {
+            return "指定時間提供免費等待 30 分鐘"; // Dropoff - usually implied specific time
+        }
+
+        // Pickup logic
+        const isPort = airport === 'kel' || airport === 'khh'; // Simple check for ports
+
+        if (isPort) {
+            return "接港僅提供指定時間，免費等待 60 分鐘";
+        }
+
+        if (bookingMode === 'flight') {
+            return "依航班抵達提供免費等待 90 分鐘";
+        } else {
+            return "指定時間提供免費等待 30 分鐘";
+        }
     };
 
     return (
@@ -245,49 +305,57 @@ function BookingForm() {
                             <input
                                 type="text"
                                 value={flightNumber}
-                                onChange={e => setFlightNumber(e.target.value)}
+                                onChange={e => setFlightNumber(e.target.value.toUpperCase())}
+                                onBlur={handleFlightBlur}
                                 placeholder="請輸入航班和船班編號"
-                                className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400"
+                                className={`w-full p-3 bg-white border rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400 ${flightError ? 'border-red-500' : 'border-gray-300'}`}
                             />
+                            {flightError && (
+                                <p className="text-xs text-red-500 font-medium">{flightError}</p>
+                            )}
+                            {arrivalTimeMsg && !flightError && (
+                                <p className="text-xs text-blue-600 font-medium flex items-center gap-1">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    {arrivalTimeMsg}
+                                </p>
+                            )}
                         </div>
 
-                        {/* Time Inputs (Visible only if Specific Time) */}
-                        {bookingMode === 'time' && (
-                            <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500">時</label>
-                                    <div className="relative">
-                                        <select
-                                            value={hour}
-                                            onChange={e => setHour(e.target.value)}
-                                            className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
-                                        >
-                                            <option value="" disabled>時</option>
-                                            {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                                                <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500">分</label>
-                                    <div className="relative">
-                                        <select
-                                            value={minute}
-                                            onChange={e => setMinute(e.target.value)}
-                                            className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
-                                        >
-                                            <option value="" disabled>分</option>
-                                            {['00', '15', '30', '45'].map(m => (
-                                                <option key={m} value={m}>{m}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                    </div>
+                        {/* Time Inputs (Visible only if Specific Time or Dropoff) */}
+                        <div className={`grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200 ${bookingMode !== 'time' ? 'hidden' : ''}`}>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-500">時</label>
+                                <div className="relative">
+                                    <select
+                                        value={hour}
+                                        onChange={e => setHour(e.target.value)}
+                                        className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
+                                    >
+                                        <option value="" disabled>時</option>
+                                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                                            <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                 </div>
                             </div>
-                        )}
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-500">分</label>
+                                <div className="relative">
+                                    <select
+                                        value={minute}
+                                        onChange={e => setMinute(e.target.value)}
+                                        className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
+                                    >
+                                        <option value="" disabled>分</option>
+                                        {['00', '15', '30', '45'].map(m => (
+                                            <option key={m} value={m}>{m}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -377,12 +445,26 @@ function BookingForm() {
                                 </div>
                             </div>
 
-                            <textarea
-                                value={loc.address}
-                                onChange={e => updateLocation(loc.id, 'address', e.target.value)}
-                                placeholder="詳細地址（路 / 巷 / 弄 / 號 / 樓）(必填)"
-                                className="w-full p-3.5 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400 min-h-[100px] resize-none"
-                            />
+                            <div className="space-y-2">
+                                <textarea
+                                    value={loc.address}
+                                    onChange={e => updateLocation(loc.id, 'address', e.target.value)}
+                                    placeholder="詳細地址（路 / 巷 / 弄 / 號 / 樓）(必填)"
+                                    className="w-full p-3.5 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400 min-h-[80px] resize-none"
+                                />
+                                {/* Common Locations Mock */}
+                                <div className="flex flex-wrap gap-2">
+                                    {COMMON_LOCATIONS.map(place => (
+                                        <button
+                                            key={place}
+                                            onClick={() => updateLocation(loc.id, 'address', place)}
+                                            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded-md transition"
+                                        >
+                                            {place}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     ))}
 
@@ -396,6 +478,13 @@ function BookingForm() {
                     </div>
 
                     <p className="text-xs text-gray-400 mt-2 text-center">可新增多個接送地點</p>
+                </div>
+
+                {/* Notes Section */}
+                <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100">
+                    <p className="text-xs text-blue-700 font-medium text-center">
+                        ※ {getFreeWaitPolicy()}
+                    </p>
                 </div>
             </div>
 
