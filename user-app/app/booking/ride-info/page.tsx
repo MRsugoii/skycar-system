@@ -139,6 +139,22 @@ export default function RideInfoPage() {
             return;
         }
 
+        // Validation: Total Safety Seat Limit (Physical Capacity)
+        // Economy/Luxury/Electric: Max 2
+        // Business 7: Max 4
+        const SAFETY_SEAT_TOTAL_RULES: Record<string, number> = {
+            "經濟四人座": 2,
+            "豪華轎車": 2,
+            "電動專車": 2,
+            "商務七人座": 4
+        };
+        const vehicleSeatLimit = SAFETY_SEAT_TOTAL_RULES[selectedVehicle.name] || 2; // Default to 2
+
+        if (totalSafetySeats > vehicleSeatLimit) {
+            alert(`${selectedVehicle.name} 受限於車內空間，最多僅能安裝 ${vehicleSeatLimit} 張安全座椅`);
+            return;
+        }
+
         // Validation: Individual Safety Seat limits per vehicle
         if (infantSeats > (selectedVehicle.safety_seat_infant_max || 0)) {
             alert(`${selectedVehicle.name} 最多僅能提供 ${selectedVehicle.safety_seat_infant_max} 個嬰兒座椅`);
