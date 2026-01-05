@@ -31,6 +31,13 @@ function BookingForm() {
         { id: 1, city: "", district: "", address: "" }
     ]);
 
+    // Force specific time mode for dropoff
+    useEffect(() => {
+        if (!isPickup) {
+            setBookingMode('time');
+        }
+    }, [isPickup]);
+
     // Restore state from sessionStorage on mount (Update to restore bookingMode)
     useEffect(() => {
         const savedBasic = sessionStorage.getItem('booking_basic_info');
@@ -38,8 +45,11 @@ function BookingForm() {
             try {
                 const data = JSON.parse(savedBasic);
 
-                if (data.bookingMode) {
+                // Only restore booking mode if it's pickup. For dropoff, it's always 'time'.
+                if (isPickup && data.bookingMode) {
                     setBookingMode(data.bookingMode);
+                } else if (!isPickup) {
+                    setBookingMode('time');
                 }
 
                 if (data.flightInfo) {
@@ -50,6 +60,7 @@ function BookingForm() {
                     setFlightNumber(data.flightInfo.flightNumber || "");
                     setAirport(data.flightInfo.airport || "");
                 }
+
 
                 if (data.pickupTime) {
                     setPickupDate(data.pickupTime.date || "");
@@ -69,25 +80,7 @@ function BookingForm() {
 
     // Auto-calculate Pickup Time for Dropoff (5 hours before flight)
     useEffect(() => {
-        if (!isPickup && date && hour && minute) {
-            // Construct flight time: YYYY-MM-DDTHH:mm:00
-            const flightTimeStr = `${date}T${hour}:${minute}:00`;
-            const flightTime = new Date(flightTimeStr);
-
-            if (!isNaN(flightTime.getTime())) {
-                // Subtract 5 hours
-                const pickupTime = new Date(flightTime.getTime() - 5 * 60 * 60 * 1000);
-
-                // Format back to YYYY-MM-DD, HH, mm
-                const pY = pickupTime.getFullYear();
-                const pM = String(pickupTime.getMonth() + 1).padStart(2, '0');
-                const pD = String(pickupTime.getDate()).padStart(2, '0');
-
-                setPickupDate(`${pY}-${pM}-${pD}`);
-                setPickupHour(String(pickupTime.getHours()).padStart(2, '0'));
-                setPickupMinute(String(pickupTime.getMinutes()).padStart(2, '0'));
-            }
-        }
+        // Disabled auto-calculation as requested by user - relying on manual input in main card for dropoff
     }, [isPickup, date, hour, minute]);
 
     const addLocation = () => {
@@ -111,16 +104,19 @@ function BookingForm() {
             return;
         }
 
-        // Validate time only if in 'specific time' mode
+        // Validate time only if in 'specific time' mode (Always true for dropoff now)
         if (bookingMode === 'time' && (!hour || !minute)) {
             alert("請填寫完整時間");
             return;
         }
 
+        /* 
+        // Dropoff specific validation removed as the separate card is removed
         if (!isPickup && (!pickupDate || !pickupHour || !pickupMinute)) {
             alert("請填寫完整乘車時間");
             return;
         }
+        */
 
         for (const loc of locations) {
             if (!loc.city || !loc.district || !loc.address) {
@@ -128,12 +124,17 @@ function BookingForm() {
                 return;
             }
         }
+
         // Save basic info to storage
+        // For dropoff (!isPickup), we use the main date/time as the pickup time
+        const finalPickupDate = isPickup ? null : date;
+        const finalPickupTime = isPickup ? null : `${hour}:${minute}`;
+
         const bookingDraft = {
             type,
             bookingMode, // Save mode
             flightInfo: { date, time: bookingMode === 'time' ? `${hour}:${minute}` : null, flightNumber, airport },
-            pickupTime: isPickup ? null : { date: pickupDate, time: `${pickupHour}:${pickupMinute}` },
+            pickupTime: isPickup ? null : { date: finalPickupDate, time: finalPickupTime },
             locations
         };
         sessionStorage.setItem('booking_basic_info', JSON.stringify(bookingDraft));
@@ -187,35 +188,44 @@ function BookingForm() {
                 {/* Combined Flight Info / Booking Method Card */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
                     <div className="flex items-center gap-4">
-                        <label className="text-base font-bold text-gray-900">預約方式</label>
-                        <div className="flex items-center gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="bookingMode"
-                                    value="flight"
-                                    checked={bookingMode === 'flight'}
-                                    onChange={() => setBookingMode('flight')}
-                                    className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                />
-                                <span className={`text-sm font-medium ${bookingMode === 'flight' ? 'text-blue-600' : 'text-gray-600'}`}>
-                                    依航班時間
-                                </span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="bookingMode"
-                                    value="time"
-                                    checked={bookingMode === 'time'}
-                                    onChange={() => setBookingMode('time')}
-                                    className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                />
-                                <span className={`text-sm font-medium ${bookingMode === 'time' ? 'text-blue-600' : 'text-gray-600'}`}>
-                                    指定時間
-                                </span>
-                            </label>
-                        </div>
+
+                        <label className="text-base font-bold text-gray-900 flex-shrink-0">
+                            {isPickup ? '預約方式' : '指定乘車時間'}
+                        </label>
+
+                        {isPickup ? (
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="bookingMode"
+                                        value="flight"
+                                        checked={bookingMode === 'flight'}
+                                        onChange={() => setBookingMode('flight')}
+                                        className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <span className={`text-sm font-medium ${bookingMode === 'flight' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                        依航班時間
+                                    </span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="bookingMode"
+                                        value="time"
+                                        checked={bookingMode === 'time'}
+                                        onChange={() => setBookingMode('time')}
+                                        className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <span className={`text-sm font-medium ${bookingMode === 'time' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                        指定時間
+                                    </span>
+                                </label>
+                            </div>
+                        ) : (
+                            // For Dropoff, just empty or static text implies specific time
+                            <div className="hidden"></div>
+                        )}
                     </div>
 
                     <div className="space-y-4">
@@ -281,61 +291,7 @@ function BookingForm() {
                     </div>
                 </div>
 
-                {/* Dropoff Specific: Designated Pickup Time */}
-                {!isPickup && (
-                    <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
-                        <div className="border-l-4 border-blue-500 pl-3">
-                            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                指定乘車時間
-                            </h2>
-                        </div>
-
-                        <div className="grid grid-cols-[1.5fr_1fr_1fr] gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500">日期</label>
-                                <input
-                                    type="date"
-                                    value={pickupDate}
-                                    onChange={e => setPickupDate(e.target.value)}
-                                    className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500">時</label>
-                                <div className="relative">
-                                    <select
-                                        value={pickupHour}
-                                        onChange={e => setPickupHour(e.target.value)}
-                                        className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
-                                    >
-                                        <option value="" disabled>時</option>
-                                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                                            <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500">分</label>
-                                <div className="relative">
-                                    <select
-                                        value={pickupMinute}
-                                        onChange={e => setPickupMinute(e.target.value)}
-                                        className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
-                                    >
-                                        <option value="" disabled>分</option>
-                                        {['00', '15', '30', '45'].map(m => (
-                                            <option key={m} value={m}>{m}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                </div>
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-400 text-right">※ 系統預設乘車時間為起飛 5 小時以前 (可修改)</p>
-                    </div>
-                )}
+                {/* Dropoff Specific: Designated Pickup Time (REMOVED) */}
 
                 {/* Locations Card (Dynamic) */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
