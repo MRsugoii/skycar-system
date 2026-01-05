@@ -272,42 +272,7 @@ export default function RideInfoPage() {
                     />
                 </div>
 
-                {/* 3. Safety Seats */}
-                <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
-                    <div className="border-l-4 border-blue-500 pl-3">
-                        <h2 className="text-lg font-bold text-gray-900">安全座椅</h2>
-                        <p className="text-xs text-blue-600 font-bold mt-1">依規定 4 歲或體重未達 18 公斤需使用</p>
-                    </div>
-
-                    <IconCounterRow
-                        label="嬰兒座椅 (0-1歲)"
-                        subLabel={`需加價 $${extraSettings?.safety_seat_infant_price || 0}`}
-                        value={infantSeats}
-                        onChange={setInfantSeats}
-                        icon={<Armchair size={18} className="text-blue-500" />}
-                        limit={selectedVehicle?.safety_seat_infant_max || 0}
-                    />
-
-                    <IconCounterRow
-                        label="幼童座椅 (1-4歲)"
-                        subLabel={`需加價 $${extraSettings?.safety_seat_child_price || 0}`}
-                        value={childSeats}
-                        onChange={setChildSeats}
-                        icon={<Armchair size={18} className="text-blue-600" />}
-                        limit={selectedVehicle?.safety_seat_child_max || 0}
-                    />
-
-                    <IconCounterRow
-                        label="增高座墊 (4-7歲)"
-                        subLabel={`需加價 $${extraSettings?.safety_seat_booster_price || 0}`}
-                        value={boosters}
-                        onChange={setBoosters}
-                        icon={<Armchair size={18} className="text-indigo-600" />}
-                        limit={selectedVehicle?.safety_seat_booster_max || 0}
-                    />
-                </div>
-
-                {/* 4. Luggage */}
+                {/* 3. Luggage */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
                     <div className="border-l-4 border-blue-500 pl-3 flex justify-between items-start">
                         <div>
@@ -362,6 +327,41 @@ export default function RideInfoPage() {
                             </button>
                         </div>
                     </div>
+                </div>
+
+                {/* 4. Safety Seats */}
+                <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
+                    <div className="border-l-4 border-blue-500 pl-3">
+                        <h2 className="text-lg font-bold text-gray-900">安全座椅</h2>
+                        <p className="text-xs text-blue-600 font-bold mt-1">依規定 4 歲或體重未達 18 公斤需使用</p>
+                    </div>
+
+                    <IconCounterRow
+                        label="嬰兒座椅 (0-1歲)"
+                        subLabel={`需加價 $${extraSettings?.safety_seat_infant_price || 0}`}
+                        value={infantSeats}
+                        onChange={setInfantSeats}
+                        icon={<Armchair size={18} className="text-blue-500" />}
+                        limit={selectedVehicle?.safety_seat_infant_max || 0}
+                    />
+
+                    <IconCounterRow
+                        label="幼童座椅 (1-4歲)"
+                        subLabel={`需加價 $${extraSettings?.safety_seat_child_price || 0}`}
+                        value={childSeats}
+                        onChange={setChildSeats}
+                        icon={<Armchair size={18} className="text-blue-600" />}
+                        limit={selectedVehicle?.safety_seat_child_max || 0}
+                    />
+
+                    <IconCounterRow
+                        label="增高座墊 (4-7歲)"
+                        subLabel={`需加價 $${extraSettings?.safety_seat_booster_price || 0}`}
+                        value={boosters}
+                        onChange={setBoosters}
+                        icon={<Armchair size={18} className="text-indigo-600" />}
+                        limit={selectedVehicle?.safety_seat_booster_max || 0}
+                    />
                 </div>
 
                 {/* 5. Other Requests */}
