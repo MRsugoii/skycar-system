@@ -293,7 +293,7 @@ function BookingForm() {
                                 value={flightNumber}
                                 onChange={e => setFlightNumber(e.target.value.toUpperCase())}
                                 onBlur={handleFlightBlur}
-                                placeholder="請輸入航班和船班編號"
+                                placeholder="請輸入航班或船班編號 (例如: BR123, SHIP-01)"
                                 className={`w-full p-3 bg-white border rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400 ${flightError ? 'border-red-500' : 'border-gray-300'}`}
                             />
                             {flightError && (
@@ -429,7 +429,7 @@ function BookingForm() {
                                 <textarea
                                     value={loc.address}
                                     onChange={e => updateLocation(loc.id, 'address', e.target.value)}
-                                    placeholder="詳細地址（路 / 巷 / 弄 / 號 / 樓）(必填)"
+                                    placeholder="請輸入街道巷弄號樓等詳細資訊 (例如: 信義路五段7號)"
                                     className="w-full p-3.5 bg-white border border-gray-300 rounded-xl font-medium text-sm outline-none focus:border-blue-500 placeholder:text-gray-400 min-h-[80px] resize-none"
                                 />
                             </div>
