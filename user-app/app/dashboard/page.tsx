@@ -118,15 +118,21 @@ export default function DashboardPage() {
                 }
             }
 
-            // A. Fetch from Supabase if linked
-            if (currentSbId) {
-                const { data: sbOrders, error } = await supabase
+            // A. Fetch from Supabase (Filter by Account Tag in Note)
+            // Logic: We prioritize finding orders tagged with [Account: ...]
+            let sbOrders = [];
+
+            if (acc) {
+                // ILIKE operator to find the tag within the note text
+                const { data, error } = await supabase
                     .from('orders')
                     .select('*')
-                    .eq('user_id', currentSbId)
+                    .ilike('note', `%[Account: ${acc}]%`)
                     .order('created_at', { ascending: false });
 
-                if (sbOrders) {
+                if (data) sbOrders = data;
+
+                if (sbOrders.length > 0) {
                     list = sbOrders.map((o: any) => {
                         // Map Status
                         let st: any = 'ing';

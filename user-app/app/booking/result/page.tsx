@@ -137,6 +137,42 @@ function BookingResult() {
                     )}
                 </div>
 
+                {/* Demo Section: Failed Order Presentation */}
+                {status === 'success' && (
+                    <div className="mt-12 mb-8 border-t-2 border-dashed border-gray-200 pt-8 relative">
+                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-200 text-gray-500 px-3 py-1 rounded-full text-xs font-bold tracking-wider">
+                            DEMO: 失敗畫面展示
+                        </span>
+
+                        <div className="opacity-75 scale-95 origin-top grayscale-[30%]">
+                            <div className="bg-white rounded-[32px] p-8 shadow-lg border border-red-100 text-center space-y-6">
+                                {/* Icon */}
+                                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+                                    <X className="text-red-500" size={40} strokeWidth={3} />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold text-gray-900">付款未完成</h2>
+                                </div>
+
+                                <div className="text-left text-sm text-gray-500 space-y-4 bg-gray-50 p-5 rounded-2xl">
+                                    <p>可能原因：驗證逾時、餘額不足或 3D 驗證未通過。</p>
+                                    <p>可稍後再試或更換付款方式，如需協助請聯絡客服。</p>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-200 cursor-not-allowed opacity-80" disabled>
+                                        回到付款
+                                    </button>
+                                    <button className="flex-1 py-3 bg-white text-gray-600 border border-gray-200 font-bold rounded-xl cursor-not-allowed opacity-80" disabled>
+                                        聯絡客服
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
         </div>
     );

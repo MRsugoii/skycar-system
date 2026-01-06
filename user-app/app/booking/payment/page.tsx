@@ -150,8 +150,13 @@ export default function PaymentPage() {
                 }
             }
 
+            // Get Member Account to tag the order
+            const memberAccount = sessionStorage.getItem('memberAccount');
+            const accountTag = memberAccount ? `[Account: ${memberAccount}] ` : "";
+
             const { error } = await supabase.from('orders').insert({
-                user_id: sbUserId || (memberAccount || contactInfo.name), // Fallback to name if totally unlinked
+                id: orderId, // Revert to using custom CH... ID
+                user_id: null,
                 contact_name: contactInfo.name,
                 contact_phone: contactInfo.phone,
                 pickup_address: pickupAddr,
@@ -161,8 +166,8 @@ export default function PaymentPage() {
                 luggage_count: luggageCount,
                 vehicle_type: vehicleName,
                 price: prices.total,
-                status: 'pending',
-                note: (rideInfo.notes ? rideInfo.notes + " " : "") + `[ID: ${orderId}]`
+                status: 'new',
+                note: accountTag + (rideInfo.notes || "")
             });
 
             if (error) {
@@ -170,6 +175,10 @@ export default function PaymentPage() {
                 alert("建立訂單時發生錯誤: " + (error.message || "請檢查網路連線"));
                 return;
             }
+
+            // [Demo Fix] Save Order ID to LocalStorage so Dashboard can find it without User Auth
+            const existing = JSON.parse(localStorage.getItem('demo_guest_orders') || '[]');
+            localStorage.setItem('demo_guest_orders', JSON.stringify([...existing, orderId]));
 
             // Also keep local storage for Result page display if needed, or just rely on URL params
             // We'll keep the minimal local storage just in case the result page needs it, but mostly we rely on Supabase now.
