@@ -2837,6 +2837,21 @@ function VehiclesContent() {
           </div>
         )
       }
+      <div className="mt-8 p-4 bg-gray-100 rounded text-xs font-mono break-all border-t border-gray-300">
+        <h4 className="font-bold text-red-600 mb-2">DEBUG INFO (請截圖給工程師)</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p>Selected Category: {selectedCategory}</p>
+            <p>Vehicles Count: {vehicles.length}</p>
+            <p>Airport Prices (Total): {airportPrices.length}</p>
+            <p>Prices in current Category: {airportPrices.filter(p => p.category === selectedCategory).length}</p>
+          </div>
+          <div>
+            <p className="font-bold">Sample Record (First found):</p>
+            <pre className="whitespace-pre-wrap">{JSON.stringify(airportPrices.find(p => p.category === selectedCategory) || "None", null, 2)}</pre>
+          </div>
+        </div>
+      </div>
     </div >
   );
 }
