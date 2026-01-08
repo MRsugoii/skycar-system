@@ -714,7 +714,7 @@ function OrdersContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {currentDriver ? "司機訂單" : "訂單管理 (CH)"}
+            {currentDriver ? "司機訂單" : "訂單管理"}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             {currentDriver ? `查看 ${currentDriver} 的所有行程與帳務狀態。` : "查看所有訂單狀態、派遣車輛與詳細內容。"}
