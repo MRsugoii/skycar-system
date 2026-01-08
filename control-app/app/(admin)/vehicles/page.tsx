@@ -117,7 +117,7 @@ interface ExtraSettingsType {
 function VehiclesContent() {
 
   const searchParams = useSearchParams();
-  const currentTab = searchParams.get('tab') || 'vehicle'; // Default to vehicle management
+  const currentTab = searchParams.get('tab') || 'holiday'; // Default to holiday management
 
   // --- 1. Vehicle Management Data & State ---
   const [vehicles, setVehicles] = useState<VehicleType[]>([]);
@@ -1975,7 +1975,7 @@ function VehiclesContent() {
         <div className="bg-gray-50 rounded-lg p-2 inline-flex items-center gap-2 border border-gray-200 overflow-x-auto max-w-full">
           <Link
             href="/vehicles?tab=holiday"
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${currentTab === 'holiday' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${(!currentTab || currentTab === 'holiday') ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
           >
             <Calendar size={16} />
             1. 假期特價
@@ -2001,8 +2001,8 @@ function VehiclesContent() {
           <div className="text-gray-300"><ChevronRight size={16} /></div>
 
           <Link
-            href="/vehicles"
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${(!currentTab || currentTab === 'vehicle') ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
+            href="/vehicles?tab=vehicle"
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${currentTab === 'vehicle' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-200' : 'text-gray-600 hover:bg-gray-200/50 hover:text-gray-900'}`}
           >
             <Car size={16} />
             4. 車輛管理
@@ -2021,11 +2021,11 @@ function VehiclesContent() {
 
       {/* Conditional Rendering Content */}
       <div className="min-h-[400px]">
-        {currentTab === 'holiday' && renderHolidayTab()}
+        {(!currentTab || currentTab === 'holiday') && renderHolidayTab()}
         {currentTab === 'airport' && renderAirportTab()}
         {currentTab === 'route' && renderRouteTab()}
 
-        {(!currentTab || currentTab === 'vehicle') && renderVehicleTab()}
+        {currentTab === 'vehicle' && renderVehicleTab()}
         {currentTab === 'extra' && renderExtraSettingsTab()}
       </div>
 
