@@ -891,9 +891,9 @@ function VehiclesContent() {
         if (error) throw error;
       }
       handleCloseAirportModal();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("儲存失敗");
+      alert("儲存失敗: " + (e.message || "未知錯誤"));
     }
   };
 
