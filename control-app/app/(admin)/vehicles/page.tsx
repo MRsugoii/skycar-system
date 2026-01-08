@@ -913,6 +913,9 @@ function VehiclesContent() {
           if (error) throw error;
         }
       }
+      // Force refresh data
+      await fetchAirportPrices();
+      alert("儲存成功！");
       handleCloseAirportModal();
     } catch (e: any) {
       console.error(e);
