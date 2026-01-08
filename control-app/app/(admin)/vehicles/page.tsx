@@ -885,10 +885,33 @@ function VehiclesContent() {
         const { error } = await supabase.from('airport_prices').update(toDbAirportPrice(airportFormData)).eq('id', editingAirport.id);
         if (error) throw error;
       } else {
-        // Creating single row? Usually done via Master Add.
-        // But if specific add:
-        const { error } = await supabase.from('airport_prices').insert(toDbAirportPrice(airportFormData));
-        if (error) throw error;
+        // Check if duplicate exists locally first to assume ID (Optimization)
+        // Or just let Supabase handle it if we used Upsert, but we don't know the constraints for sure.
+        // Safer to check for existing record with same (airport, region, category)
+        const { data: existingData, error: checkError } = await supabase
+          .from('airport_prices')
+          .select('id')
+          .eq('airport', airportFormData.airport)
+          .eq('region', airportFormData.region)
+          .eq('category', airportFormData.category || 'weekday') // Default to weekday if missing, though it should be passed
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "Row not found"
+          throw checkError;
+        }
+
+        if (existingData) {
+          // Record exists! Update it instead of inserting.
+          const { error } = await supabase
+            .from('airport_prices')
+            .update(toDbAirportPrice(airportFormData))
+            .eq('id', existingData.id);
+          if (error) throw error;
+        } else {
+          // Really new
+          const { error } = await supabase.from('airport_prices').insert(toDbAirportPrice(airportFormData));
+          if (error) throw error;
+        }
       }
       handleCloseAirportModal();
     } catch (e: any) {
