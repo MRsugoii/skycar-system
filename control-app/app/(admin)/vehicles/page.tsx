@@ -881,38 +881,22 @@ function VehiclesContent() {
 
   const handleSaveAirport = async () => {
     try {
-      if (editingAirport) {
-        const { error } = await supabase.from('airport_prices').update(toDbAirportPrice(airportFormData)).eq('id', editingAirport.id);
-        if (error) throw error;
-      } else {
-        // Check if duplicate exists locally first to assume ID (Optimization)
-        // Or just let Supabase handle it if we used Upsert, but we don't know the constraints for sure.
-        // Safer to check for existing record with same (airport, region, category)
-        const { data: existingData, error: checkError } = await supabase
-          .from('airport_prices')
-          .select('id')
-          .eq('airport', airportFormData.airport)
-          .eq('region', airportFormData.region)
-          .eq('category', airportFormData.category || 'weekday') // Default to weekday if missing, though it should be passed
-          .single();
+      // Construct the payload from form data
+      const payload = toDbAirportPrice(airportFormData);
 
-        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "Row not found"
-          throw checkError;
-        }
+      // Use UPSERT explicitly matching the unique constraint columns.
+      // This handles:
+      // 1. "Virtual" rows (client-generated IDs) -> Will be INSERTED because they don't match data in DB.
+      // 2. Real existing rows -> Will be UPDATED because they match (airport, region, category).
+      // 3. New rows -> Will be INSERTED.
+      // We omit 'id' so Supabase relies on the unique key constraint for conflict resolution.
 
-        if (existingData) {
-          // Record exists! Update it instead of inserting.
-          const { error } = await supabase
-            .from('airport_prices')
-            .update(toDbAirportPrice(airportFormData))
-            .eq('id', existingData.id);
-          if (error) throw error;
-        } else {
-          // Really new
-          const { error } = await supabase.from('airport_prices').insert(toDbAirportPrice(airportFormData));
-          if (error) throw error;
-        }
-      }
+      const { error } = await supabase
+        .from('airport_prices')
+        .upsert(payload, { onConflict: 'airport, region, category' });
+
+      if (error) throw error;
+
       // Force refresh data
       await fetchAirportPrices();
       alert("儲存成功！");
