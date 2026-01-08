@@ -41,6 +41,9 @@ export default function PaymentPage() {
     const [memberAccount, setMemberAccount] = useState<string | null>(null);
     const [couponCode, setCouponCode] = useState("");
 
+    // DEMO: Result Simulation
+    const [demoResultStatus, setDemoResultStatus] = useState<'success' | 'failure'>('success');
+
     useEffect(() => {
         // Load data
         const basicStr = sessionStorage.getItem('booking_basic_info');
@@ -199,8 +202,14 @@ export default function PaymentPage() {
                 localStorage.setItem('orders', JSON.stringify([newOrder, ...existingOrders]));
             }
 
-            alert("付款成功！訂單已成立。");
-            router.push(`/booking/result?status=success&orderId=${orderId}`);
+
+            if (demoResultStatus === 'success') {
+                alert("付款成功！訂單已成立。");
+            } else {
+                // If simulating failure, we might still want the order specifically for the 'retry' flow, or not.
+                // For this demo, let's assume the order is created but payment 'failed'.
+            }
+            router.push(`/booking/result?status=${demoResultStatus}&orderId=${orderId}`);
 
         } catch (err: any) {
             console.error("Submit Error:", err);
@@ -480,8 +489,28 @@ export default function PaymentPage() {
 
             </div>
 
-            {/* Bottom Actions */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 z-20 flex gap-3 justify-center">
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 z-20 flex flex-col gap-3 items-center">
+
+                {/* Demo Toggle */}
+                <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-full border border-gray-200">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Demo Result</span>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${demoResultStatus === 'success' ? 'border-green-500 bg-green-500' : 'border-gray-300 bg-white'}`}>
+                            {demoResultStatus === 'success' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                        </div>
+                        <span className={`text-sm font-bold ${demoResultStatus === 'success' ? 'text-green-600' : 'text-gray-500'}`}>成功</span>
+                        <input type="radio" className="hidden" checked={demoResultStatus === 'success'} onChange={() => setDemoResultStatus('success')} />
+                    </label>
+                    <div className="w-px h-4 bg-gray-300"></div>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${demoResultStatus === 'failure' ? 'border-red-500 bg-red-500' : 'border-gray-300 bg-white'}`}>
+                            {demoResultStatus === 'failure' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                        </div>
+                        <span className={`text-sm font-bold ${demoResultStatus === 'failure' ? 'text-red-600' : 'text-gray-500'}`}>失敗</span>
+                        <input type="radio" className="hidden" checked={demoResultStatus === 'failure'} onChange={() => setDemoResultStatus('failure')} />
+                    </label>
+                </div>
+
                 <div className="w-full max-w-[420px]">
                     <button
                         onClick={handleSubmit}

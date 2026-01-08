@@ -26,18 +26,22 @@ export default function HistoryPage() {
         }
 
         const fetchHistory = async () => {
-            // Get Driver Name first for mapping
-            const driverName = "王小明"; // Using default demo driver name for now as login is simplified
+            // 1. Get Driver Info from Session/Local
+            const idno = sessionStorage.getItem("driverIdno");
+            if (!idno) {
+                router.push('/login');
+                return;
+            }
 
-            // 1. Get Driver UUID
+            // Get Driver UUID
             const { data: driverData, error: driverError } = await supabase
                 .from('drivers')
                 .select('id')
-                .eq('name', driverName)
+                .eq('national_id', idno)
                 .single();
 
             if (driverError || !driverData) {
-                console.error("Could not find Supabase driver ID for", driverName);
+                console.error("Could not find Supabase driver ID for", idno);
                 setLoading(false);
                 return;
             }

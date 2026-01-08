@@ -130,13 +130,22 @@ function OrdersContent() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<{ id: string, name: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string, name: string, phone: string, email: string }[]>([]);
 
   useEffect(() => {
-    const fetchDrivers = async () => {
-      const { data } = await supabase.from('drivers').select('id, name');
-      if (data) setDrivers(data);
+    const fetchData = async () => {
+      const { data: dData } = await supabase.from('drivers').select('id, name');
+      if (dData) setDrivers(dData);
+
+      const { data: uData } = await supabase.from('users').select('id, display_name, phone, email');
+      if (uData) setUsers(uData.map((u: any) => ({
+        id: u.id,
+        name: u.display_name,
+        phone: u.phone,
+        email: u.email
+      })));
     };
-    fetchDrivers();
+    fetchData();
   }, []);
 
   // Fetch initial data and subscribe to changes
@@ -497,18 +506,45 @@ function OrdersContent() {
 
     try {
       if (isNewOrder) {
-        // Simple create logic if needed, but for now we focus on update
+        // Find driver ID if assigned
+        const assignedDriver = drivers.find(d => d.name === editForm.driver);
+        // Find user ID if assigned (optional - simplistic match)
+        const assignedUser = users.find(u => u.name === editForm.user);
+
+        const { error } = await supabase.from('orders').insert({
+          id: editForm.id,
+          contact_name: editForm.user,
+          contact_phone: editForm.phone,
+          pickup_address: editForm.from,
+          dropoff_address: editForm.to,
+          pickup_time: `${editForm.date.replace(/\//g, '-')} ${editForm.time}:00`,
+          price: Number(editForm.priceBreakdown?.total || editForm.amount),
+          driver_id: assignedDriver?.id || null,
+          user_id: assignedUser?.id || null, // Best effort link
+          status: 'unconfirmed',
+          note: editForm.specialRequests?.notes || "",
+          vehicle_type: editForm.specialRequests?.vehicleType || "一般轎車",
+          passenger_count: parseInt(editForm.passengerCount) || 1,
+          luggage_count: parseInt(editForm.luggageCount) || 0
+        });
+
+        if (error) throw error;
         setOrders([editForm, ...orders]);
         addLog(`新增訂單 #${editForm.id}`, "success");
       } else {
+        const assignedDriver = drivers.find(d => d.name === editForm.driver);
+
         const { error } = await supabase
           .from('orders')
           .update({
             pickup_address: editForm.from,
             dropoff_address: editForm.to,
-            price: Number(editForm.amount),
+            price: Number(editForm.priceBreakdown?.total || editForm.amount),
             contact_name: editForm.user,
-            contact_phone: editForm.phone
+            contact_phone: editForm.phone,
+            driver_id: assignedDriver?.id || null, // Update driver ID
+            vehicle_type: editForm.specialRequests?.vehicleType,
+            note: editForm.specialRequests?.notes
           })
           .eq('id', editForm.id);
 
@@ -1143,12 +1179,43 @@ function OrdersContent() {
                       isEditing={isEditing}
                       onChange={(val) => setEditForm({ ...editForm, platform: val })}
                     />
-                    <DetailRow
-                      label="乘客姓名"
-                      value={editForm.user}
-                      isEditing={isEditing}
-                      onChange={(val) => setEditForm({ ...editForm, user: val })}
-                    />
+                    {/* Passenger Selection */}
+                    <div className={`${'col-span-1'} flex flex-col gap-1`}>
+                      <span className="text-sm font-medium text-blue-900/60">乘客姓名</span>
+                      {isEditing ? (
+                        <>
+                          <input
+                            list="user-list"
+                            type="text"
+                            value={editForm.user}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const userObj = users.find(u => u.name === val);
+                              if (userObj) {
+                                setEditForm({
+                                  ...editForm,
+                                  user: userObj.name,
+                                  phone: userObj.phone,
+                                  email: userObj.email || ""
+                                });
+                              } else {
+                                setEditForm({ ...editForm, user: val });
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="輸入或選擇乘客"
+                          />
+                          <datalist id="user-list">
+                            {users.map(u => (
+                              <option key={u.id} value={u.name}>{u.phone}</option>
+                            ))}
+                          </datalist>
+                        </>
+                      ) : (
+                        <span className="text-base font-medium text-gray-900">{editForm.user}</span>
+                      )}
+                    </div>
+
                     <DetailRow
                       label="手機號碼"
                       value={editForm.phone}
@@ -1161,12 +1228,28 @@ function OrdersContent() {
                       isEditing={isEditing}
                       onChange={(val) => setEditForm({ ...editForm, email: val })}
                     />
-                    <DetailRow
-                      label="接送司機"
-                      value={editForm.driver}
-                      isEditing={isEditing}
-                      onChange={(val) => setEditForm({ ...editForm, driver: val })}
-                    />
+
+                    {/* Driver Selection */}
+                    <div className={`${'col-span-1'} flex flex-col gap-1`}>
+                      <span className="text-sm font-medium text-blue-900/60">接送司機</span>
+                      {isEditing ? (
+                        <select
+                          value={drivers.find(d => d.name === editForm.driver)?.id || ""}
+                          onChange={(e) => {
+                            const d = drivers.find(dr => dr.id === e.target.value);
+                            setEditForm({ ...editForm, driver: d ? d.name : "未指派" });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                        >
+                          <option value="">未指派</option>
+                          {drivers.map(d => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-base font-medium text-gray-900">{editForm.driver}</span>
+                      )}
+                    </div>
                     <DetailRow
                       label="服務類型"
                       value={editForm.serviceType}
