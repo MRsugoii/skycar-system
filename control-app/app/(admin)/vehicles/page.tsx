@@ -319,8 +319,22 @@ function VehiclesContent() {
 
   const handleToggleHolidayStatus = async (id: number) => {
     const h = holidays.find(x => x.id === id);
-    if (h) {
-      await supabase.from('holidays').update({ status: !h.status }).eq('id', id);
+    if (!h) return;
+
+    const newStatus = !h.status;
+
+    // 1. Optimistic Update
+    setHolidays(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+
+    // 2. Database Update
+    try {
+      const { error } = await supabase.from('holidays').update({ status: newStatus }).eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error toggling holiday status:", err);
+      alert("更新狀態失敗");
+      // Rollback on error
+      setHolidays(prev => prev.map(item => item.id === id ? { ...item, status: !newStatus } : item));
     }
   };
 
@@ -1091,17 +1105,24 @@ function VehiclesContent() {
 
   const handleToggleStatus = async (id: number) => {
     const v = vehicles.find(x => x.id === id);
-    if (v) {
-      try {
-        const { error } = await supabase
-          .from("vehicle_types")
-          .update({ status: !v.status })
-          .eq("id", id);
-        if (error) throw error;
-      } catch (e) {
-        console.error(e);
-        alert("更新狀態失敗");
-      }
+    if (!v) return;
+
+    const newStatus = !v.status;
+
+    // 1. Optimistic Update
+    setVehicles(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+
+    try {
+      const { error } = await supabase
+        .from("vehicle_types")
+        .update({ status: newStatus })
+        .eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error(e);
+      alert("更新狀態失敗");
+      // Rollback
+      setVehicles(prev => prev.map(item => item.id === id ? { ...item, status: !newStatus } : item));
     }
   };
 
@@ -1312,14 +1333,15 @@ function VehiclesContent() {
     setAirportPrices(updatedPrices);
   };
 
-  const toggleSingleStatus = (p: AirportMatrixType, e: React.MouseEvent) => {
+  const toggleSingleStatus = async (p: AirportMatrixType, e: React.MouseEvent) => {
     e.stopPropagation();
     const newStatus = !p.status;
+
+    // 1. Optimistic Update Local State
     setAirportPrices(airportPrices.map(item => (item.id === p.id) ? { ...item, status: newStatus } : item));
 
-    // If turning ON, force Parent (City) and Grandparent (Airport) to ON visual state
+    // 2. Visual Group Status Update
     if (newStatus) {
-      // Find city for this region
       let foundCityKey = '';
       Object.entries(TAIWAN_LOCATIONS).forEach(([k, v]) => {
         if (v.districts.includes(p.region)) foundCityKey = k;
@@ -1333,6 +1355,21 @@ function VehiclesContent() {
         [airportKey]: true,
         [cityKey]: true
       }));
+    }
+
+    // 3. Database Update (Crucial: was missing!)
+    try {
+      const { error } = await supabase
+        .from('airport_prices')
+        .update({ status: newStatus })
+        .eq('id', p.id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error toggling airport price status:", err);
+      // alert("更新狀態失敗"); // Optional: minimize intrusive alerts
+      // Rollback state if desired
+      setAirportPrices(airportPrices.map(item => (item.id === p.id) ? { ...item, status: !newStatus } : item));
     }
   };
 
