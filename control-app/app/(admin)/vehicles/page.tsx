@@ -790,33 +790,83 @@ function VehiclesContent() {
   };
 
   const handleAddMasterRegion = async () => {
-    if (!newMasterRegion.trim()) return;
+    const inputName = newMasterRegion.trim();
+    if (!inputName) return;
 
-    // To add a new region, we conceptually just add it to the 'regions' list
-    // In our DB model, regions only exist within 'airport_prices' records.
-    // So we create a "placeholder" record for the first available airport with this region.
-    if (availableAirports.length > 0) {
-      try {
-        const newRecord = {
-          airport: availableAirports[0],
-          region: newMasterRegion.trim(),
-          category: 'weekday',
-          prices: {},
-          remote_surcharge: 0,
-          status: true
-        };
-        const { error } = await supabase.from('airport_prices').insert(newRecord);
+    if (availableAirports.length === 0) {
+      alert("請先新增至少一個機場");
+      return;
+    }
+
+    try {
+      // 1. Check if input matches a known City (e.g. "高雄" or "高雄市")
+      const matchedCity = Object.values(TAIWAN_LOCATIONS).find(c =>
+        c.name === inputName || c.name.replace(/[縣市]/, '') === inputName
+      );
+
+      let regionsToAdd: string[] = [];
+
+      if (matchedCity) {
+        // Bulk mode: Add all districts of the city
+        // Filter out districts that already exist to avoid duplicates
+        regionsToAdd = matchedCity.districts.filter(d => !availableRegions.includes(d));
+
+        if (regionsToAdd.length === 0) {
+          alert(`「${matchedCity.name}」的所有區域都已經存在了！`);
+          setNewMasterRegion("");
+          return;
+        }
+
+        if (!confirm(`偵測到您輸入了城市名稱「${matchedCity.name}」。\n是否要一次新增該城市底下的 ${regionsToAdd.length} 個行政區？`)) {
+          return;
+        }
+      } else {
+        // Single mode: Add the specific input
+        if (availableRegions.includes(inputName)) {
+          alert("該接送地已存在");
+          return;
+        }
+        regionsToAdd = [inputName];
+      }
+
+      // 2. Perform Insert(s)
+      const categories = ['weekday', 'holiday', 'special'];
+      const newRows = [];
+
+      // For every region to add, we must ensure it has a price row in the DB.
+      // Current logic: Create placeholder for the FIRST available airport only (to make it show up in the list).
+      // The backend/UI derives "availableRegions" from the existence of any price row with that region.
+      const targetAirport = availableAirports[0];
+
+      for (const region of regionsToAdd) {
+        // Check again inside loop (double safety)
+        if (!availableRegions.includes(region)) {
+          newRows.push({
+            airport: targetAirport,
+            region: region,
+            category: 'weekday',
+            prices: {},
+            remote_surcharge: 0,
+            holiday_surcharges: {}, // Add missing field for consistency
+            status: true
+          });
+        }
+      }
+
+      if (newRows.length > 0) {
+        const { error } = await supabase.from('airport_prices').insert(newRows);
         if (error) throw error;
 
-        setAvailableRegions(prev => Array.from(new Set([...prev, newMasterRegion.trim()])));
-        setNewMasterRegion("");
-        fetchAirportPrices();
-      } catch (e) {
-        console.error(e);
-        alert("新增接送地失敗");
+        setAvailableRegions(prev => Array.from(new Set([...prev, ...regionsToAdd])));
+        alert(`成功新增 ${regionsToAdd.length} 個接送地！`);
       }
-    } else {
-      alert("請先新增至少一個機場");
+
+      setNewMasterRegion("");
+      fetchAirportPrices();
+
+    } catch (e) {
+      console.error(e);
+      alert("新增接送地失敗");
     }
   };
 
