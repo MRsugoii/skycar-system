@@ -380,14 +380,14 @@ function BookingForm() {
                                             className="w-full p-3 bg-white border border-gray-300 rounded-xl font-medium text-sm appearance-none outline-none focus:border-blue-500"
                                         >
                                             <option value="" disabled>選擇縣市</option>
-                                            <option value="keelung">基隆市</option>
+                                            {/* <option value="keelung">基隆市</option> */}
                                             <option value="taipei">台北市</option>
                                             <option value="new_taipei">新北市</option>
-                                            <option value="taoyuan">桃園市</option>
+                                            <option value="taichung">台中市</option>
+                                            {/* <option value="taoyuan">桃園市</option>
                                             <option value="hsinchu_city">新竹市</option>
                                             <option value="hsinchu_county">新竹縣</option>
                                             <option value="miaoli">苗栗縣</option>
-                                            <option value="taichung">台中市</option>
                                             <option value="changhua">彰化縣</option>
                                             <option value="nantou">南投縣</option>
                                             <option value="yunlin">雲林縣</option>
@@ -401,7 +401,7 @@ function BookingForm() {
                                             <option value="taitung">台東縣</option>
                                             <option value="penghu">澎湖縣</option>
                                             <option value="kinmen">金門縣</option>
-                                            <option value="lienchiang">連江縣</option>
+                                            <option value="lienchiang">連江縣</option> */}
                                         </select>
                                         <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                     </div>

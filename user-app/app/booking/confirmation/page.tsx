@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, CheckCircle2, AlertTriangle, ShieldCheck, Car } from "lucide-react";
+import { ChevronLeft, CheckCircle2, AlertTriangle, ShieldCheck, Car, Ticket, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function BookingConfirmationPage() {
@@ -37,9 +37,15 @@ export default function BookingConfirmationPage() {
         safetySeats: 0,
         signboard: 0,
         discount: 0,
+        couponDiscount: 0, // [NEW] Coupon
         total: 0,
         category: 'weekday'
     });
+
+    // Coupon State
+    const [couponCode, setCouponCode] = useState("");
+    const [couponMessage, setCouponMessage] = useState({ type: "", text: "" }); // type: 'success' | 'error'
+
 
     useEffect(() => {
         const loadAndCalculate = async () => {
@@ -155,22 +161,72 @@ export default function BookingConfirmationPage() {
 
         const modelSurcharge = Number(vehicle.model_surcharge || 0);
 
-        const total = basePrice + modelSurcharge + nightSurcharge + remotePrice + extraStopSurcharge + routeSurcharge + safetySeatCost + signboardCost - offPeakDiscount;
+        const totalPriceBeforeDiscount = basePrice + modelSurcharge + nightSurcharge + remotePrice + extraStopSurcharge + routeSurcharge + safetySeatCost + signboardCost;
+        const finalPrice = Math.max(0, totalPriceBeforeDiscount - (offPeakDiscount || 0));
 
         setPrices({
-            base: basePrice,
-            modelSurcharge,
-            nightSurcharge,
-            holidayMatrixSurcharge: 0,
+            base: Number(basePrice || 0),
+            modelSurcharge: modelSurcharge,
+            nightSurcharge: nightSurcharge,
+            holidayMatrixSurcharge: 0, // Integrated in base
             remoteSurcharge: remotePrice,
-            extraStopSurcharge,
-            routeSurcharge,
+            extraStopSurcharge: extraStopSurcharge,
+            routeSurcharge: routeSurcharge,
             safetySeats: safetySeatCost,
             signboard: signboardCost,
             discount: offPeakDiscount,
-            total,
-            category
+            couponDiscount: 0, // Reset coupon on re-calc
+            total: finalPrice,
+            category: category
         });
+
+        // Reset Coupon when price recalculates (optional, but safer)
+        setCouponCode("");
+        setCouponMessage({ type: "", text: "" });
+
+        setIsCalculating(false);
+    };
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode) return;
+        setCouponMessage({ type: "", text: "" });
+
+        try {
+            const { data: coupon, error } = await supabase
+                .from('coupons')
+                .select('*')
+                .eq('code', couponCode)
+                .eq('status', true)
+                .single();
+
+            if (error || !coupon) {
+                setCouponMessage({ type: 'error', text: "無效的優惠碼" });
+                return;
+            }
+
+            // Date Validation
+            const today = new Date().toISOString().split('T')[0];
+            if (today < coupon.start_date || today > coupon.end_date) {
+                setCouponMessage({ type: 'error', text: "優惠碼不在使用期限內" });
+                return;
+            }
+
+            // Apply Discount
+            const discountVal = coupon.discount_value || 0;
+            const newTotal = Math.max(0, prices.total - discountVal); // Apply on top of existing total
+
+            setPrices(prev => ({
+                ...prev,
+                couponDiscount: discountVal,
+                total: newTotal
+            }));
+
+            setCouponMessage({ type: 'success', text: `優惠碼適用成功！折抵 $${discountVal}` });
+
+        } catch (e) {
+            console.error(e);
+            setCouponMessage({ type: 'error', text: "驗證失敗，請稍後再試" });
+        }
     };
 
     const handleSubmit = () => {
@@ -321,6 +377,42 @@ export default function BookingConfirmationPage() {
                         <PriceDetailRow label="加點與停靠" value={prices.extraStopSurcharge} />
                         <PriceDetailRow label="特定路段加價" value={prices.routeSurcharge} />
                         <PriceDetailRow label="安全座椅/舉牌" value={prices.safetySeats + prices.signboard} />
+
+
+                        {prices.couponDiscount > 0 && (
+                            <div className="flex justify-between items-center py-1">
+                                <span className="text-sm text-green-600 font-bold flex items-center gap-1">
+                                    <Ticket size={14} /> 優惠卷折抵
+                                </span>
+                                <span className="text-sm text-green-700 font-black">- NT$ {prices.couponDiscount}</span>
+                            </div>
+                        )}
+
+                        {/* Coupon Input */}
+                        <div className="pt-2 pb-1">
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="輸入優惠碼"
+                                    value={couponCode}
+                                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                    disabled={prices.couponDiscount > 0}
+                                    className="flex-1 p-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 uppercase placeholder:text-gray-400 disabled:bg-gray-100 disabled:text-gray-400"
+                                />
+                                <button
+                                    onClick={handleApplyCoupon}
+                                    disabled={!couponCode || prices.couponDiscount > 0}
+                                    className="px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
+                                >
+                                    兌換
+                                </button>
+                            </div>
+                            {couponMessage.text && (
+                                <p className={`text-[10px] mt-1.5 font-bold ${couponMessage.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+                                    {couponMessage.text}
+                                </p>
+                            )}
+                        </div>
 
                         {prices.discount > 0 && (
                             <div className="flex justify-between items-center py-1">
