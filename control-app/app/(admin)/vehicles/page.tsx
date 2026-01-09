@@ -2821,49 +2821,41 @@ function VehiclesContent() {
           </div>
         )
       }
-      <div className="mt-8 p-4 bg-gray-100 rounded text-xs font-mono break-all border-t border-gray-300">
-        <h4 className="font-bold text-red-600 mb-2">DEBUG INFO (請截圖給工程師)</h4>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p>Selected Category: {selectedCategory}</p>
-            <p>Vehicles Count: {vehicles.length}</p>
-          </div >
-          );
-}
-          );
+    </div >
+  );
 }
 
-          function InputField({label, type = "text", required = false, suffix, value, onChange, placeholder}: {label: string; type?: string; required?: boolean; suffix?: string; value: any; onChange: (val: string) => void; placeholder?: string }) {
+function InputField({ label, type = "text", required = false, suffix, value, onChange, placeholder }: { label: string; type?: string; required?: boolean; suffix?: string; value: any; onChange: (val: string) => void; placeholder?: string }) {
   return (
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-              {label}
-              {required && <span className="text-red-500">*</span>}
-            </label>
-            <div className="relative">
-              <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              />
-              {suffix && (
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-sm text-gray-500">
-                    {suffix}
-                  </span>
-                </div>
-              )}
-            </div>
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+        />
+        {suffix && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <span className="text-sm text-gray-500">
+              {suffix}
+            </span>
           </div>
-          );
+        )}
+      </div>
+    </div>
+  );
 }
 
-          export default function VehiclesPage() {
+export default function VehiclesPage() {
   return (
-          <Suspense fallback={<div className="p-8 text-center">正在載入價格管理系統...</div>}>
-            <VehiclesContent />
-          </Suspense>
-          );
+    <Suspense fallback={<div className="p-8 text-center">正在載入價格管理系統...</div>}>
+      <VehiclesContent />
+    </Suspense>
+  );
 }
