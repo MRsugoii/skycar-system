@@ -2585,7 +2585,7 @@ function VehiclesContent() {
                       );
                     })}
                   </div>
-                  <div className="flex gap-2 pt-2">
+                  {/* <div className="flex gap-2 pt-2">
                     <input
                       type="text"
                       value={newMasterRegion}
@@ -2601,7 +2601,7 @@ function VehiclesContent() {
                       <Plus size={16} />
                       新增
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
