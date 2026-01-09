@@ -752,6 +752,43 @@ function VehiclesContent() {
     }
   };
 
+  const [editingMasterAirportName, setEditingMasterAirportName] = useState<{
+    original: string,
+    current: string
+  } | null>(null);
+
+  const handleRenameMasterAirport = async () => {
+    if (!editingMasterAirportName || !editingMasterAirportName.current.trim()) return;
+
+    const oldName = editingMasterAirportName.original;
+    const newName = editingMasterAirportName.current.trim();
+
+    if (oldName === newName) {
+      setEditingMasterAirportName(null);
+      return;
+    }
+
+    if (availableAirports.includes(newName)) {
+      alert("該機場名稱已存在！");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('airport_prices')
+        .update({ airport: newName })
+        .eq('airport', oldName);
+
+      if (error) throw error;
+
+      setEditingMasterAirportName(null);
+      fetchAirportPrices();
+    } catch (e) {
+      console.error(e);
+      alert("重新命名失敗");
+    }
+  };
+
   const handleAddMasterRegion = async () => {
     if (!newMasterRegion.trim()) return;
 
@@ -2397,14 +2434,47 @@ function VehiclesContent() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {availableAirports.map(airport => (
                       <div key={airport} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-blue-200 transition-colors">
-                        <span className="text-sm font-medium text-gray-700">{airport}</span>
-                        <button
-                          onClick={() => handleDeleteMasterAirport(airport)}
-                          className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                          title="刪除"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {editingMasterAirportName?.original === airport ? (
+                          <div className="flex-1 flex gap-2 mr-2">
+                            <input
+                              type="text"
+                              value={editingMasterAirportName.current}
+                              onChange={(e) => setEditingMasterAirportName({ ...editingMasterAirportName, current: e.target.value })}
+                              className="flex-1 px-2 py-1 text-sm border border-blue-500 rounded outline-none"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRenameMasterAirport();
+                                if (e.key === 'Escape') setEditingMasterAirportName(null);
+                              }}
+                            />
+                            <button onClick={handleRenameMasterAirport} className="text-green-600 hover:bg-green-50 p-1 rounded">
+                              <Check size={16} />
+                            </button>
+                            <button onClick={() => setEditingMasterAirportName(null)} className="text-gray-500 hover:bg-gray-100 p-1 rounded">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-sm font-medium text-gray-700">{airport}</span>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => setEditingMasterAirportName({ original: airport, current: airport })}
+                                className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
+                                title="重新命名"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMasterAirport(airport)}
+                                className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                                title="刪除"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
