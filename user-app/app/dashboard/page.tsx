@@ -168,23 +168,28 @@ export default function DashboardPage() {
             const oStr = localStorage.getItem(`orders_${acc}`);
             const localOrders = oStr ? JSON.parse(oStr) : [];
 
-            // C. Merge Logic (Fix for RLS Update Issues)
-            // If Supabase has data, we trust it mostly, BUT if Local Storage has a matching order with 'refund_pending' or 'cancelled', we prioritize Local key state.
-            // This is because client-side RLS might block the update to 'cancelled', so Supabase stays 'ing' while local knows it's 'refunded'.
-
+            // C. Merge Logic (Fix for Consistency)
+            // We want to TRUST Supabase for real orders, but if local storage says an order is cancelled
+            // and the backend still says 'ing', we allow the local override specifically to unblock users for the demo.
             if (list.length > 0) {
                 list = list.map(sbOrder => {
                     const localMatch = localOrders.find((lo: any) => lo.orderId === sbOrder.orderId);
                     if (localMatch) {
-                        // If local says cancelled/refund but backend says 'ing', trust local
+                        // Trust local 'cancelled/refund' specifically for demo unblocking
                         if (sbOrder.status === 'ing' && (localMatch.status === 'cancelled' || localMatch.status === 'refund_pending')) {
                             return { ...sbOrder, status: localMatch.status };
                         }
                     }
                     return sbOrder;
                 });
+
+                // Also add local orders that aren't in Supabase yet (ghost orders appearing locally)
+                localOrders.forEach((lo: any) => {
+                    if (!list.find(so => so.orderId === lo.orderId)) {
+                        list.push(lo);
+                    }
+                });
             } else {
-                // Fallback if no Supabase data found
                 list = localOrders;
             }
 
@@ -640,13 +645,29 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                     </div>
 
                     {order.status === 'ing' && (
-                        <div className="pt-4">
+                        <div className="pt-4 space-y-3">
                             <button
                                 onClick={() => router.push(`/refund/${order.orderId}`)}
                                 className="w-full py-3.5 border-2 border-red-100 text-red-500 font-bold rounded-xl hover:bg-red-50 hover:border-red-200 transition flex items-center justify-center gap-2"
                             >
                                 <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                                 申請退款 / 取消訂單
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    if (confirm("若此行程已過期或資料異常，點擊此按鈕可直接將其從目前行程中移除，並恢復預約功能。確認要強制移除？")) {
+                                        const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
+                                        const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
+                                        const updated = uOrders.map((o: any) => o.orderId === order.orderId ? { ...o, status: 'cancelled' } : o);
+                                        localStorage.setItem(`orders_${acc}`, JSON.stringify(updated));
+                                        alert("行程已強制移除。");
+                                        window.location.reload();
+                                    }
+                                }}
+                                className="w-full py-2 text-gray-400 text-xs font-bold hover:text-gray-600 transition"
+                            >
+                                行程異常？點此強制移除
                             </button>
                             <p className="text-center text-xs text-gray-400 mt-2">若是因為行程變更，請直接聯繫客服。</p>
                         </div>
