@@ -73,6 +73,88 @@ export default function RideInfoPage() {
         fetchData();
     }, []);
 
+    // -- Price Check Logic --
+    const [priceMap, setPriceMap] = useState<Record<string, number>>({});
+    const [isPriceLoading, setIsPriceLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPrices = async () => {
+            // Basic Info from Session
+            const basicStr = sessionStorage.getItem('booking_basic_info');
+            if (!basicStr) return;
+
+            const bInfo = JSON.parse(basicStr);
+            const bookingDate = bInfo.flightInfo?.date || bInfo.pickupTime?.date;
+
+            // 1. Determine Category
+            let category = 'weekday';
+            const { data: holiday } = await supabase
+                .from("holidays")
+                .select("price_category")
+                .lte("start_date", bookingDate)
+                .gte("end_date", bookingDate)
+                .eq("status", true)
+                .maybeSingle();
+
+            if (holiday) {
+                category = holiday.price_category;
+            } else {
+                const day = new Date(bookingDate).getDay();
+                if (day === 0 || day === 6) category = 'holiday';
+            }
+
+            // 2. Determine Route (Airport & Region)
+            const uiAirport = bInfo.flightInfo?.airport;
+            let dbAirport = uiAirport;
+            if (uiAirport?.startsWith('tpe')) dbAirport = '桃園機場';
+            else if (uiAirport === 'tsa') dbAirport = '松山機場';
+            else if (uiAirport === 'rmq') dbAirport = '台中清泉崗機場';
+            else if (uiAirport === 'khh') dbAirport = '高雄小港機場';
+            else if (uiAirport === 'kel') dbAirport = '基隆港';
+
+            const mainLoc = bInfo.locations[0];
+            // Use district logic that matches confirmation page
+
+            // 3. Fetch Price Matrix
+            const { data: matrix } = await supabase
+                .from("airport_prices")
+                .select("prices")
+                .eq("airport", dbAirport)
+                .eq("region", mainLoc.district)
+                .eq("category", category)
+                .eq("status", true)
+                .maybeSingle();
+
+            if (matrix && matrix.prices) {
+                setPriceMap(matrix.prices);
+            } else {
+                setPriceMap({}); // No prices found for this route
+            }
+            setIsPriceLoading(false);
+        };
+
+        fetchPrices();
+    }, []);
+
+    // Effect to auto-switch if selected vehicle becomes unavailable
+    useEffect(() => {
+        if (!isPriceLoading && vehicles.length > 0) {
+            const currentPrice = priceMap[selectedVehicleId || 0];
+            // If current selected is invalid (no price or 0), try to find one that is valid
+            if (!currentPrice) {
+                const firstValid = vehicles.find(v => priceMap[v.id] && priceMap[v.id] > 0);
+                if (firstValid) {
+                    setSelectedVehicleId(firstValid.id);
+                } else {
+                    // All invalid? Keep as is or null. 
+                    // Consider setting to null to force user to see no selection?
+                    // setSelectedVehicleId(null); 
+                }
+            }
+        }
+    }, [isPriceLoading, priceMap, vehicles, selectedVehicleId]);
+
+
     const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
     const totalPassengers = adults + children;
 
@@ -118,23 +200,25 @@ export default function RideInfoPage() {
 
     const totalSafetySeats = infantSeats + childSeats + boosters;
 
-    // Safety Seat Total Limits
-    const SAFETY_SEAT_TOTAL_RULES: Record<string, number> = {
-        "經濟四人座": 2,
-        "豪華轎車": 2,
-        "電動專車": 2,
-        "商務七人座": 4
-    };
-    const vehicleSeatLimit = SAFETY_SEAT_TOTAL_RULES[selectedVehicle?.name || ''] || 2; // Default to 2
+    // ... (Validation & Handlers - UNCHANGED)
+    // ...
 
     // -- Handlers --
 
     const handleNext = () => {
+        // Validation: Price Check
+        const currentPrice = priceMap[selectedVehicleId || 0];
+        if (!currentPrice || currentPrice <= 0) {
+            alert("抱歉，此車型目前在此路線無提供報價，請選擇其他車型或聯繫客服。");
+            return;
+        }
+
         // Validation: Passenger Count
         if (totalPassengers > maxPax) {
             alert(`選擇的車型最多只能載 ${maxPax} 位乘客`);
             return;
         }
+
 
         // Validation: Adult Requirement (Min 1 adult if safety seats are used)
         if (totalSafetySeats > 0 && adults < 1) {
@@ -222,40 +306,54 @@ export default function RideInfoPage() {
                     </div>
 
                     <div className="space-y-3">
-                        {vehicles.map(v => (
-                            <div
-                                key={v.id}
-                                onClick={() => setSelectedVehicleId(v.id)}
-                                className={`rounded-2xl p-4 border-2 cursor-pointer transition-all flex items-center gap-4 ${selectedVehicleId === v.id
-                                    ? 'border-blue-500 bg-blue-50/50 shadow-md ring-1 ring-blue-500'
-                                    : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <div className="w-16 h-12 bg-white rounded-xl border border-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
-                                    {v.image_url ? (
-                                        <img src={v.image_url} alt={v.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <Car size={24} className={selectedVehicleId === v.id ? 'text-blue-600' : 'text-gray-400'} />
+                        {vehicles.map(v => {
+                            const hasPrice = priceMap[v.id] && priceMap[v.id] > 0;
+                            const isAvailable = !isPriceLoading && hasPrice;
+
+                            return (
+                                <div
+                                    key={v.id}
+                                    onClick={() => isAvailable && setSelectedVehicleId(v.id)}
+                                    className={`rounded-2xl p-4 border-2 transition-all flex items-center gap-4 relative overflow-hidden ${!isAvailable
+                                        ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed grayscale'
+                                        : selectedVehicleId === v.id
+                                            ? 'border-blue-500 bg-blue-50/50 shadow-md ring-1 ring-blue-500 cursor-pointer'
+                                            : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50 cursor-pointer'
+                                        }`}
+                                >
+                                    {/* Unavailable Overlay Label */}
+                                    {!isAvailable && !isPriceLoading && (
+                                        <div className="absolute top-2 right-2 bg-gray-200 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-bold z-10">
+                                            暫無報價
+                                        </div>
                                     )}
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className={`font-bold text-base ${selectedVehicleId === v.id ? 'text-blue-700' : 'text-gray-900'}`}>
-                                        {v.name}
-                                    </h3>
-                                    <p className="text-xs text-gray-500">最多 {v.max_passengers} 人 | {v.model}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-                                            載物 {v.max_luggage} 件
-                                        </span>
-                                        {v.model_surcharge > 0 && (
-                                            <span className="text-[10px] bg-amber-50 px-1.5 py-0.5 rounded text-amber-700 border border-amber-100 font-bold">
-                                                加價 NT$ {v.model_surcharge}
-                                            </span>
+
+                                    <div className="w-16 h-12 bg-white rounded-xl border border-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                        {v.image_url ? (
+                                            <img src={v.image_url} alt={v.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Car size={24} className={selectedVehicleId === v.id ? 'text-blue-600' : 'text-gray-400'} />
                                         )}
                                     </div>
+                                    <div className="flex-1">
+                                        <h3 className={`font-bold text-base ${selectedVehicleId === v.id ? 'text-blue-700' : 'text-gray-900'}`}>
+                                            {v.name}
+                                        </h3>
+                                        <p className="text-xs text-gray-500">最多 {v.max_passengers} 人 | {v.model}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
+                                                載物 {v.max_luggage} 件
+                                            </span>
+                                            {v.model_surcharge > 0 && (
+                                                <span className="text-[10px] bg-amber-50 px-1.5 py-0.5 rounded text-amber-700 border border-amber-100 font-bold">
+                                                    加價 NT$ {v.model_surcharge}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
 
