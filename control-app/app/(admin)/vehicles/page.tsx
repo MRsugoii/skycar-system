@@ -220,22 +220,19 @@ function VehiclesContent() {
 
   const MOCK_AIRPORT_PRICES: AirportMatrixType[] = [
     // Weekday Prices
-    { id: 1, airport: "桃園機場", region: "中正區", category: "weekday", prices: { 1: 1000, 2: 1400, 3: 1600, 4: 2000 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 2, airport: "松山機場", region: "中正區", category: "weekday", prices: { 1: 800, 2: 1100, 3: 1300, 4: 1500 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 3, airport: "台中清泉崗機場", region: "中區", category: "weekday", prices: { 1: 2000, 2: 2400, 3: 2600, 4: 3000 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 4, airport: "高雄小港機場", region: "新興區", category: "weekday", prices: { 1: 3500, 2: 4000, 3: 4500, 4: 5000 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    { id: 1, airport: "桃園機場", region: "中正區", category: "weekday", prices: { "1": 1000, "2": 1400, "3": 1600, "4": 2000, "5": 1000, "6": 1200 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    { id: 2, airport: "松山機場", region: "中正區", category: "weekday", prices: { "1": 800, "2": 1100, "3": 1300, "4": 1500, "5": 800, "6": 1000 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    { id: 3, airport: "台中清泉崗機場", region: "中區", category: "weekday", prices: { "1": 2000, "2": 2400, "3": 2600, "4": 3000, "5": 2000, "6": 2200 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    { id: 4, airport: "高雄小港機場", region: "新興區", category: "weekday", prices: { "1": 3500, "2": 4000, "3": 4500, "4": 5000, "5": 3500, "6": 3800 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
 
     // Holiday Prices (Higher)
-    { id: 5, airport: "桃園機場", region: "中正區", category: "holiday", prices: { 1: 1200, 2: 1600, 3: 1800, 4: 2200 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 6, airport: "松山機場", region: "中正區", category: "holiday", prices: { 1: 900, 2: 1200, 3: 1400, 4: 1600 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 7, airport: "台中清泉崗機場", region: "中區", category: "holiday", prices: { 1: 2200, 2: 2600, 3: 2800, 4: 3200 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 8, airport: "高雄小港機場", region: "新興區", category: "holiday", prices: { 1: 3700, 2: 4200, 3: 4700, 4: 5200 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    { id: 5, airport: "桃園機場", region: "中正區", category: "holiday", prices: { "1": 1200, "2": 1600, "3": 1800, "4": 2200, "5": 1200, "6": 1400 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    { id: 6, airport: "松山機場", region: "中正區", category: "holiday", prices: { "1": 900, "2": 1200, "3": 1400, "4": 1600, "5": 900, "6": 1100 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    { id: 7, airport: "台中清泉崗機場", region: "中區", category: "holiday", prices: { "1": 2200, "2": 2600, "3": 2800, "4": 3200, "5": 2200, "6": 2400 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    { id: 8, airport: "高雄小港機場", region: "新興區", category: "holiday", prices: { "1": 3700, "2": 4200, "3": 4700, "4": 5200, "5": 3700, "6": 4000 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
 
-    // Special Prices (Discounted/Special)
-    { id: 9, airport: "桃園機場", region: "中正區", category: "special", prices: { 1: 900, 2: 1300, 3: 1500, 4: 1900 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 10, airport: "松山機場", region: "中正區", category: "special", prices: { 1: 750, 2: 1050, 3: 1250, 4: 1450 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 11, airport: "台中清泉崗機場", region: "中區", category: "special", prices: { 1: 1900, 2: 2300, 3: 2500, 4: 2900 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
-    { id: 12, airport: "高雄小港機場", region: "新興區", category: "special", prices: { 1: 3400, 2: 3900, 3: 4400, 4: 9000 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
+    // Special Prices
+    { id: 9, airport: "桃園機場", region: "中正區", category: "special", prices: { "1": 900, "2": 1300, "3": 1500, "4": 1900, "5": 900, "6": 1100 }, remoteSurcharge: 0, holidaySurcharges: {}, status: true },
   ];
 
   // --- 2. Holiday Settings Data ---
@@ -1698,11 +1695,14 @@ function VehiclesContent() {
                                         <td className="px-6 py-3 font-medium text-gray-700 pl-10 border-l-4 border-transparent hover:border-blue-500 transition-all">
                                           {district}
                                         </td>
-                                        {vehicles.map(v => (
-                                          <td key={v.id} className="px-4 py-3 text-center text-gray-600">
-                                            {p && p.prices[v.id] ? `$${p.prices[v.id]}` : <span className="text-gray-300">-</span>}
-                                          </td>
-                                        ))}
+                                        {vehicles.map(v => {
+                                          const price = p ? (p.prices[v.id] ?? p.prices[String(v.id)]) : null;
+                                          return (
+                                            <td key={v.id} className="px-4 py-3 text-center text-gray-600">
+                                              {price ? `$${price}` : <span className="text-gray-300">-</span>}
+                                            </td>
+                                          );
+                                        })}
                                         <td className="px-4 py-3 text-center text-gray-600">
                                           {p && p.remoteSurcharge > 0 ? `+$${p.remoteSurcharge}` : <span className="text-gray-300">-</span>}
                                         </td>
