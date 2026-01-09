@@ -243,24 +243,26 @@ function VehiclesContent() {
     const fetchHolidays = async () => {
       const { data, error } = await supabase.from('holidays').select('*').order('id', { ascending: true });
 
-      if (data && data.length > 0) {
+      if (error) {
+        console.error("Error fetching holidays:", error);
+        return;
+      }
+
+      // If data is null or empty, we only use mock if it's the very first load and we want to demo.
+      // But to be safe for persistence, if data is an empty array, we show empty array.
+      if (data) {
         setHolidays(data.map((h: any) => ({
           id: h.id,
           name: h.name,
           startDate: h.start_date,
           endDate: h.end_date,
           status: h.status,
-          price_category: h.price_category || 'holiday' // Default to holiday if not set
+          price_category: h.price_category || 'holiday'
         })));
-      } else {
-        // Fallback Mock
-        console.log("Using Mock Holidays");
-        setHolidays(MOCK_HOLIDAYS);
       }
     };
     fetchHolidays();
 
-    // Subscribe
     const channel = supabase.channel('holidays_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'holidays' }, () => fetchHolidays())
       .subscribe();
@@ -356,10 +358,13 @@ function VehiclesContent() {
   const fetchAirportPrices = async () => {
     const { data, error } = await supabase.from('airport_prices').select('*').order('id', { ascending: true }).range(0, 9999);
 
-    let finalData: AirportMatrixType[] = [];
+    if (error) {
+      console.error("Error fetching airport prices:", error);
+      return;
+    }
 
-    if (data && data.length > 0) {
-      finalData = data.map((p: any) => ({
+    if (data) {
+      const mappedData: AirportMatrixType[] = data.map((p: any) => ({
         id: p.id,
         airport: p.airport,
         region: p.region,
@@ -369,19 +374,13 @@ function VehiclesContent() {
         category: p.category,
         status: p.status
       }));
-    } else {
-      // Fallback to Mock Data
-      console.log("Using Mock Airport Prices Data");
-      finalData = MOCK_AIRPORT_PRICES;
+      setAirportPrices(mappedData);
+
+      const airports = Array.from(new Set(mappedData.map((p: any) => p.airport))) as string[];
+      const regions = Array.from(new Set(mappedData.map((p: any) => p.region))) as string[];
+      setAvailableAirports(airports);
+      setAvailableRegions(regions);
     }
-
-    setAirportPrices(finalData);
-
-    // Update master lists based on fetched data
-    const airports = Array.from(new Set(finalData.map((p: any) => p.airport))) as string[];
-    const regions = Array.from(new Set(finalData.map((p: any) => p.region))) as string[];
-    setAvailableAirports(airports);
-    setAvailableRegions(regions);
   };
 
   useEffect(() => {
