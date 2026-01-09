@@ -310,9 +310,23 @@ function VehiclesContent() {
   const handleDeleteHoliday = async () => {
     if (editingHoliday) {
       if (confirm("確定刪除此假期？")) {
-        const { error } = await supabase.from('holidays').delete().eq('id', editingHoliday.id);
-        if (!error) handleCloseHolidayModal();
-        else alert("刪除失敗");
+        const deletedId = editingHoliday.id;
+        const originalHolidays = [...holidays];
+
+        // 1. Optimistic Update
+        setHolidays(prev => prev.filter(h => h.id !== deletedId));
+        handleCloseHolidayModal();
+
+        // 2. Database Update
+        try {
+          const { error } = await supabase.from('holidays').delete().eq('id', deletedId);
+          if (error) throw error;
+        } catch (err) {
+          console.error("Error deleting holiday:", err);
+          alert("刪除失敗");
+          // Rollback
+          setHolidays(originalHolidays);
+        }
       }
     }
   };
