@@ -1407,7 +1407,7 @@ function VehiclesContent() {
         {/* Category Selector */}
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">價格類別：</label>
+            <label className="text-sm font-medium text-gray-700">價格類別 <span className="text-xs text-gray-400">(v2.1)</span>：</label>
             <div className="flex gap-2">
               {[
                 { id: 'weekday', label: '平日價' },
@@ -2482,400 +2482,400 @@ function VehiclesContent() {
                       新增
                     </button>
                   </div>
+                </div>
+              </div>
 
+              <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end items-center flex-shrink-0">
+                <button
+                  onClick={() => setIsManageLocationsModalOpen(false)}
+                  className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition-colors"
+                >
+                  關閉
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Add/Edit Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-white border-b border-gray-100 shrink-0">
+              <div className="px-8 py-5 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  {editingVehicle ? <Edit className="text-blue-600" size={24} /> : <Plus className="text-blue-600" size={24} />}
+                  {editingVehicle ? "編輯車型" : "新增車型"}
+                </h2>
+                <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-500 transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto bg-gray-50/50">
+              <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Column: Vehicle Details & Config */}
+                <div className="space-y-6">
+                  {/* Basic Info */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Truck size={20} className="text-blue-600" />
+                      基本資料
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <InputField label="車種名稱" type="text" value={formData.name} onChange={(v) => setFormData({ ...formData, name: v })} placeholder="例如：豪華轎車" required />
+                        <InputField label="顯示型號" type="text" value={formData.model} onChange={(v) => setFormData({ ...formData, model: v })} placeholder="例如：Toyota Camry" required />
+                      </div>
+                      <InputField label="車輛數量 (庫存)" type="number" required value={formData.quantity} onChange={(v) => setFormData({ ...formData, quantity: Math.max(0, parseInt(v) || 0) })} />
+                    </div>
+                  </div>
+
+                  {/* Space Config */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Armchair size={20} className="text-blue-600" />
+                      空間配置
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <InputField label="座位數" type="number" required suffix="人" value={formData.seats} onChange={(v) => setFormData({ ...formData, seats: Math.max(0, parseInt(v) || 0) })} />
+                        <InputField label="建議乘客數" type="number" required suffix="人" value={formData.maxPassengers} onChange={(v) => setFormData({ ...formData, maxPassengers: Math.max(0, parseInt(v) || 0) })} />
+                      </div>
+                      <InputField label="大行李上限" type="number" required suffix="件 (28-29吋)" value={formData.maxLuggage} onChange={(v) => setFormData({ ...formData, maxLuggage: Math.max(0, parseInt(v) || 0) })} />
+                    </div>
+                  </div>
+
+                  {/* Safety Seats */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <AlertCircle size={20} className="text-blue-600" />
+                      安全座椅數量限制
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 block mb-1">嬰兒座椅 (0-1歲)</label>
+                        <InputField label="最大數量" type="number" required suffix="個" value={formData.safetySeatInfantMax} onChange={(v) => setFormData({ ...formData, safetySeatInfantMax: Math.max(0, parseInt(v) || 0) })} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 block mb-1">兒童座椅 (1-4歲)</label>
+                        <InputField label="最大數量" type="number" required suffix="個" value={formData.safetySeatChildMax} onChange={(v) => setFormData({ ...formData, safetySeatChildMax: Math.max(0, parseInt(v) || 0) })} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 block mb-1">學童座椅 (4-7歲)</label>
+                        <InputField label="最大數量" type="number" required suffix="個" value={formData.safetySeatBoosterMax} onChange={(v) => setFormData({ ...formData, safetySeatBoosterMax: Math.max(0, parseInt(v) || 0) })} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end items-center flex-shrink-0">
+                {/* Right Column: Pricing & Photo */}
+                <div className="space-y-6">
+                  {/* Pricing Settings */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <DollarSign size={20} className="text-blue-600" />
+                      計費設定
+                    </h3>
+                    <div className="space-y-6">
+                      {/* Multi-stop */}
+                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-4">
+                        <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                          <AlertCircle size={16} />
+                          多點下車距離計費 (加點)
+                        </h4>
+                        <InputField label="每公里費用" type="number" required suffix="元" value={formData.overDistancePrice} onChange={(v) => setFormData({ ...formData, overDistancePrice: Math.max(0, parseInt(v) || 0) })} />
+                      </div>
+
+                      {/* Surcharges */}
+                      <div className="p-4 bg-purple-50/50 rounded-lg border border-purple-100 space-y-4">
+                        <h4 className="text-sm font-bold text-purple-800 flex items-center gap-2">
+                          <Ticket size={16} />
+                          加價與優惠
+                        </h4>
+                        <div className="space-y-4">
+                          <div className="space-y-1">
+                            <InputField label="夜間加成" type="number" required suffix="元" value={formData.nightSurcharge} onChange={(v) => setFormData({ ...formData, nightSurcharge: Math.max(0, parseInt(v) || 0) })} />
+                            <div className="flex items-center gap-2 mt-2 bg-white/50 p-2 rounded-lg border border-purple-100">
+                              <span className="text-xs text-gray-500 font-medium whitespace-nowrap">時段設定：</span>
+                              <input
+                                type="time"
+                                value={formData.nightSurchargeStart}
+                                onChange={(e) => setFormData({ ...formData, nightSurchargeStart: e.target.value })}
+                                className="flex-1 min-w-0 border border-purple-200 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-purple-500 outline-none text-center"
+                              />
+                              <span className="text-gray-400">→</span>
+                              <input
+                                type="time"
+                                value={formData.nightSurchargeEnd}
+                                onChange={(e) => setFormData({ ...formData, nightSurchargeEnd: e.target.value })}
+                                className="flex-1 min-w-0 border border-purple-200 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-purple-500 outline-none text-center"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <InputField label="離峰優惠 (扣除)" type="number" required suffix="元" value={formData.offPeakDiscount} onChange={(v) => setFormData({ ...formData, offPeakDiscount: Math.max(0, parseInt(v) || 0) })} />
+                            <div className="flex items-center gap-2 mt-2 bg-white/50 p-2 rounded-lg border border-purple-100">
+                              <span className="text-xs text-gray-500 font-medium whitespace-nowrap">時段設定：</span>
+                              <input
+                                type="time"
+                                value={formData.offPeakDiscountStart}
+                                onChange={(e) => setFormData({ ...formData, offPeakDiscountStart: e.target.value })}
+                                className="flex-1 min-w-0 border border-purple-200 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-purple-500 outline-none text-center"
+                              />
+                              <span className="text-gray-400">→</span>
+                              <input
+                                type="time"
+                                value={formData.offPeakDiscountEnd}
+                                onChange={(e) => setFormData({ ...formData, offPeakDiscountEnd: e.target.value })}
+                                className="flex-1 min-w-0 border border-purple-200 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-purple-500 outline-none text-center"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vehicle Photo */}
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Camera size={20} className="text-blue-600" />
+                      車輛照片
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer group relative overflow-hidden">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={(e) => {
+                            console.log(e.target.files)
+                          }}
+                        />
+                        {formData.image ? (
+                          <div className="relative h-48 w-full">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={formData.image} alt="Preview" className="h-full w-full object-contain" />
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setFormData({ ...formData, image: "" });
+                              }}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-20"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 pointer-events-none">
+                            <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                              <ImageIcon className="text-blue-600" size={24} />
+                            </div>
+                            <p className="text-sm font-medium text-gray-700">點擊或拖放上傳圖片</p>
+                            <p className="text-xs text-gray-400">支援 JPG, PNG 格式</p>
+                          </div>
+                        )}
+                      </div>
+                      <InputField label="或輸入圖片 URL" type="text" value={formData.image} onChange={(v) => setFormData({ ...formData, image: v })} placeholder="https://..." />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-8 py-5 border-t border-gray-100 bg-white flex justify-end gap-3 shrink-0">
+              <button
+                onClick={handleCloseModal}
+                className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200 flex items-center gap-2"
+              >
+                <Save size={18} />
+                儲存設定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
+
+
+      {/* Route Settings Modal */}
+      {
+        isRouteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="text-xl font-bold text-gray-900">
+                  {editingRoute ? '編輯路線' : '新增路線'}
+                </h3>
+                <button onClick={handleCloseRouteModal} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700">道路名稱</label>
+                      <input
+                        type="text"
+                        value={routeFormData.name}
+                        onChange={(e) => setRouteFormData({ ...routeFormData, name: e.target.value })}
+                        placeholder="例如：忠孝東路一段"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <InputField
+                    label="固定價格"
+                    type="number"
+                    value={routeFormData.price}
+                    onChange={(v) => setRouteFormData({ ...routeFormData, price: Math.max(0, Number(v) || 0) })}
+                    suffix="元"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-between items-center">
+                <div>
+                  {editingRoute && (
+                    <button
+                      onClick={handleDeleteRoute}
+                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+                    >
+                      <Trash2 size={16} />
+                      刪除道路
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3">
                   <button
-                    onClick={() => setIsManageLocationsModalOpen(false)}
-                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition-colors"
+                    onClick={handleCloseRouteModal}
+                    className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-sm"
                   >
-                    關閉
+                    取消
+                  </button>
+                  <button
+                    onClick={handleSaveRoute}
+                    disabled={!routeFormData.name}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    儲存
                   </button>
                 </div>
               </div>
             </div>
-            )
+          </div>
+        )
       }
 
-            {/* Add/Edit Modal */}
-            {isModalOpen && (
-              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4 overflow-y-auto">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
-                  {/* Modal Header */}
-                  <div className="bg-white border-b border-gray-100 shrink-0">
-                    <div className="px-8 py-5 flex justify-between items-center">
-                      <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        {editingVehicle ? <Edit className="text-blue-600" size={24} /> : <Plus className="text-blue-600" size={24} />}
-                        {editingVehicle ? "編輯車型" : "新增車型"}
-                      </h2>
-                      <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-500 transition-colors">
-                        <X size={24} />
-                      </button>
-                    </div>
+      {/* Bulk Holiday Settings Modal */}
+      {
+        isBulkHolidayModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-red-50/50">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-red-100 rounded-lg text-red-600">
+                    <Settings size={20} />
                   </div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    批次設定：{activeBulkAirport}
+                  </h3>
+                </div>
+                <button onClick={() => setIsBulkHolidayModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
 
-                  {/* Scrollable Content */}
-                  <div className="flex-1 overflow-y-auto bg-gray-50/50">
-                    <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Left Column: Vehicle Details & Config */}
-                      <div className="space-y-6">
-                        {/* Basic Info */}
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <Truck size={20} className="text-blue-600" />
-                            基本資料
-                          </h3>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <InputField label="車種名稱" type="text" value={formData.name} onChange={(v) => setFormData({ ...formData, name: v })} placeholder="例如：豪華轎車" required />
-                              <InputField label="顯示型號" type="text" value={formData.model} onChange={(v) => setFormData({ ...formData, model: v })} placeholder="例如：Toyota Camry" required />
-                            </div>
-                            <InputField label="車輛數量 (庫存)" type="number" required value={formData.quantity} onChange={(v) => setFormData({ ...formData, quantity: Math.max(0, parseInt(v) || 0) })} />
-                          </div>
-                        </div>
+              <div className="p-6 space-y-4">
+                <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg border border-blue-100">
+                  ⚠️ 此操作將會更新「{activeBulkAirport}」下所有的接送地區定價。
+                </div>
 
-                        {/* Space Config */}
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <Armchair size={20} className="text-blue-600" />
-                            空間配置
-                          </h3>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <InputField label="座位數" type="number" required suffix="人" value={formData.seats} onChange={(v) => setFormData({ ...formData, seats: Math.max(0, parseInt(v) || 0) })} />
-                              <InputField label="建議乘客數" type="number" required suffix="人" value={formData.maxPassengers} onChange={(v) => setFormData({ ...formData, maxPassengers: Math.max(0, parseInt(v) || 0) })} />
-                            </div>
-                            <InputField label="大行李上限" type="number" required suffix="件 (28-29吋)" value={formData.maxLuggage} onChange={(v) => setFormData({ ...formData, maxLuggage: Math.max(0, parseInt(v) || 0) })} />
-                          </div>
-                        </div>
-
-                        {/* Safety Seats */}
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <AlertCircle size={20} className="text-blue-600" />
-                            安全座椅數量限制
-                          </h3>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 block mb-1">嬰兒座椅 (0-1歲)</label>
-                              <InputField label="最大數量" type="number" required suffix="個" value={formData.safetySeatInfantMax} onChange={(v) => setFormData({ ...formData, safetySeatInfantMax: Math.max(0, parseInt(v) || 0) })} />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 block mb-1">兒童座椅 (1-4歲)</label>
-                              <InputField label="最大數量" type="number" required suffix="個" value={formData.safetySeatChildMax} onChange={(v) => setFormData({ ...formData, safetySeatChildMax: Math.max(0, parseInt(v) || 0) })} />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 block mb-1">學童座椅 (4-7歲)</label>
-                              <InputField label="最大數量" type="number" required suffix="個" value={formData.safetySeatBoosterMax} onChange={(v) => setFormData({ ...formData, safetySeatBoosterMax: Math.max(0, parseInt(v) || 0) })} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right Column: Pricing & Photo */}
-                      <div className="space-y-6">
-                        {/* Pricing Settings */}
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <DollarSign size={20} className="text-blue-600" />
-                            計費設定
-                          </h3>
-                          <div className="space-y-6">
-                            {/* Multi-stop */}
-                            <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-4">
-                              <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                <AlertCircle size={16} />
-                                多點下車距離計費 (加點)
-                              </h4>
-                              <InputField label="每公里費用" type="number" required suffix="元" value={formData.overDistancePrice} onChange={(v) => setFormData({ ...formData, overDistancePrice: Math.max(0, parseInt(v) || 0) })} />
-                            </div>
-
-                            {/* Surcharges */}
-                            <div className="p-4 bg-purple-50/50 rounded-lg border border-purple-100 space-y-4">
-                              <h4 className="text-sm font-bold text-purple-800 flex items-center gap-2">
-                                <Ticket size={16} />
-                                加價與優惠
-                              </h4>
-                              <div className="space-y-4">
-                                <div className="space-y-1">
-                                  <InputField label="夜間加成" type="number" required suffix="元" value={formData.nightSurcharge} onChange={(v) => setFormData({ ...formData, nightSurcharge: Math.max(0, parseInt(v) || 0) })} />
-                                  <div className="flex items-center gap-2 mt-2 bg-white/50 p-2 rounded-lg border border-purple-100">
-                                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">時段設定：</span>
-                                    <input
-                                      type="time"
-                                      value={formData.nightSurchargeStart}
-                                      onChange={(e) => setFormData({ ...formData, nightSurchargeStart: e.target.value })}
-                                      className="flex-1 min-w-0 border border-purple-200 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-purple-500 outline-none text-center"
-                                    />
-                                    <span className="text-gray-400">→</span>
-                                    <input
-                                      type="time"
-                                      value={formData.nightSurchargeEnd}
-                                      onChange={(e) => setFormData({ ...formData, nightSurchargeEnd: e.target.value })}
-                                      className="flex-1 min-w-0 border border-purple-200 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-purple-500 outline-none text-center"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                  <InputField label="離峰優惠 (扣除)" type="number" required suffix="元" value={formData.offPeakDiscount} onChange={(v) => setFormData({ ...formData, offPeakDiscount: Math.max(0, parseInt(v) || 0) })} />
-                                  <div className="flex items-center gap-2 mt-2 bg-white/50 p-2 rounded-lg border border-purple-100">
-                                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap">時段設定：</span>
-                                    <input
-                                      type="time"
-                                      value={formData.offPeakDiscountStart}
-                                      onChange={(e) => setFormData({ ...formData, offPeakDiscountStart: e.target.value })}
-                                      className="flex-1 min-w-0 border border-purple-200 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-purple-500 outline-none text-center"
-                                    />
-                                    <span className="text-gray-400">→</span>
-                                    <input
-                                      type="time"
-                                      value={formData.offPeakDiscountEnd}
-                                      onChange={(e) => setFormData({ ...formData, offPeakDiscountEnd: e.target.value })}
-                                      className="flex-1 min-w-0 border border-purple-200 rounded px-2 py-1.5 text-sm bg-white focus:ring-1 focus:ring-purple-500 outline-none text-center"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Vehicle Photo */}
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <Camera size={20} className="text-blue-600" />
-                            車輛照片
-                          </h3>
-                          <div className="space-y-4">
-                            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer group relative overflow-hidden">
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                onChange={(e) => {
-                                  console.log(e.target.files)
-                                }}
-                              />
-                              {formData.image ? (
-                                <div className="relative h-48 w-full">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={formData.image} alt="Preview" className="h-full w-full object-contain" />
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setFormData({ ...formData, image: "" });
-                                    }}
-                                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-20"
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="space-y-2 pointer-events-none">
-                                  <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                                    <ImageIcon className="text-blue-600" size={24} />
-                                  </div>
-                                  <p className="text-sm font-medium text-gray-700">點擊或拖放上傳圖片</p>
-                                  <p className="text-xs text-gray-400">支援 JPG, PNG 格式</p>
-                                </div>
-                              )}
-                            </div>
-                            <InputField label="或輸入圖片 URL" type="text" value={formData.image} onChange={(v) => setFormData({ ...formData, image: v })} placeholder="https://..." />
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  {/* Modal Footer */}
-                  <div className="px-8 py-5 border-t border-gray-100 bg-white flex justify-end gap-3 shrink-0">
-                    <button
-                      onClick={handleCloseModal}
-                      className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors"
-                    >
-                      取消
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200 flex items-center gap-2"
-                    >
-                      <Save size={18} />
-                      儲存設定
-                    </button>
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <Calendar size={16} className="text-red-600" />
+                    假期加價設定 (僅列出啟用中假期)
+                  </h4>
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-gray-500 text-sm">
+                    假期加價功能已移至「假期設定」統一管理，請至該頁面設定假期對應的價格表 (平日/假日/特價)。
                   </div>
                 </div>
               </div>
-            )}
 
-
-
-
-
-            {/* Route Settings Modal */}
-            {
-              isRouteModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                  <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                      <h3 className="text-xl font-bold text-gray-900">
-                        {editingRoute ? '編輯路線' : '新增路線'}
-                      </h3>
-                      <button onClick={handleCloseRouteModal} className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <X size={20} />
-                      </button>
-                    </div>
-
-                    <div className="p-6 space-y-4">
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 gap-6">
-                          <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700">道路名稱</label>
-                            <input
-                              type="text"
-                              value={routeFormData.name}
-                              onChange={(e) => setRouteFormData({ ...routeFormData, name: e.target.value })}
-                              placeholder="例如：忠孝東路一段"
-                              required
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                          </div>
-                        </div>
-                        <InputField
-                          label="固定價格"
-                          type="number"
-                          value={routeFormData.price}
-                          onChange={(v) => setRouteFormData({ ...routeFormData, price: Math.max(0, Number(v) || 0) })}
-                          suffix="元"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-between items-center">
-                      <div>
-                        {editingRoute && (
-                          <button
-                            onClick={handleDeleteRoute}
-                            className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
-                          >
-                            <Trash2 size={16} />
-                            刪除道路
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={handleCloseRouteModal}
-                          className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-sm"
-                        >
-                          取消
-                        </button>
-                        <button
-                          onClick={handleSaveRoute}
-                          disabled={!routeFormData.name}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          儲存
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            }
-
-            {/* Bulk Holiday Settings Modal */}
-            {
-              isBulkHolidayModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                  <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-red-50/50">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-red-100 rounded-lg text-red-600">
-                          <Settings size={20} />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900">
-                          批次設定：{activeBulkAirport}
-                        </h3>
-                      </div>
-                      <button onClick={() => setIsBulkHolidayModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <X size={20} />
-                      </button>
-                    </div>
-
-                    <div className="p-6 space-y-4">
-                      <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg border border-blue-100">
-                        ⚠️ 此操作將會更新「{activeBulkAirport}」下所有的接送地區定價。
-                      </div>
-
-                      <div className="space-y-4">
-                        <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                          <Calendar size={16} className="text-red-600" />
-                          假期加價設定 (僅列出啟用中假期)
-                        </h4>
-                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-gray-500 text-sm">
-                          假期加價功能已移至「假期設定」統一管理，請至該頁面設定假期對應的價格表 (平日/假日/特價)。
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3">
-                      <button
-                        onClick={() => setIsBulkHolidayModalOpen(false)}
-                        className="px-6 py-2 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors"
-                      >
-                        取消
-                      </button>
-                      <button
-                        onClick={handleSaveBulkHoliday}
-                        className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-colors shadow-lg shadow-red-200 flex items-center gap-2"
-                      >
-                        <Save size={18} />
-                        更新全部地區
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            }
-          </div >
-        );
-}
-
-      function InputField({label, type = "text", required = false, suffix, value, onChange, placeholder}: {label: string; type?: string; required?: boolean; suffix?: string; value: any; onChange: (val: string) => void; placeholder?: string }) {
-  return (
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-          {label}
-          {required && <span className="text-red-500">*</span>}
-        </label>
-        <div className="relative">
-          <input
-            type={type}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-          />
-          {suffix && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <span className="text-sm text-gray-500">
-                {suffix}
-              </span>
+              <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3">
+                <button
+                  onClick={() => setIsBulkHolidayModalOpen(false)}
+                  className="px-6 py-2 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleSaveBulkHoliday}
+                  className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-colors shadow-lg shadow-red-200 flex items-center gap-2"
+                >
+                  <Save size={18} />
+                  更新全部地區
+                </button>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
-      );
+          </div>
+        )
+      }
+    </div >
+  );
 }
 
-      export default function VehiclesPage() {
+function InputField({ label, type = "text", required = false, suffix, value, onChange, placeholder }: { label: string; type?: string; required?: boolean; suffix?: string; value: any; onChange: (val: string) => void; placeholder?: string }) {
   return (
-      <Suspense fallback={<div className="p-8 text-center">正在載入價格管理系統...</div>}>
-        <VehiclesContent />
-      </Suspense>
-      );
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+        />
+        {suffix && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <span className="text-sm text-gray-500">
+              {suffix}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function VehiclesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">正在載入價格管理系統...</div>}>
+      <VehiclesContent />
+    </Suspense>
+  );
 }
