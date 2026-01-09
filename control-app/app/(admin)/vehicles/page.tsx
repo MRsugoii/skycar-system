@@ -701,7 +701,8 @@ function VehiclesContent() {
   }, []); // Run once on mount to fix initial data inconsistencies
 
   // Manage Locations Master Lists State
-  const [availableAirports, setAvailableAirports] = useState<string[]>(Array.from(new Set(airportPrices.map(p => p.airport))));
+  // Ensure we have a default list if DB is empty, but update from DB
+  const [availableAirports, setAvailableAirports] = useState<string[]>(["桃園國際機場", "臺北松山機場", "台中清泉崗機場", "高雄小港機場"]);
   const [availableRegions, setAvailableRegions] = useState<string[]>(() => {
     const allDistricts = Object.values(TAIWAN_LOCATIONS).flatMap(c => c.districts);
     const dbRegions = Array.from(new Set(airportPrices.map(p => p.region)));
@@ -1350,22 +1351,7 @@ function VehiclesContent() {
     // 1. Optimistic Update Local State
     setAirportPrices(airportPrices.map(item => (item.id === p.id) ? { ...item, status: newStatus } : item));
 
-    // 2. Visual Group Status Update
-    if (newStatus) {
-      let foundCityKey = '';
-      Object.entries(TAIWAN_LOCATIONS).forEach(([k, v]) => {
-        if (v.districts.includes(p.region)) foundCityKey = k;
-      });
-
-      const airportKey = `airport-${p.airport}-${selectedCategory}`;
-      const cityKey = `city-${p.airport}-${foundCityKey}-${selectedCategory}`;
-
-      setGroupStatus(prev => ({
-        ...prev,
-        [airportKey]: true,
-        [cityKey]: true
-      }));
-    }
+    // 2. Visual Group Status Update will be handled by the useEffect [airportPrices]
 
     // 3. Database Update (Crucial: was missing!)
     try {
@@ -1390,27 +1376,15 @@ function VehiclesContent() {
 
   // Sync initial visual status from data (only if not set yet, or on category change)
   useEffect(() => {
-    const newStatus: { [key: string]: boolean } = { ...groupStatus };
+    const newStatus: { [key: string]: boolean } = {};
 
-    // Check Airports
     availableAirports.forEach(airport => {
       const airportItems = airportPrices.filter(p => p.airport === airport && p.category === selectedCategory);
-      // Default to "some active" if no manual override exists? 
-      // Actually we want to sync with data initially.
-      const isAnyActive = airportItems.some(p => p.status);
-      const airportKey = `airport-${airport}-${selectedCategory}`;
-      if (groupStatus[airportKey] === undefined) {
-        newStatus[airportKey] = isAnyActive;
-      }
+      newStatus[`airport-${airport}-${selectedCategory}`] = airportItems.some(p => p.status);
 
-      // Check Cities
       Object.entries(TAIWAN_LOCATIONS).forEach(([cityKey, cityData]) => {
         const cityItems = airportPrices.filter(p => p.airport === airport && cityData.districts.includes(p.region) && p.category === selectedCategory);
-        const isCityAnyActive = cityItems.some(p => p.status);
-        const cityUniqueKey = `city-${airport}-${cityKey}-${selectedCategory}`;
-        if (groupStatus[cityUniqueKey] === undefined) {
-          newStatus[cityUniqueKey] = isCityAnyActive;
-        }
+        newStatus[`city-${airport}-${cityKey}-${selectedCategory}`] = cityItems.some(p => p.status);
       });
     });
     setGroupStatus(newStatus);
