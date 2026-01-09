@@ -2433,56 +2433,56 @@ function VehiclesContent() {
                 <div className="space-y-4">
                   <h4 className="font-bold text-gray-900 border-l-4 border-green-500 pl-3">接送地列表</h4>
                   <p className="text-xs text-gray-500">刪除接送地將會一併刪除該地點在所有機場的定價資料。</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div className="space-y-6">
-                      {['taipei', 'new_taipei', 'taichung'].map(cityKey => {
-                        const city = TAIWAN_LOCATIONS[cityKey];
-                        const cityDistricts = availableRegions.filter(r => city.districts.includes(r));
 
-                        if (cityDistricts.length === 0) return null;
+                  <div className="space-y-6">
+                    {['taipei', 'new_taipei', 'taichung'].map(cityKey => {
+                      const city = TAIWAN_LOCATIONS[cityKey];
+                      const cityDistricts = availableRegions.filter(r => city.districts.includes(r));
 
-                        return (
-                          <div key={cityKey} className="space-y-3">
-                            <h5 className="font-bold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
-                              <MapPin size={16} className="text-blue-500" />
-                              {city.name}
-                            </h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {cityDistricts.map(region => (
-                                <div key={region} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-green-200 transition-colors">
-                                  <span className="text-sm font-medium text-gray-700">{region}</span>
-                                  <button
-                                    onClick={() => handleDeleteMasterRegion(region)}
-                                    className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                                    title="刪除"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
+                      if (cityDistricts.length === 0) return null;
+
+                      return (
+                        <div key={cityKey} className="space-y-3">
+                          <h5 className="font-bold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
+                            <MapPin size={16} className="text-blue-500" />
+                            {city.name}
+                          </h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {cityDistricts.map(region => (
+                              <div key={region} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-green-200 transition-colors">
+                                <span className="text-sm font-medium text-gray-700">{region}</span>
+                                <button
+                                  onClick={() => handleDeleteMasterRegion(region)}
+                                  className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                                  title="刪除"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                        );
-                      })}
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <input
-                        type="text"
-                        value={newMasterRegion}
-                        onChange={(e) => setNewMasterRegion(e.target.value)}
-                        placeholder="輸入新接送地名稱"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
-                      />
-                      <button
-                        onClick={handleAddMasterRegion}
-                        disabled={!newMasterRegion.trim()}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-1"
-                      >
-                        <Plus size={16} />
-                        新增
-                      </button>
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
+                  <div className="flex gap-2 pt-2">
+                    <input
+                      type="text"
+                      value={newMasterRegion}
+                      onChange={(e) => setNewMasterRegion(e.target.value)}
+                      placeholder="輸入新接送地名稱"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                    />
+                    <button
+                      onClick={handleAddMasterRegion}
+                      disabled={!newMasterRegion.trim()}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-1"
+                    >
+                      <Plus size={16} />
+                      新增
+                    </button>
+                  </div>
+
                 </div>
 
                 <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end items-center flex-shrink-0">
