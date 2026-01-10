@@ -130,6 +130,8 @@ function OrdersContent() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<{ id: string, name: string }[]>([]);
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [dispatchDriverInput, setDispatchDriverInput] = useState("");
   const [users, setUsers] = useState<{ id: string, name: string, phone: string, email: string }[]>([]);
 
   useEffect(() => {
@@ -589,64 +591,109 @@ function OrdersContent() {
     }
   };
 
-  const handleAssignDriver = async () => {
-    if (!currentOrder) return;
-    const driverName = prompt("請輸入司機姓名：", "王小明");
-    if (driverName) {
-      // Find driver ID
-      const { data: dData } = await supabase.from('drivers').select('id').eq('name', driverName).single();
-      if (!dData) {
-        alert("找不到此司機名，請確認司機管理中姓名正確。");
-        return;
-      }
+  const handleAssignDriverSubmit = async () => {
+    if (!currentOrder || !dispatchDriverInput) return;
+    const driverName = dispatchDriverInput;
 
-      // Ensure we have a formatted ID in the note
+    // Find driver ID
+    const { data: dData } = await supabase.from('drivers').select('id').eq('name', driverName).single();
+    if (!dData) {
+      alert("找不到此司機名，請確認司機管理中姓名正確。");
+      return;
+    }
+
+    // Ensure we have a formatted ID in the note
+    const { data: orderData } = await supabase.from('orders').select('note').eq('id', currentOrder.id).single();
+    let note = orderData?.note || "";
+    let displayId = currentOrder.displayId;
+
+    if (!note.includes('[ID:')) {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const serial = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+      displayId = `CH${y}${m}${d}${serial}`;
+      note = (note ? note + " " : "") + `[ID: ${displayId}]`;
+    }
+
+    const { error } = await supabase.from('orders').update({
+      driver_id: dData.id,
+      status: 'confirmed',
+      note: note
+    }).eq('id', currentOrder.id);
+
+    if (error) {
+      alert("指派失敗: " + error.message);
+      return;
+    }
+
+    const updatedOrder = { ...currentOrder, driver: driverName, status: "confirmed", displayId, note };
+    setOrders(orders.map(o => o.id === currentOrder.id ? updatedOrder : o));
+    addLog(`指派司機 ${driverName} 給訂單 #${displayId}`, "info");
+    setIsDispatching(false);
+    setDispatchDriverInput("");
+    handleCloseModal();
+  };
+
+  const handleRefundApprove = async () => {
+    if (!currentOrder) return;
+    if (confirm("確定要通過此退款申請嗎？(將標記為 -RF)")) {
+      const newDisplayId = (currentOrder.displayId || currentOrder.id).replace(/-(RF|NA|OC)$/, '') + "-RF";
+
       const { data: orderData } = await supabase.from('orders').select('note').eq('id', currentOrder.id).single();
       let note = orderData?.note || "";
-      let displayId = currentOrder.displayId;
-
-      if (!note.includes('[ID:')) {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const d = String(now.getDate()).padStart(2, '0');
-        const serial = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-        displayId = `CH${y}${m}${d}${serial}`;
-        note = (note ? note + " " : "") + `[ID: ${displayId}]`;
+      if (note.includes('[ID:')) {
+        note = note.replace(/\[ID: (CH\d+)(-(RF|NA|OC))?\]/, `[ID: ${newDisplayId}]`);
+      } else {
+        note += ` [ID: ${newDisplayId}]`;
       }
 
-      const { error } = await supabase.from('orders').update({
-        driver_id: dData.id,
-        status: 'confirmed',
+      await supabase.from('orders').update({
+        status: 'refunded',
         note: note
       }).eq('id', currentOrder.id);
 
-      if (error) {
-        alert("指派失敗: " + error.message);
-        return;
-      }
-
-      const updatedOrder = { ...currentOrder, driver: driverName, status: "confirmed", displayId, note };
+      const updatedOrder = {
+        ...currentOrder,
+        status: "refunded",
+        displayId: newDisplayId,
+        note
+      };
       setOrders(orders.map(o => o.id === currentOrder.id ? updatedOrder : o));
-      addLog(`指派司機 ${driverName} 給訂單 #${displayId}`, "info");
+      addLog(`訂單已批准退費並標記為 -RF`, "success");
       handleCloseModal();
     }
   };
 
-  const handleRefundApprove = () => {
+  const handleRefundReject = async () => {
     if (!currentOrder) return;
-    const updatedOrder = { ...currentOrder, status: "completed", id: currentOrder.id + "-RF" };
-    setOrders(orders.map(o => o.id === currentOrder.id ? updatedOrder : o));
-    addLog(`批准訂單 #${currentOrder.id} 退費申請`, "success");
-    handleCloseModal();
-  };
+    if (confirm("確定要拒絕此退款申請嗎？(將標記為 -NA)")) {
+      const newDisplayId = (currentOrder.displayId || currentOrder.id).replace(/-(RF|NA|OC)$/, '') + "-NA";
 
-  const handleRefundReject = () => {
-    if (!currentOrder) return;
-    const updatedOrder = { ...currentOrder, status: "completed", id: currentOrder.id + "-NA" };
-    setOrders(orders.map(o => o.id === currentOrder.id ? updatedOrder : o));
-    addLog(`拒絕訂單 #${currentOrder.id} 退費申請`, "warning");
-    handleCloseModal();
+      const { data: orderData } = await supabase.from('orders').select('note').eq('id', currentOrder.id).single();
+      let note = orderData?.note || "";
+      if (note.includes('[ID:')) {
+        note = note.replace(/\[ID: (CH\d+)(-(RF|NA|OC))?\]/, `[ID: ${newDisplayId}]`);
+      } else {
+        note += ` [ID: ${newDisplayId}]`;
+      }
+
+      await supabase.from('orders').update({
+        status: 'completed',
+        note: note
+      }).eq('id', currentOrder.id);
+
+      const updatedOrder = {
+        ...currentOrder,
+        status: "completed",
+        displayId: newDisplayId,
+        note
+      };
+      setOrders(orders.map(o => o.id === currentOrder.id ? updatedOrder : o));
+      addLog(`訂單已拒絕退費並標記為 -NA`, "warning");
+      handleCloseModal();
+    }
   };
 
   // TABS Configuration
@@ -1449,6 +1496,37 @@ function OrdersContent() {
                     <Save size={16} />
                     儲存變更
                   </button>
+                ) : isDispatching ? (
+                  <div className="flex items-center gap-3 w-full bg-blue-50/50 p-2 rounded-xl border border-blue-100 animate-in slide-in-from-bottom-2">
+                    <div className="flex-1 relative">
+                      <input
+                        list="dispatch-driver-list"
+                        value={dispatchDriverInput}
+                        onChange={(e) => setDispatchDriverInput(e.target.value)}
+                        placeholder="請輸入或選擇司機姓名"
+                        className="w-full px-4 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        autoFocus
+                      />
+                      <datalist id="dispatch-driver-list">
+                        {drivers.map(d => (
+                          <option key={d.id} value={d.name}>{d.name}</option>
+                        ))}
+                      </datalist>
+                    </div>
+                    <button
+                      onClick={() => { setIsDispatching(false); setDispatchDriverInput(""); }}
+                      className="px-4 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={handleAssignDriverSubmit}
+                      disabled={!dispatchDriverInput}
+                      className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                    >
+                      確認派遣
+                    </button>
+                  </div>
                 ) : (
                   <>
                     {currentOrder.status === 'refund' ? (
@@ -1479,7 +1557,7 @@ function OrdersContent() {
                         </button>
                         {['unconfirmed', 'pending', 'new'].includes(currentOrder.status) && (
                           <button
-                            onClick={handleAssignDriver}
+                            onClick={() => setIsDispatching(true)}
                             className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200 flex items-center gap-2">
                             <Car size={18} />
                             派遣司機
