@@ -1477,12 +1477,12 @@ function OrdersContent() {
                           className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors shadow-sm">
                           修改訂單
                         </button>
-                        {(currentOrder.status === 'unconfirmed' || currentOrder.status === 'pending') && (
+                        {['unconfirmed', 'pending', 'new'].includes(currentOrder.status) && (
                           <button
                             onClick={handleAssignDriver}
                             className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-lg shadow-blue-200 flex items-center gap-2">
                             <Car size={18} />
-                            分配司機
+                            派遣司機
                           </button>
                         )}
                       </>
