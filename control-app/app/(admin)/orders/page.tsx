@@ -652,11 +652,11 @@ function OrdersContent() {
   // TABS Configuration
   const defaultTabs = [
     { id: "all", label: "全部" },
-    { id: "unconfirmed", label: "未確認訂單" },
-    { id: "confirmed", label: "已確認訂單" },
-    { id: "completed", label: "已完成訂單" },
-    { id: "refund", label: "退費訂單審核" },
-    { id: "trash", label: "垃圾桶" },
+    { id: "unconfirmed", label: "未確認" },
+    { id: "confirmed", label: "已確認" },
+    { id: "completed", label: "已完成" },
+    { id: "refund", label: "退費審核" },
+    { id: "trash", label: "已取消訂單" },
   ];
 
   const driverTabs = [
@@ -1667,9 +1667,9 @@ const OrderStatusTag = ({ status, orderId }: { status: string, orderId: string }
 
   const config: Record<string, { label: string; className: string }> = {
     "completed": { label: "已完成", className: "bg-green-100 text-green-700 border-green-200" },
-    "unconfirmed": { label: "待確認", className: "bg-red-50 text-red-600 border-red-200" },
-    "pending": { label: "待確認", className: "bg-red-50 text-red-600 border-red-200" },
-    "new": { label: "待確認", className: "bg-red-50 text-red-600 border-red-200" },
+    "unconfirmed": { label: "未確認", className: "bg-red-50 text-red-600 border-red-200" },
+    "pending": { label: "未確認", className: "bg-red-50 text-red-600 border-red-200" },
+    "new": { label: "未確認", className: "bg-red-50 text-red-600 border-red-200" },
     "confirmed": { label: "已確認", className: "bg-blue-100 text-blue-700 border-blue-200" },
     "assigned": { label: "已派車", className: "bg-blue-100 text-blue-700 border-blue-200" },
     "pickedup": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200 animate-pulse" },
@@ -1677,7 +1677,7 @@ const OrderStatusTag = ({ status, orderId }: { status: string, orderId: string }
     "en-route": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200 animate-pulse" },
     "ing": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200" },
     "refund": { label: "退費審核", className: "bg-purple-100 text-purple-700 border-purple-200" },
-    "refund_pending": { label: "退費待審", className: "bg-purple-100 text-purple-700 border-purple-200" },
+    "refund_pending": { label: "退費審核", className: "bg-purple-100 text-purple-700 border-purple-200" },
     "trash": { label: "已取消", className: "bg-gray-100 text-gray-500 border-gray-200" },
     "refunded": { label: "已退費", className: "bg-gray-100 text-gray-500 border-gray-200" },
     "refund_rejected": { label: "不予退費", className: "bg-gray-100 text-gray-500 border-gray-200" },
