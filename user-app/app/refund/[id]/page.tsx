@@ -116,23 +116,28 @@ export default function RefundPage() {
                 const cleanId = decodeURIComponent(id);
                 const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-                let updateQuery = supabase.from('orders').update({ status: 'refund_pending' });
+                let updateQuery = supabase.from('orders').update({ status: 'refund' });
 
                 if (isUUID) {
-                    updateQuery = updateQuery.eq('id', cleanId);
+                    // Try direct ID match
+                    const { error } = await updateQuery.eq('id', cleanId);
+                    if (error) throw error;
                 } else {
-                    // Search by note content
-                    updateQuery = updateQuery.ilike('note', `%${cleanId}%`);
-                }
+                    // Try specific ID tag in note
+                    const { error } = await supabase.from('orders').update({ status: 'refund' }).ilike('note', `%[ID: ${cleanId}]%`);
 
-                await updateQuery;
+                    // Fallback: search anywhere in note
+                    if (!error) {
+                        await supabase.from('orders').update({ status: 'refund' }).ilike('note', `%${cleanId}%`);
+                    }
+                }
 
                 // Also ensure we update any other 'ing' orders for this user to unblock them (Safety for demo)
                 const sbUserId = sessionStorage.getItem('supabaseUserId');
                 if (sbUserId) {
                     await supabase
                         .from('orders')
-                        .update({ status: 'refund_pending' })
+                        .update({ status: 'refund' })
                         .eq('user_id', sbUserId)
                         .eq('status', 'ing');
                 }
@@ -147,7 +152,7 @@ export default function RefundPage() {
             const idx = uOrders.findIndex((o: any) => o.orderId === id);
 
             if (idx >= 0) {
-                uOrders[idx].status = 'refund_pending';
+                uOrders[idx].status = 'refund';
                 uOrders[idx].refundData = {
                     bank,
                     account,
