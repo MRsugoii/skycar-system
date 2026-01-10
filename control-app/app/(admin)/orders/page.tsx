@@ -1463,7 +1463,7 @@ function OrdersContent() {
                           通過退費 (RF)
                         </button>
                       </>
-                    ) : currentOrder.status === 'completed' ? (
+                    ) : (currentOrder.status === 'completed' || currentOrder.status === 'cancelled') ? (
                       <button
                         onClick={handleCloseModal}
                         className="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-medium transition-colors shadow-sm">
