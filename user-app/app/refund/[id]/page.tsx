@@ -181,7 +181,35 @@ export default function RefundPage() {
     };
 
     if (loading) return <div className="min-h-screen bg-gray-50 p-6 text-center text-gray-500">載入中...</div>;
-    if (!order) return <div className="min-h-screen bg-gray-50 p-6 text-center text-gray-500">訂單不存在</div>;
+    if (!order) return (
+        <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center justify-center space-y-4">
+            <div className="text-gray-500 font-bold">訂單不存在</div>
+            <p className="text-xs text-gray-400 text-center max-w-[300px]">若此訂單為資料庫中不存在的「幽靈訂單」，您可以點擊下方按鈕強制從目前行程中移除。</p>
+            <button
+                onClick={() => {
+                    if (confirm("確認要強制移除此幽靈訂單？這將會更新您的本地資料並恢復預約功能。")) {
+                        const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
+                        const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
+                        // We use decodeURIComponent(id) to match even if encoded
+                        const cleanId = decodeURIComponent(id);
+                        const updated = uOrders.map((o: any) => o.orderId === cleanId ? { ...o, status: 'cancelled' } : o);
+                        localStorage.setItem(`orders_${acc}`, JSON.stringify(updated));
+                        alert("已強制移除幽靈訂單。");
+                        router.push('/dashboard');
+                    }
+                }}
+                className="px-6 py-2 bg-white border border-red-200 text-red-500 rounded-xl font-bold text-sm hover:bg-red-50 transition"
+            >
+                強制移除並恢復預約功能
+            </button>
+            <button
+                onClick={() => router.push('/dashboard')}
+                className="text-blue-600 text-sm font-bold"
+            >
+                返回儀表板
+            </button>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-gray-50 pb-10 text-gray-900 max-w-[420px] mx-auto relative overflow-hidden flex flex-col">
