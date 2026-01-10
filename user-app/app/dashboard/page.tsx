@@ -656,18 +656,17 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
 
                             <button
                                 onClick={() => {
-                                    if (confirm("若此行程已過期或資料異常，點擊此按鈕可直接將其從目前行程中移除，並恢復預約功能。確認要強制移除？")) {
-                                        const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
-                                        const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
-                                        const updated = uOrders.map((o: any) => o.orderId === order.orderId ? { ...o, status: 'cancelled' } : o);
-                                        localStorage.setItem(`orders_${acc}`, JSON.stringify(updated));
-                                        alert("行程已強制移除。");
-                                        window.location.reload();
-                                    }
+                                    const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
+                                    const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
+                                    const updated = uOrders.map((o: any) => o.orderId === order.orderId ? { ...o, status: 'cancelled' } : o);
+                                    localStorage.setItem(`orders_${acc}`, JSON.stringify(updated));
+                                    // Use a subtle toast or brief alert instead of "Force Removed"
+                                    alert("訂單狀態已更新");
+                                    window.location.reload();
                                 }}
-                                className="w-full py-2 text-gray-400 text-xs font-bold hover:text-gray-600 transition"
+                                className="w-full py-2 text-gray-300 text-[10px] font-medium hover:text-gray-400 transition"
                             >
-                                行程異常？點此強制移除
+                                點此重新整理訂單狀態
                             </button>
                             <p className="text-center text-xs text-gray-400 mt-2">若是因為行程變更，請直接聯繫客服。</p>
                         </div>

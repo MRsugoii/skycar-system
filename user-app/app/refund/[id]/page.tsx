@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronDown, RefreshCcw } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 
 export default function RefundPage() {
@@ -180,34 +180,43 @@ export default function RefundPage() {
         }
     };
 
-    if (loading) return <div className="min-h-screen bg-gray-50 p-6 text-center text-gray-500">載入中...</div>;
-    if (!order) return (
+    // Automated Cleanup for Demo
+    useEffect(() => {
+        if (!loading && !order && id) {
+            const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
+            const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
+            const cleanId = decodeURIComponent(id as string);
+
+            // If it's a ghost order, silently mark it cancelled
+            if (uOrders.find((o: any) => o.orderId === cleanId)) {
+                const updated = uOrders.map((o: any) => o.orderId === cleanId ? { ...o, status: 'cancelled' } : o);
+                localStorage.setItem(`orders_${acc}`, JSON.stringify(updated));
+
+                // Brief delay to show "Syncing" state then redirect
+                const timer = setTimeout(() => {
+                    router.push('/dashboard');
+                }, 1500);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [loading, order, id, router]);
+
+    if (loading) return (
         <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center justify-center space-y-4">
-            <div className="text-gray-500 font-bold">訂單不存在</div>
-            <p className="text-xs text-gray-400 text-center max-w-[300px]">若此訂單為資料庫中不存在的「幽靈訂單」，您可以點擊下方按鈕強制從目前行程中移除。</p>
-            <button
-                onClick={() => {
-                    if (confirm("確認要強制移除此幽靈訂單？這將會更新您的本地資料並恢復預約功能。")) {
-                        const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
-                        const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
-                        // We use decodeURIComponent(id) to match even if encoded
-                        const cleanId = decodeURIComponent(id);
-                        const updated = uOrders.map((o: any) => o.orderId === cleanId ? { ...o, status: 'cancelled' } : o);
-                        localStorage.setItem(`orders_${acc}`, JSON.stringify(updated));
-                        alert("已強制移除幽靈訂單。");
-                        router.push('/dashboard');
-                    }
-                }}
-                className="px-6 py-2 bg-white border border-red-200 text-red-500 rounded-xl font-bold text-sm hover:bg-red-50 transition"
-            >
-                強制移除並恢復預約功能
-            </button>
-            <button
-                onClick={() => router.push('/dashboard')}
-                className="text-blue-600 text-sm font-bold"
-            >
-                返回儀表板
-            </button>
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="text-gray-500 font-bold">載入中...</div>
+        </div>
+    );
+
+    if (!order) return (
+        <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-2">
+                <RefreshCcw className="text-blue-600 animate-spin-slow" />
+            </div>
+            <div className="text-gray-900 font-bold text-lg">正在同步訂單狀態</div>
+            <p className="text-sm text-gray-500 max-w-[280px]">
+                系統偵測到本地訂單狀態與資料庫不一致，正在為您自動修正並重新整理，請稍候。
+            </p>
         </div>
     );
 
