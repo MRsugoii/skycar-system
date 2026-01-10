@@ -564,13 +564,13 @@ function OrdersContent() {
   const handleCancelOrder = async () => {
     if (!currentOrder) return;
     if (confirm("確定要取消此訂單嗎？(將標記為 -OC)")) {
-      const newDisplayId = (currentOrder.displayId || currentOrder.id) + "-OC";
+      const newDisplayId = (currentOrder.displayId || currentOrder.id).replace(/-(RF|NA|OC)$/, '') + "-OC";
 
       const { data: orderData } = await supabase.from('orders').select('note').eq('id', currentOrder.id).single();
       let note = orderData?.note || "";
       // Replace or Add ID tag
       if (note.includes('[ID:')) {
-        note = note.replace(/\[ID: (CH\d+)\]/, `[ID: ${newDisplayId}]`);
+        note = note.replace(/\[ID: (CH\d+)(-(RF|NA|OC))?\]/, `[ID: ${newDisplayId}]`);
       } else {
         note += ` [ID: ${newDisplayId}]`;
       }
