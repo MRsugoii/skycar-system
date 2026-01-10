@@ -42,8 +42,8 @@ export default function RefundPage() {
                     if (isUUID) {
                         query = query.eq('id', cleanId);
                     } else {
-                        // Assume it's a Custom ID in the note field
-                        query = query.ilike('note', `%${cleanId}%`);
+                        // Try both: check ID directly OR check note tag
+                        query = query.or(`id.eq."${cleanId}",note.ilike."%[ID: ${cleanId}]%"`);
                     }
 
                     const { data, error } = await query.single();
