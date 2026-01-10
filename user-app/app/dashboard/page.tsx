@@ -138,7 +138,7 @@ export default function DashboardPage() {
                         let st: any = 'ing';
                         if (o.status === 'completed') st = 'done';
                         else if (o.status === 'cancelled') st = 'cancelled';
-                        else if (o.status === 'refund_pending') st = 'refund_pending';
+                        else if (o.status === 'refund' || o.status === 'refund_pending') st = 'refund_pending';
                         else st = 'ing';
 
                         return {
@@ -176,8 +176,8 @@ export default function DashboardPage() {
                     const localMatch = localOrders.find((lo: any) => lo.orderId === sbOrder.orderId);
                     if (localMatch) {
                         // Trust local 'cancelled/refund' specifically for demo unblocking
-                        if (sbOrder.status === 'ing' && (localMatch.status === 'cancelled' || localMatch.status === 'refund_pending')) {
-                            return { ...sbOrder, status: localMatch.status };
+                        if (sbOrder.status === 'ing' && (localMatch.status === 'cancelled' || localMatch.status === 'refund_pending' || localMatch.status === 'refund')) {
+                            return { ...sbOrder, status: localMatch.status === 'refund' ? 'refund_pending' : localMatch.status };
                         }
                     }
                     return sbOrder;
