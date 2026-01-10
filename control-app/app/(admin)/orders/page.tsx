@@ -691,8 +691,9 @@ function OrdersContent() {
     } else {
       statusMatch = (currentStatus === 'all' || !currentStatus) ? true : (
         o.status.toLowerCase() === currentStatus.toLowerCase() ||
-        (currentStatus === 'unconfirmed' && o.status.toLowerCase() === 'pending') ||
-        (currentStatus === 'confirmed' && ['assigned', 'pickedup', 'pickedUp', 'en_route', 'en-route'].includes(o.status.toLowerCase())) ||
+        (currentStatus === 'unconfirmed' && ['pending', 'new', 'unconfirmed'].includes(o.status.toLowerCase())) ||
+        (currentStatus === 'confirmed' && ['assigned', 'pickedup', 'pickedup', 'en_route', 'en-route', 'confirmed', 'ing'].includes(o.status.toLowerCase())) ||
+        (currentStatus === 'refund' && (o.status.toLowerCase() === 'refund' || o.status.toLowerCase() === 'refund_pending')) ||
         (currentStatus === 'trash' && o.status.toLowerCase() === 'cancelled')
       );
     }
@@ -1665,14 +1666,17 @@ const OrderStatusTag = ({ status, orderId }: { status: string, orderId: string }
 
   const config: Record<string, { label: string; className: string }> = {
     "completed": { label: "已完成", className: "bg-green-100 text-green-700 border-green-200" },
-    "unconfirmed": { label: "未確認", className: "bg-red-50 text-red-600 border-red-200" },
-    "pending": { label: "未確認", className: "bg-red-50 text-red-600 border-red-200" },
+    "unconfirmed": { label: "待確認", className: "bg-red-50 text-red-600 border-red-200" },
+    "pending": { label: "待確認", className: "bg-red-50 text-red-600 border-red-200" },
+    "new": { label: "待確認", className: "bg-red-50 text-red-600 border-red-200" },
     "confirmed": { label: "已確認", className: "bg-blue-100 text-blue-700 border-blue-200" },
-    "assigned": { label: "已確認", className: "bg-blue-100 text-blue-700 border-blue-200" },
+    "assigned": { label: "已派車", className: "bg-blue-100 text-blue-700 border-blue-200" },
     "pickedup": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200 animate-pulse" },
     "en_route": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200 animate-pulse" },
     "en-route": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200 animate-pulse" },
+    "ing": { label: "進行中", className: "bg-amber-100 text-amber-700 border-amber-200" },
     "refund": { label: "退費審核", className: "bg-purple-100 text-purple-700 border-purple-200" },
+    "refund_pending": { label: "退費待審", className: "bg-purple-100 text-purple-700 border-purple-200" },
     "trash": { label: "已取消", className: "bg-gray-100 text-gray-500 border-gray-200" },
     "refunded": { label: "已退費", className: "bg-gray-100 text-gray-500 border-gray-200" },
     "refund_rejected": { label: "不予退費", className: "bg-gray-100 text-gray-500 border-gray-200" },
