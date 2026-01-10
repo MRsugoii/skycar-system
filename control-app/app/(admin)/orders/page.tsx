@@ -803,8 +803,9 @@ function OrdersContent() {
                   <span className={`px-2 py-0.5 rounded-full text-xs ${isActive ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
                     {orders.filter(o => {
                       const s = (o.status || "").toLowerCase();
-                      if (tab.id === 'unconfirmed') return s === 'unconfirmed' || s === 'pending';
-                      if (tab.id === 'confirmed') return s === 'confirmed' || ['assigned', 'pickedup', 'pickedup', 'en_route', 'en-route'].includes(s);
+                      if (tab.id === 'unconfirmed') return ['unconfirmed', 'pending', 'new'].includes(s);
+                      if (tab.id === 'confirmed') return ['confirmed', 'assigned', 'pickedup', 'pickedup', 'en_route', 'en-route', 'ing'].includes(s);
+                      if (tab.id === 'refund') return s === 'refund' || s === 'refund_pending';
                       if (tab.id === 'trash') return s === 'trash' || s === 'cancelled';
                       return s === tab.id;
                     }).length}
