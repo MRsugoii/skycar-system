@@ -116,7 +116,7 @@ export default function RefundPage() {
                 const cleanId = decodeURIComponent(id);
                 const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-                let updateQuery = supabase.from('orders').update({ status: 'cancelled' });
+                let updateQuery = supabase.from('orders').update({ status: 'refund_pending' });
 
                 if (isUUID) {
                     updateQuery = updateQuery.eq('id', cleanId);
@@ -127,13 +127,12 @@ export default function RefundPage() {
 
                 await updateQuery;
 
-                // Also ensure we cancel any other 'ing' orders for this user to unblock them
-                // This is a safety measure for the demo
+                // Also ensure we update any other 'ing' orders for this user to unblock them (Safety for demo)
                 const sbUserId = sessionStorage.getItem('supabaseUserId');
                 if (sbUserId) {
                     await supabase
                         .from('orders')
-                        .update({ status: 'cancelled' })
+                        .update({ status: 'refund_pending' })
                         .eq('user_id', sbUserId)
                         .eq('status', 'ing');
                 }

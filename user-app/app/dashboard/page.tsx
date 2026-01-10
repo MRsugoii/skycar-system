@@ -518,8 +518,8 @@ export default function DashboardPage() {
                                     <span className="font-black text-gray-900 text-lg tracking-tight">{o.orderId}</span>
                                     <span className={`px-2 py-0.5 rounded text-xs font-bold border ${o.status === 'done' ? 'bg-green-50 text-green-700 border-green-200' :
                                         o.status === 'cancelled' ? 'bg-gray-50 text-gray-500 border-gray-200' :
-                                            o.status === 'refund_pending' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                                'bg-blue-50 text-blue-600 border-blue-100'
+                                            o.status === 'refund_pending' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                                'bg-amber-50 text-amber-700 border-amber-100'
                                         }`}>
                                         {o.status === 'done' ? '已完成' :
                                             o.status === 'cancelled' ? '已取消' :
@@ -612,8 +612,10 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                                 <div className="text-xs text-gray-500 font-bold">{order.date}</div>
                             </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${order.status === 'ing' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                            order.status === 'done' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200'
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${order.status === 'ing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                            order.status === 'done' ? 'bg-green-50 text-green-700 border-green-200' :
+                                order.status === 'refund_pending' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                    'bg-gray-50 text-gray-500 border-gray-200'
                             }`}>
                             {order.status === 'ing' ? '進行中' : order.status === 'done' ? '已完成' : '已取消'}
                         </span>
