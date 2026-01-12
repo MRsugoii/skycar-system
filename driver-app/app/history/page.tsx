@@ -60,33 +60,39 @@ export default function HistoryPage() {
             if (error) {
                 console.error('Error fetching history:', error);
             } else {
-                const mappedOrders = (data || []).map((row: any) => {
-                    const d = row.pickup_time ? new Date(row.pickup_time) : new Date();
-                    const yearStr = d.getFullYear().toString();
-                    const monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
-                    const dayStr = d.getDate().toString().padStart(2, '0');
+                const mappedOrders = (data || [])
+                    .filter((row: any) => {
+                        const note = (row.note || "").toUpperCase();
+                        const id = (row.id || "").toUpperCase();
+                        return !note.includes("-RF") && !note.includes("-OC") && !id.includes("-RF") && !id.includes("-OC");
+                    })
+                    .map((row: any) => {
+                        const d = row.pickup_time ? new Date(row.pickup_time) : new Date();
+                        const yearStr = d.getFullYear().toString();
+                        const monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
+                        const dayStr = d.getDate().toString().padStart(2, '0');
 
-                    return {
-                        id: (row.note && row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (row.id.length > 20 ? "CH-歷史訂單" : row.id),
-                        status: row.status,
-                        // Map to local fields for UI compatibility
-                        isBilled: false, // Default for now
-                        isPaid: false,  // Default for now
-                        // Explicit date parts for reliable filtering
-                        year: yearStr,
-                        month: monthStr,
-                        date: `${yearStr}/${monthStr}/${dayStr}`,
-                        time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        price: row.price,
-                        serviceType: row.vehicle_type || '接送',
-                        flow: row.status === 'completed' ? 'completed' : 'cancelled', // Derived flow
-                        detail: {
-                            pax: { adult: row.passenger_count || 1, child: 0 },
-                            luggage: { s20: 0, s25: row.luggage_count || 0, s28: 0 },
-                            contact: { name: row.contact_name, phone: row.contact_phone }
-                        }
-                    };
-                });
+                        return {
+                            id: (row.note && row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (row.id.length > 20 ? "CH-歷史訂單" : row.id),
+                            status: row.status,
+                            // Map to local fields for UI compatibility
+                            isBilled: false, // Default for now
+                            isPaid: false,  // Default for now
+                            // Explicit date parts for reliable filtering
+                            year: yearStr,
+                            month: monthStr,
+                            date: `${yearStr}/${monthStr}/${dayStr}`,
+                            time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            price: row.price,
+                            serviceType: row.vehicle_type || '接送',
+                            flow: row.status === 'completed' ? 'completed' : 'cancelled', // Derived flow
+                            detail: {
+                                pax: { adult: row.passenger_count || 1, child: 0 },
+                                luggage: { s20: 0, s25: row.luggage_count || 0, s28: 0 },
+                                contact: { name: row.contact_name, phone: row.contact_phone }
+                            }
+                        };
+                    });
                 setOrders(mappedOrders);
             }
             setLoading(false);
@@ -126,7 +132,7 @@ export default function HistoryPage() {
             <div className="absolute top-0 left-0 right-0 h-[220px] bg-blue-600 rounded-b-[40px] shadow-lg z-0"></div>
 
             <div className="relative z-10 flex flex-col min-h-screen pb-20">
-                <PageHeader title="歷史帳單" variant="ghost" />
+                <PageHeader title="歷史帳單 v1.3" variant="ghost" />
 
                 <div className="px-4 mt-4">
                     {/* Main Content Card */}

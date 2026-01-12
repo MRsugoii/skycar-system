@@ -499,7 +499,7 @@ export default function DashboardPage() {
                             onClick={handleLogout}
                             className="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md transition flex items-center gap-2"
                         >
-                            <LogOut size={14} /> 登出 v2.1
+                            <LogOut size={14} /> 登出 v2.2
                         </button>
                     </div>
 
