@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronDown, Flag, Edit2, LogOut, X, Phone, User, Ticket, Clock, History, Calendar, MapPin, Plane, Users, Briefcase, Navigation } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase'; // STANDARD IMPORT
 
 interface OrderDetail {
     pickup?: string;
@@ -70,6 +70,14 @@ interface UserProfile {
 }
 
 export default function DashboardPage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center">載入中...</div>}>
+            <DashboardContent />
+        </React.Suspense>
+    );
+}
+
+function DashboardContent() {
     const router = useRouter();
     const [user, setUser] = useState<UserProfile | null>(null);
     const [orders, setOrders] = useState<Order[]>([]);
@@ -109,154 +117,162 @@ export default function DashboardPage() {
             return;
         }
 
-        // 2. Load User Data
+        // 2. Load User Data Safe Parse
         const uStr = localStorage.getItem(`user_${acc}`);
         if (uStr) {
-            setUser(JSON.parse(uStr));
-            setEditForm(JSON.parse(uStr));
+            try {
+                const parsed = JSON.parse(uStr);
+                setUser(parsed);
+                setEditForm(parsed);
+            } catch (e) {
+                console.error("Local user data corrupt", e);
+                setUser({ account: acc, displayName: acc, phone: '' });
+            }
         } else {
             setUser({ account: acc, displayName: acc, phone: '' });
         }
 
         // 3. Load Orders (Hybrid: Local + Supabase)
         const loadOrders = async () => {
-            let list: Order[] = [];
-            let currentSbId = sbUserId;
+            try {
+                let list: Order[] = [];
+                let currentSbId = sbUserId;
 
-            // Proactively find Supabase ID if missing
-            if (!currentSbId && acc) {
-                const { data: userData } = await supabase.from('users').select('id').eq('national_id', acc as string).single();
-                if (userData?.id) {
-                    currentSbId = userData.id;
-                    sessionStorage.setItem('supabaseUserId', userData.id);
-                }
-            }
-
-            // A. Fetch from Supabase (Filter by Account Tag OR Phone Number)
-            let sbOrders = [];
-
-            if (acc) {
-                let userPhone = '';
-                if (uStr) {
-                    try {
-                        const parsedUser = JSON.parse(uStr);
-                        userPhone = parsedUser.phone || '';
-                    } catch (e) { console.error("Error parsing user data"); }
+                // Proactively find Supabase ID if missing
+                if (!currentSbId && acc && supabase) {
+                    const { data: userData } = await supabase.from('users').select('id').eq('national_id', acc as string).single();
+                    if (userData?.id) {
+                        currentSbId = userData.id;
+                        sessionStorage.setItem('supabaseUserId', userData.id);
+                    }
                 }
 
-                let query = supabase
-                    .from('orders')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                // A. Fetch from Supabase (Filter by Account Tag OR Phone Number)
+                let sbOrders = [];
 
-                if (userPhone) {
-                    query = query.or(`note.ilike.%[Account: ${acc}]%,contact_phone.eq.${userPhone}`);
-                } else {
-                    query = query.ilike('note', `%[Account: ${acc}]%`);
-                }
+                if (acc && supabase) {
+                    let userPhone = '';
+                    if (uStr) {
+                        try {
+                            const parsedUser = JSON.parse(uStr);
+                            userPhone = parsedUser.phone || '';
+                        } catch (e) { console.error("Error parsing user data for phone"); }
+                    }
 
-                const { data, error } = await query;
+                    let query = supabase
+                        .from('orders')
+                        .select('*')
+                        .order('created_at', { ascending: false });
 
-                if (data) sbOrders = data;
+                    if (userPhone) {
+                        query = query.or(`note.ilike.%[Account: ${acc}]%,contact_phone.eq.${userPhone}`);
+                    } else {
+                        query = query.ilike('note', `%[Account: ${acc}]%`);
+                    }
 
-                if (sbOrders.length > 0) {
-                    list = sbOrders.map((o: any) => {
-                        // Map Status
-                        const parsedId = (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (o.id || "Unknown");
+                    const { data, error } = await query;
+                    if (data) sbOrders = data;
 
-                        // Map Status with Suffix Logic
-                        const noteUpper = (o.note || "").toUpperCase();
-                        let st: any = 'ing';
+                    if (sbOrders.length > 0) {
+                        list = sbOrders.map((o: any) => {
+                            // Map Status
+                            const parsedId = (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (o.id || "Unknown");
 
-                        if (parsedId.toUpperCase().includes('-RF') || noteUpper.includes('-RF')) st = 'refunded';
-                        else if (parsedId.toUpperCase().includes('-NA') || noteUpper.includes('-NA')) st = 'notapproved';
-                        else if (parsedId.toUpperCase().includes('-OC') || noteUpper.includes('-OC')) st = 'cancelled';
-                        else if (o.status === 'completed' || o.status === 'unpaid') st = 'done';
-                        else if (o.status === 'cancelled') st = 'cancelled';
-                        else if (o.status === 'refund' || o.status === 'refund_pending') st = 'refund_pending';
-                        else st = 'ing';
+                            // Map Status with Suffix Logic
+                            const noteUpper = (o.note || "").toUpperCase();
+                            let st: any = 'ing';
 
-                        // Robust Date Formatting (YYYY/MM/DD HH:mm)
-                        let formattedDate = '-';
-                        if (o.pickup_time) {
-                            const d = new Date(o.pickup_time);
-                            const y = d.getFullYear();
-                            const m = String(d.getMonth() + 1).padStart(2, '0');
-                            const day = String(d.getDate()).padStart(2, '0');
-                            const hh = String(d.getHours()).padStart(2, '0');
-                            const mm = String(d.getMinutes()).padStart(2, '0');
-                            formattedDate = `${y}/${m}/${day} ${hh}:${mm}`;
-                        }
+                            if (parsedId.toUpperCase().includes('-RF') || noteUpper.includes('-RF')) st = 'refunded';
+                            else if (parsedId.toUpperCase().includes('-NA') || noteUpper.includes('-NA')) st = 'notapproved';
+                            else if (parsedId.toUpperCase().includes('-OC') || noteUpper.includes('-OC')) st = 'cancelled';
+                            else if (o.status === 'completed' || o.status === 'unpaid') st = 'done';
+                            else if (o.status === 'cancelled') st = 'cancelled';
+                            else if (o.status === 'refund' || o.status === 'refund_pending') st = 'refund_pending';
+                            else st = 'ing';
 
-                        return {
-                            orderId: parsedId,
-                            status: st,
-                            type: o.vehicle_type || "專車接送",
-                            date: formattedDate,
-                            total: Number(o.price) || 0,
-                            priceBreakdown: o.price_breakdown || {
-                                base: Number(o.price) || 0,
-                                total: Number(o.price) || 0,
-                            },
-                            detail: {
-                                pickup: o.pickup_address,
-                                dropoff: (o.pickup_address.includes('機場') || o.pickup_address.includes('港') || o.dropoff_address.includes('機場') || o.dropoff_address.includes('港'))
-                                    ? o.dropoff_address
-                                    : '桃園機場',
-                                carName: o.vehicle_type,
-                                passengers: {
-                                    adults: o.adult_count || o.passenger_count, // Fallback to total if adult_count missing
-                                    children: o.child_count || 0
-                                },
-                                note: o.note,
-                                pay: '現金',
-                                flight: o.flight_number,
-                                luggage: o.luggage_count ? { s20: 0, s25: o.luggage_count, s28: 0 } : undefined
+                            // Robust Date Formatting (YYYY/MM/DD HH:mm)
+                            let formattedDate = '-';
+                            if (o.pickup_time) {
+                                const d = new Date(o.pickup_time);
+                                const y = d.getFullYear();
+                                const m = String(d.getMonth() + 1).padStart(2, '0');
+                                const day = String(d.getDate()).padStart(2, '0');
+                                const hh = String(d.getHours()).padStart(2, '0');
+                                const mm = String(d.getMinutes()).padStart(2, '0');
+                                formattedDate = `${y}/${m}/${day} ${hh}:${mm}`;
                             }
-                        };
-                    });
+
+                            return {
+                                orderId: parsedId,
+                                status: st,
+                                type: o.vehicle_type || "專車接送",
+                                date: formattedDate,
+                                total: Number(o.price) || 0,
+                                priceBreakdown: o.price_breakdown || {
+                                    base: Number(o.price) || 0,
+                                    total: Number(o.price) || 0,
+                                },
+                                detail: {
+                                    pickup: o.pickup_address,
+                                    dropoff: (o.pickup_address.includes('機場') || o.pickup_address.includes('港') || o.dropoff_address.includes('機場') || o.dropoff_address.includes('港'))
+                                        ? o.dropoff_address
+                                        : '桃園機場',
+                                    carName: o.vehicle_type,
+                                    passengers: {
+                                        adults: o.adult_count || o.passenger_count, // Fallback to total if adult_count missing
+                                        children: o.child_count || 0
+                                    },
+                                    note: o.note,
+                                    pay: '現金',
+                                    flight: o.flight_number,
+                                    luggage: o.luggage_count ? { s20: 0, s25: o.luggage_count, s28: 0 } : undefined
+                                }
+                            };
+                        });
+                    }
                 }
-            }
 
-            // B. Fetch Local Storage
-            const oStr = localStorage.getItem(`orders_${acc}`);
-            const localOrders = oStr ? JSON.parse(oStr) : [];
+                // B. Fetch Local Storage
+                const oStr = localStorage.getItem(`orders_${acc}`);
+                let localOrders = [];
+                try {
+                    localOrders = oStr ? JSON.parse(oStr) : [];
+                } catch (e) { console.error("Local orders corrupt", e); }
 
-            // C. Merge Logic (Fix for Consistency)
-            // We want to TRUST Supabase for real orders, but if local storage says an order is cancelled
-            // and the backend still says 'ing', we allow the local override specifically to unblock users for the demo.
-            if (list.length > 0) {
-                list = list.map(sbOrder => {
-                    const localMatch = localOrders.find((lo: any) => lo.orderId === sbOrder.orderId);
-                    if (localMatch) {
-                        // Trust local 'cancelled/refund' specifically for demo unblocking
-                        if (sbOrder.status === 'ing' && (localMatch.status === 'cancelled' || localMatch.status === 'refund_pending' || localMatch.status === 'refund')) {
-                            return { ...sbOrder, status: localMatch.status === 'refund' ? 'refund_pending' : localMatch.status };
+                // C. Merge Logic (Fix for Consistency)
+                if (list.length > 0) {
+                    list = list.map(sbOrder => {
+                        const localMatch = localOrders.find((lo: any) => lo.orderId === sbOrder.orderId);
+                        if (localMatch) {
+                            if (sbOrder.status === 'ing' && (localMatch.status === 'cancelled' || localMatch.status === 'refund_pending' || localMatch.status === 'refund')) {
+                                return { ...sbOrder, status: localMatch.status === 'refund' ? 'refund_pending' : localMatch.status };
+                            }
                         }
-                    }
-                    return sbOrder;
-                });
+                        return sbOrder;
+                    });
 
-                // Also add local orders that aren't in Supabase yet (ghost orders appearing locally)
-                localOrders.forEach((lo: any) => {
-                    if (!list.find(so => so.orderId === lo.orderId)) {
-                        list.push(lo);
-                    }
-                });
-            } else {
-                list = localOrders;
-            }
+                    localOrders.forEach((lo: any) => {
+                        if (!list.find(so => so.orderId === lo.orderId)) {
+                            list.push(lo);
+                        }
+                    });
+                } else {
+                    list = localOrders;
+                }
 
-            setOrders(list);
+                setOrders(list);
 
-            // Realtime subscription for User
-            if (sbUserId) {
-                supabase
-                    .channel('user_orders')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${sbUserId}` }, () => {
-                        loadOrders(); // re-fetch
-                    })
-                    .subscribe();
+                // Realtime subscription for User
+                if (sbUserId && supabase) {
+                    supabase
+                        .channel('user_orders')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${sbUserId}` }, () => {
+                            loadOrders(); // re-fetch
+                        })
+                        .subscribe();
+                }
+            } catch (err) {
+                console.error("Critical loadOrders error:", err);
             }
         };
 
@@ -265,11 +281,13 @@ export default function DashboardPage() {
         // 4. Load Coupons
         const cStr = localStorage.getItem(`coupons_${acc}`);
         if (cStr) {
-            setCoupons(JSON.parse(cStr));
+            try {
+                setCoupons(JSON.parse(cStr));
+            } catch (e) { console.error("Coupons corrupt"); }
         } else {
             const now = Date.now();
             const day = 86400000;
-            const demos = [
+            const demos: Coupon[] = [
                 { code: 'WELCOME200', title: '新戶折抵 200', terms: '單筆滿 2000 可用', expireAt: now + 30 * day, used: false },
                 { code: 'VIP500', title: '會員回饋 500', terms: '單筆滿 3500 可用', expireAt: now + 10 * day, used: false }
             ];
@@ -309,12 +327,11 @@ export default function DashboardPage() {
     };
 
     // Derived state
-    // Derived state
     const ongoingOrders = orders.filter(o =>
         o.status === 'ing' &&
         !o.orderId.toUpperCase().includes('-RF') &&
         !o.orderId.toUpperCase().includes('-OC') &&
-        !(o.detail.note || "").toUpperCase().includes('-RF') // Extra safety
+        !(o.detail.note || "").toUpperCase().includes('-RF')
     );
     const historyOrders = orders.filter(o =>
         o.status === 'done' ||
@@ -333,16 +350,6 @@ export default function DashboardPage() {
     let level = 'C';
     if (totalSpent >= 100000) level = 'A';
     else if (totalSpent >= 10000) level = 'B';
-
-    // Sub-View Header Component
-    const SubHeader = ({ title, onBack }: { title: string, onBack: () => void }) => (
-        <div className="bg-blue-600 px-4 pt-6 pb-6 text-white rounded-b-[30px] shadow-md relative mb-6">
-            <button onClick={onBack} className="absolute left-6 top-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition">
-                <ChevronLeft size={24} />
-            </button>
-            <h2 className="text-xl font-bold text-center mt-1">{title}</h2>
-        </div>
-    );
 
     // MAIN VIEW
     if (currentView === 'main') {
@@ -433,7 +440,7 @@ export default function DashboardPage() {
                         <div className="space-y-3">
                             {ongoingOrders.length > 0 ? (
                                 (() => {
-                                    const o = ongoingOrders[0]; // Logic: User should only have one active order
+                                    const o = ongoingOrders[0];
                                     return (
                                         <div key={o.orderId} onClick={() => setSelectedOrder(o)} className="bg-white p-5 rounded-xl shadow-md border border-blue-100 cursor-pointer hover:shadow-lg transition relative overflow-hidden">
                                             <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
@@ -473,7 +480,7 @@ export default function DashboardPage() {
                                 <div className="text-center text-gray-400 py-6 bg-white rounded-xl border border-gray-100 text-sm">目前沒有進行中的行程</div>
                             )}
 
-                            {/* Emergency Button (Inline) only if there IS an order */}
+                            {/* Emergency Button */}
                             {ongoingOrders.length > 0 && (
                                 <button
                                     onClick={() => window.location.href = 'tel:0800000000'}
@@ -493,7 +500,7 @@ export default function DashboardPage() {
                         />
                     </div>
 
-                    {/* Logout Button (Bottom) */}
+                    {/* Logout Button */}
                     <div className="pt-4 pb-4">
                         <button
                             onClick={handleLogout}
@@ -537,22 +544,14 @@ export default function DashboardPage() {
 
     // HISTORY ORDERS VIEW
     if (currentView === 'history') {
-        // Derived Logic for History Filters
-        // Derived Logic for History Filters
         const currentYear = new Date().getFullYear();
-        const years = Array.from({ length: 3 }, (_, i) => (currentYear - i).toString()); // Dynamic years
+        const years = Array.from({ length: 3 }, (_, i) => (currentYear - i).toString());
 
         const filteredHistory = historyOrders.filter(o => {
-            if (!o.date) return false; // Safety check
-            // Parse date "YYYY-MM-DD HH:MM" or "YYYY/MM/DD"
+            if (!o.date) return false;
             const dateStr = o.date.replace(/-/g, '/');
             const [y, m] = dateStr.split(' ')[0].split('/');
-
-            // Note: date format from Supabase mapping is "2025-12-25 10:00"
-            // So split by - or / work.
             if (filterYear && y !== filterYear) return false;
-            // if (filterMonth && m !== filterMonth) return false; // Remove month filter strictness for demo visibility if needed
-
             return true;
         });
 
@@ -560,8 +559,6 @@ export default function DashboardPage() {
             <div className="min-h-screen bg-gray-50 pb-10">
                 <HistorySubHeader title="歷史訂單" onBack={() => setCurrentView('main')} />
                 <div className="px-4 max-w-[420px] mx-auto space-y-3">
-
-                    {/* Filters */}
                     <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-100 mb-4">
                         <div className="flex gap-3 justify-center mb-6">
                             <div className="relative">
@@ -631,7 +628,7 @@ export default function DashboardPage() {
         );
     }
 
-    return null; // Should not reach
+    return null;
 }
 
 // --- Components ---
@@ -659,7 +656,6 @@ function MenuRow({ label, onClick, badge, highlight }: { label: string, onClick:
 }
 
 function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: () => void, router: any }) {
-    // Helper to format KV rows like Driver App
     const KV = ({ label, value, icon, highlight }: any) => (
         <div className="grid grid-cols-[90px_1fr] gap-2 text-sm items-start mb-3 last:mb-0">
             <span className="font-bold text-gray-500 flex items-center gap-1.5">
@@ -691,7 +687,6 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                    {/* Header Row similar to Driver App */}
                     <div className="flex justify-between items-center pb-4 border-b border-gray-100">
                         <div className="flex items-center gap-3">
                             <span className="bg-blue-100 text-blue-700 p-2.5 rounded-xl">
@@ -720,7 +715,7 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                     <div className="space-y-1">
                         <KV label="車型" value={order.detail.carName || "—"} />
                         <KV label="上車地點" value={order.detail.pickup} icon={<MapPin size={16} className="text-gray-400 mt-0.5" />} />
-                        <KV label="下車地點" value={order.detail.dropoff} icon={<Navigation size={16} className="text-gray-400 mt-0.5" />} /> {/* Using Note icon as requested */}
+                        <KV label="下車地點" value={order.detail.dropoff} icon={<Navigation size={16} className="text-gray-400 mt-0.5" />} />
                         <KV label="航班/船班" value={order.detail.flight || "—"} />
                         <KV label="乘客人數" value={typeof order.detail.passengers === 'object' ? `${order.detail.passengers.adults}大 ${order.detail.passengers.children}小` : `${order.detail.passengers || 0} 位乘客`} />
                         <KV label="兒童座椅" value={order.detail.seats ? `後${order.detail.seats.rear || 0} / 前${order.detail.seats.front || 0} / 增${order.detail.seats.booster || 0}` : '—'} />
@@ -767,13 +762,14 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
 
                             <button
                                 onClick={() => {
-                                    const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
-                                    const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
-                                    const updated = uOrders.map((o: any) => o.orderId === order.orderId ? { ...o, status: 'cancelled' } : o);
-                                    localStorage.setItem(`orders_${acc}`, JSON.stringify(updated));
-                                    // Use a subtle toast or brief alert instead of "Force Removed"
-                                    alert("訂單狀態已更新");
-                                    window.location.reload();
+                                    try {
+                                        const acc = sessionStorage.getItem('memberAccount') || 'A123456789';
+                                        const uOrders = JSON.parse(localStorage.getItem(`orders_${acc}`) || "[]");
+                                        const updated = uOrders.map((o: any) => o.orderId === order.orderId ? { ...o, status: 'cancelled' } : o);
+                                        localStorage.setItem(`orders_${acc}`, JSON.stringify(updated));
+                                        alert("訂單狀態已更新");
+                                        window.location.reload();
+                                    } catch (e) { console.error("Cancel err", e); }
                                 }}
                                 className="w-full py-2 text-gray-300 text-[10px] font-medium hover:text-gray-400 transition"
                             >
