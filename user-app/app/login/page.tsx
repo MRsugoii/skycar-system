@@ -70,28 +70,32 @@ export default function LoginPage() {
         sessionStorage.setItem('memberPhone', user.phone || '');
 
         try {
-            // Attempt to find Supabase User ID for 3-way sync
-            // 1. Try by phone
-            let { data: sbUser } = await supabase
-                .from('users')
-                .select('id')
-                .eq('phone', user.phone)
-                .single();
-
-            // 2. Fallback: Try to match the seeded "Demo User" if we are logging in as the demo account
-            if (!sbUser && cleanId === 'A123456789') {
-                // The seed script created "Demo User" / "demo@example.com" / "0900-000-000"
-                // This ensures the demo data I created is accessible even if local storage phone mismatch
-                const { data: demoUser } = await supabase
+            // Attempt to find Supabase User ID for 3-way sync (ONLY if client exists)
+            if (supabase) {
+                // 1. Try by phone
+                let { data: sbUser } = await supabase
                     .from('users')
                     .select('id')
-                    .eq('email', 'demo@example.com')
+                    .eq('phone', user.phone)
                     .single();
-                sbUser = demoUser;
-            }
 
-            if (sbUser) {
-                sessionStorage.setItem('supabaseUserId', sbUser.id);
+                // 2. Fallback: Try to match the seeded "Demo User" if logging in as demo account
+                if (!sbUser && cleanId === 'A123456789') {
+                    // The seed script created "Demo User" / "demo@example.com" / "0900-000-000"
+                    // This ensures the demo data I created is accessible even if local storage phone mismatch
+                    const { data: demoUser } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('email', 'demo@example.com')
+                        .single();
+                    sbUser = demoUser;
+                }
+
+                if (sbUser) {
+                    sessionStorage.setItem('supabaseUserId', sbUser.id);
+                }
+            } else {
+                console.warn("Supabase client not initialized - skipping backend sync");
             }
         } catch (err) {
             console.error("Supabase link failed", err);
