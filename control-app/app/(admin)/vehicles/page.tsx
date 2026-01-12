@@ -471,6 +471,9 @@ function VehiclesContent() {
 
   const handleSaveExtraSettings = async () => {
     try {
+      logToUI("Starting Extra Settings Save...");
+      logToUI(`Supabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20)}...`);
+
       // Force update logic (Row 0 is confirmed to exist)
       const payload = {
         safety_seat_infant_price: Number(extraSettings.safety_seat_infant_price || 0),
@@ -479,16 +482,21 @@ function VehiclesContent() {
         signboard_price: Number(extraSettings.signboard_price || 0)
       };
 
-      console.log('Attempting UPDATE extra_settings (id=0) with payload:', payload);
+      logToUI(`Payload: ${JSON.stringify(payload)}`);
 
       // Direct Update Row 0 (Skip Upsert check)
-      const { error } = await supabase.from('extra_settings').update(payload).eq('id', 0);
+      const { data, error } = await supabase.from('extra_settings').update(payload).eq('id', 0).select();
 
-      if (error) throw error;
+      if (error) {
+        logToUI(`ERROR: ${error.message} (${error.details})`);
+        throw error;
+      }
 
+      logToUI(`SUCCESS! Data: ${JSON.stringify(data)}`);
       alert("額外設定儲存成功");
     } catch (e: any) {
       console.error(e);
+      logToUI(`CATCH ERROR: ${e.message}`);
       alert(`儲存失敗: ${e.message} ${e.details || ''}`);
     }
   };
@@ -1389,6 +1397,13 @@ function VehiclesContent() {
 
   // Expanded Cities State
   const [expandedCities, setExpandedCities] = useState<string[]>([]);
+  const [debugLog, setDebugLog] = useState<string[]>([]); // New Debug State
+
+  // Helper to log to UI
+  const logToUI = (msg: string) => {
+    console.log(msg);
+    setDebugLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
+  };
   // Independent Visual Status State (to support "Master Switch" behavior)
   const [groupStatus, setGroupStatus] = useState<{ [key: string]: boolean }>({});
 
@@ -1776,8 +1791,14 @@ function VehiclesContent() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-6 max-w-4xl mx-auto">
         <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4">
           <Settings size={20} className="text-blue-600" />
-          額外服務設定 <span className="text-xs text-red-500 font-bold ml-2">(v2.9)</span>
+          額外服務設定 <span className="text-xs text-red-600 font-extrabold ml-2 blink">(v3.0 DEBUG)</span>
         </h3>
+
+        {/* Debug Console */}
+        <div className="mb-6 p-4 bg-black text-green-400 font-mono text-xs rounded-lg overflow-x-auto max-h-48 border-2 border-red-500">
+          <p className="border-b border-gray-700 pb-2 mb-2">DEBUG CONSOLE (Take screenshot if error)</p>
+          {debugLog.length === 0 ? <p className="opacity-50">Waiting for actions...</p> : debugLog.map((l, i) => <div key={i}>{l}</div>)}
+        </div>
 
         <div className="space-y-8">
           {/* Safety Seats */}
