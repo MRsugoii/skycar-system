@@ -223,11 +223,22 @@ export default function DriverDashboard() {
         }
     };
 
-    // Find active order
+    // Find active order (Strictly 1 active order logic)
+    // Priority: Active ('ing', 'pickedup', 'en_route') > Confirmed
     const ongoingOrders = orders.filter(o => {
         const s = (o.status || "").toLowerCase();
         return ['confirmed', 'assigned', 'pickedup', 'pickedup', 'en_route', 'en-route', 'ing'].includes(s);
-    });
+    }).sort((a, b) => {
+        const activeStatuses = ['ing', 'en_route', 'pickedup', 'pickedUp'];
+        const aActive = activeStatuses.includes(a.status || "") ? 1 : 0;
+        const bActive = activeStatuses.includes(b.status || "") ? 1 : 0;
+        // High priority first (descending)
+        if (aActive > bActive) return -1;
+        if (aActive < bActive) return 1;
+        // If both same priority, sort by time (ascending) - handled by DB sort usually, but let's be safe
+        // (Assuming data is already sorted by time from DB)
+        return 0;
+    }).slice(0, 1); // Only take TOP 1
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center pb-20 relative overflow-hidden font-sans">
@@ -236,7 +247,7 @@ export default function DriverDashboard() {
 
             <div className="w-full max-w-[390px] relative z-20 h-full flex flex-col">
                 <PageHeader title="司機帳戶" variant="ghost" showBack={false} />
-                <span className="text-[10px] text-blue-200/80 absolute right-6 top-6">v1.1</span>
+                <span className="text-[10px] text-blue-200/80 absolute right-6 top-6">v1.2</span>
 
                 {/* Welcome Section */}
                 {driver && (
