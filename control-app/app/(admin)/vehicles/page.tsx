@@ -479,6 +479,8 @@ function VehiclesContent() {
         signboard_price: Number(extraSettings.signboard_price || 0)
       };
 
+      console.log('Attempting UPDATE extra_settings (id=0) with payload:', payload);
+
       // Direct Update Row 0 (Skip Upsert check)
       const { error } = await supabase.from('extra_settings').update(payload).eq('id', 0);
 
@@ -1441,25 +1443,6 @@ function VehiclesContent() {
     XLSX.writeFile(wb, "dispatch_pricing_template.xlsx");
   };
 
-  // ... (keeping other renders logic if needed, but likely finding the "5. 額外設定" rendering part)
-
-  // Searching for where "額外服務設定" text is rendered to append version.
-  // It seems I need to find the render function or the JSX block for "Extra Settings".
-  // Looking at previous views, `handleSaveExtraSettings` is around line 470.
-  // The JSX is likely further down.
-  // I'll assume the user wants me to edit the JSX block directly based on the file structure.
-
-  // Let's use a broader search or view to find "額外服務設定" in the JSX.
-  // Wait, I can't search with this tool. I need to view the file first to find the right line.
-  // I will Cancel this replace and View first.
-
-
-  // 2. Prepare Sample Data
-
-
-
-
-
   const [isImporting, setIsImporting] = useState(false);
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1793,7 +1776,7 @@ function VehiclesContent() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-6 max-w-4xl mx-auto">
         <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4">
           <Settings size={20} className="text-blue-600" />
-          額外服務設定 <span className="text-xs text-blue-500 font-normal ml-2">(v2.7)</span>
+          額外服務設定 <span className="text-xs text-red-500 font-bold ml-2">(v2.9)</span>
         </h3>
 
         <div className="space-y-8">
