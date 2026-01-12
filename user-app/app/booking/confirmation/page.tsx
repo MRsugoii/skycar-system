@@ -6,8 +6,18 @@ import { ChevronLeft, CheckCircle2, AlertTriangle, ShieldCheck, Car, Ticket, Loa
 import { supabase } from "@/lib/supabase";
 
 export default function BookingConfirmationPage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <ConfirmationContent />
+        </React.Suspense>
+    );
+}
+
+function ConfirmationContent() {
     const router = useRouter();
     const [isLoaded, setIsLoaded] = useState(false);
+    // ... rest of the code ...
+
     const [isCalculating, setIsCalculating] = useState(true);
 
     // Data from Session
@@ -535,3 +545,5 @@ function PriceDetailRow({ label, value, subLabel, isDiscount = false }: any) {
         </div>
     );
 }
+
+

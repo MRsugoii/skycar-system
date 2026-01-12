@@ -7,8 +7,18 @@ import { VEHICLES } from "../ride-info/data";
 import { supabase } from "../../../lib/supabase";
 
 export default function PaymentPage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <PaymentContent />
+        </React.Suspense>
+    );
+}
+
+function PaymentContent() {
     const router = useRouter();
     const [isLoaded, setIsLoaded] = useState(false);
+    // ... rest of the code ...
+
 
     // Data from Session
     const [basicInfo, setBasicInfo] = useState<any>(null);

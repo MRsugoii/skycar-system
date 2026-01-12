@@ -1,12 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 export default function BookingPage() {
     const router = useRouter();
     const [selectedType, setSelectedType] = useState<'pickup' | 'dropoff' | null>(null);
+
+    useEffect(() => {
+        const checkActiveOrder = async () => {
+            const uid = sessionStorage.getItem('supabaseUserId');
+            if (uid) {
+                // Check for any incomplete orders
+                const { data } = await supabase
+                    .from('orders')
+                    .select('id')
+                    .eq('user_id', uid)
+                    .in('status', ['new', 'unconfirmed', 'confirmed', 'assigned', 'en_route', 'pickedup', 'arriving'])
+                    .limit(1);
+
+                if (data && data.length > 0) {
+                    alert("您目前有進行中的訂單，請先完成該行程後再預約。");
+                    router.push('/dashboard');
+                }
+            }
+        };
+        checkActiveOrder();
+    }, []);
 
     const handleStart = () => {
         if (!selectedType) {
