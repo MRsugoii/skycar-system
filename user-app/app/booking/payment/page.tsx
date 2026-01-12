@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronDown, ChevronUp, CheckCircle2, User, LogOut, X } from "lucide-react";
 import { VEHICLES } from "../ride-info/data";
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export default function PaymentPage() {
     return (
