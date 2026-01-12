@@ -185,16 +185,23 @@ function OrdersContent() {
 
           // Smart Fallback
           let fallbackId = row.id;
-          try {
-            // Ensure valid date
-            const d = row.created_at ? new Date(row.created_at) : new Date();
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            const suffix = (row.id && row.id.length > 4) ? row.id.substring(0, 4).toUpperCase() : "XXXX";
-            fallbackId = `CH${yyyy}${mm}${dd}${suffix}`;
-          } catch (e) {
-            fallbackId = `CH-ERR-${row.id ? row.id.slice(0, 4) : 'NULL'}`;
+
+          // Fix: If row.id is already in the correct format (CH + date + ...), just use it.
+          // The previous logic blindly stripped headers which corrupted valid IDs.
+          const isStandardId = row.id && row.id.startsWith("CH") && row.id.length >= 12;
+
+          if (!isStandardId) {
+            try {
+              // Ensure valid date
+              const d = row.created_at ? new Date(row.created_at) : new Date();
+              const yyyy = d.getFullYear();
+              const mm = String(d.getMonth() + 1).padStart(2, '0');
+              const dd = String(d.getDate()).padStart(2, '0');
+              const suffix = (row.id && row.id.length > 4) ? row.id.substring(0, 4).toUpperCase() : "XXXX";
+              fallbackId = `CH${yyyy}${mm}${dd}${suffix}`;
+            } catch (e) {
+              fallbackId = `CH-ERR-${row.id ? row.id.slice(0, 4) : 'NULL'}`;
+            }
           }
 
           return {
