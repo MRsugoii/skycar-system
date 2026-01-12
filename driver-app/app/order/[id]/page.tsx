@@ -51,10 +51,15 @@ export default function OrderDetailsPage() {
                     luggage: { count: data.luggage_count }
                 },
                 audit: {
-                    // Just use created_at as placeholder or null
                     enRouteAt: ['en_route', 'pickedup', 'completed'].includes(data.status.toLowerCase()) ? data.created_at : null,
                     pickedAt: ['pickedup', 'completed'].includes(data.status.toLowerCase()) ? data.created_at : null,
                     completedAt: data.status.toLowerCase() === 'completed' ? data.created_at : null
+                },
+                priceBreakdown: data.price_breakdown || {
+                    base: Number(data.price) || 0,
+                    total: Number(data.price) || 0,
+                    category: "平日價",
+                    vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0
                 }
             };
             setOrder(mapped);
@@ -178,8 +183,29 @@ export default function OrderDetailsPage() {
                         </div>
                         <div className="h-px bg-gray-100 my-4"></div>
 
-                        <div className="space-y-3">
-                            <KV label="應收金額" value={`$${(order.total || order.price || 0).toLocaleString()}`} highlight />
+                        <div className="bg-gray-50 p-4 rounded-xl space-y-2 border border-gray-100">
+                            <div className="flex justify-between items-center text-[10px] text-gray-400 font-black uppercase tracking-wider mb-2">
+                                <span>費用明細</span>
+                                {order.priceBreakdown?.category && (
+                                    <span className="bg-white border border-blue-100 text-blue-600 px-2 py-0.5 rounded shadow-sm">{order.priceBreakdown.category}</span>
+                                )}
+                            </div>
+                            <PriceItem label="車輛價格" value={(order.priceBreakdown?.base || 0) + (order.priceBreakdown?.vehicleType || 0)} />
+                            <PriceItem label="偏遠地區加價" value={order.priceBreakdown?.area} />
+                            <PriceItem label="特定路段加價" value={order.priceBreakdown?.route} />
+                            <PriceItem label="多點計費" value={order.priceBreakdown?.extraStop} />
+                            <PriceItem label="夜間加成" value={order.priceBreakdown?.night} />
+                            <PriceItem label="離峰優惠" value={order.priceBreakdown?.offPeak} isDiscount />
+                            <PriceItem label="安全座椅" value={order.priceBreakdown?.carSeat} />
+                            <PriceItem label="舉牌服務" value={order.priceBreakdown?.signage} />
+                            <PriceItem label="優惠券" value={order.priceBreakdown?.coupon} isDiscount />
+                            <div className="pt-2 border-t border-gray-200 mt-2 flex justify-between items-center font-black">
+                                <span className="text-gray-900">總額應收</span>
+                                <span className="text-blue-600 text-lg">NT$ {(order.total || order.price || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="pt-3">
                             <KV label="付款方式" value={d.pay || "現金"} />
                         </div>
 
@@ -258,19 +284,30 @@ export default function OrderDetailsPage() {
                     onClose={() => setIsDocsOpen(false)}
                 />
             )}
-
         </div>
     );
 }
 
 function KV({ label, value, highlight, icon }: any) {
     return (
-        <div className="grid grid-cols-[90px_1fr] gap-2 text-sm items-start">
+        <div className="grid grid-cols-[90px_1fr] gap-2 text-sm items-start mb-1">
             <span className="font-bold text-gray-500 flex items-center gap-1.5">
                 {icon}
                 {label}
             </span>
             <span className={`font-medium ${highlight ? 'text-blue-600 font-bold' : 'text-gray-900'} break-words leading-relaxed`}>{value}</span>
+        </div>
+    );
+}
+
+function PriceItem({ label, value, isDiscount }: { label: string, value?: number, isDiscount?: boolean }) {
+    if (!value || value === 0) return null;
+    return (
+        <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">{label}</span>
+            <span className={`font-bold ${isDiscount ? 'text-green-600' : 'text-gray-900'}`}>
+                {isDiscount ? '-' : '+'}${value?.toLocaleString()}
+            </span>
         </div>
     );
 }

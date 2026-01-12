@@ -39,17 +39,18 @@ type Order = {
     notes: string;
   };
   priceBreakdown: {
-    base: number;
-    vehicleType: number;
-    night: number;
-    holiday: number;
-    carSeat: number;
-    signage: number;
-    area: number;
-    crossDistrict: number;
-    extraStop: number;
-    offPeak: number;
-    coupon: number;
+    base: number;          // 基本車資
+    vehicleType: number;   // 車型加價 (if any)
+    night: number;          // 夜間加成
+    holiday: number;        // 假日加成 / 價格種類相關
+    category: string;       // 價格種類: 平日價 / 假日價 / 特價
+    carSeat: number;        // 安全座椅
+    signage: number;        // 舉牌服務
+    area: number;           // 偏遠地區加價
+    route: number;          // 特定路段加價
+    extraStop: number;      // 多點下車
+    offPeak: number;        // 離峰優惠
+    coupon: number;         // 優惠券
     total: number;
   };
   isBilled?: boolean;
@@ -114,7 +115,21 @@ function OrdersContent() {
           signage: row['舉牌'] || "無",
           notes: row['備註'] || "無"
         },
-        priceBreakdown: { base: 0, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: Number(row['金額']) || 0 }
+        priceBreakdown: {
+          base: 0,
+          vehicleType: 0,
+          night: 0,
+          holiday: 0,
+          category: "平日價",
+          carSeat: 0,
+          signage: 0,
+          area: 0,
+          route: 0,
+          extraStop: 0,
+          offPeak: 0,
+          coupon: 0,
+          total: Number(row['金額']) || 0
+        }
       }));
 
       setOrders([...newOrders, ...orders]);
@@ -211,9 +226,19 @@ function OrdersContent() {
               signage: "無",
               notes: row.note || "無"
             },
-            priceBreakdown: {
+            priceBreakdown: row.price_breakdown || {
               base: Number(row.price) || 0,
-              vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0,
+              vehicleType: 0,
+              night: 0,
+              holiday: 0,
+              category: "平日價",
+              carSeat: 0,
+              signage: 0,
+              area: 0,
+              route: 0,
+              extraStop: 0,
+              offPeak: 0,
+              coupon: 0,
               total: Number(row.price) || 0
             }
           };
@@ -225,7 +250,7 @@ function OrdersContent() {
             driver: "王小明", from: "台北車站", to: "桃園機場", status: "completed", amount: "1200", date: "2025/12/25", time: "10:00",
             createdAt: "2025/12/25 09:00:00", paymentMethod: "Cash", serviceType: "接機", flightNumber: "", departureTime: "", arrivalTime: "",
             passengerCount: "1", luggageCount: "1", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" },
-            priceBreakdown: { base: 1200, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 1200 },
+            priceBreakdown: { base: 1500, vehicleType: 0, night: 0, holiday: 0, category: "平日價", carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 1500 },
             isBilled: true // Billed
           },
           {
@@ -233,7 +258,7 @@ function OrdersContent() {
             driver: "王小明", from: "松山機場", to: "信義區", status: "completed", amount: "800", date: "2025/12/26", time: "14:00",
             createdAt: "2025/12/26 13:00:00", paymentMethod: "Cash", serviceType: "送機", flightNumber: "", departureTime: "", arrivalTime: "",
             passengerCount: "2", luggageCount: "2", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" },
-            priceBreakdown: { base: 800, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 800 },
+            priceBreakdown: { base: 800, vehicleType: 0, night: 0, holiday: 0, category: "平日價", carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 800 },
             isBilled: false // Unbilled
           },
           {
@@ -241,7 +266,7 @@ function OrdersContent() {
             driver: "王小明", from: "南港展覽館", to: "桃園機場", status: "completed", amount: "1500", date: "2025/12/27", time: "09:00",
             createdAt: "2025/12/27 08:00:00", paymentMethod: "Credit Card", serviceType: "接機", flightNumber: "", departureTime: "", arrivalTime: "",
             passengerCount: "3", luggageCount: "3", specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "七人座", signage: "無", notes: "無" },
-            priceBreakdown: { base: 1500, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 1500 },
+            priceBreakdown: { base: 1500, vehicleType: 0, night: 0, holiday: 0, category: "平日價", carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 1500 },
             isBilled: false // Unbilled
           }
         ];
@@ -494,7 +519,7 @@ function OrdersContent() {
       passengerCount: "1人",
       luggageCount: "無",
       specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" },
-      priceBreakdown: { base: 0, vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, crossDistrict: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 0 }
+      priceBreakdown: { base: 0, vehicleType: 0, night: 0, holiday: 0, category: "平日價", carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 0 }
     };
     setCurrentOrder(newOrder);
     setEditForm(newOrder);
@@ -521,6 +546,7 @@ function OrdersContent() {
           dropoff_address: editForm.to,
           pickup_time: `${editForm.date.replace(/\//g, '-')} ${editForm.time}:00`,
           price: Number(editForm.priceBreakdown?.total || editForm.amount),
+          price_breakdown: editForm.priceBreakdown,
           driver_id: assignedDriver?.id || null,
           user_id: assignedUser?.id || null, // Best effort link
           status: 'unconfirmed',
@@ -542,6 +568,7 @@ function OrdersContent() {
             pickup_address: editForm.from,
             dropoff_address: editForm.to,
             price: Number(editForm.priceBreakdown?.total || editForm.amount),
+            price_breakdown: editForm.priceBreakdown,
             contact_name: editForm.user,
             contact_phone: editForm.phone,
             driver_id: assignedDriver?.id || null, // Update driver ID
@@ -1368,21 +1395,80 @@ function OrdersContent() {
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
                     <PriceRow
-                      label="基本服務"
+                      label="價格種類"
+                      value={editForm.priceBreakdown.category}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, category: val } })}
+                    />
+                    <PriceRow
+                      label="車輛價格"
                       value={editForm.priceBreakdown.base}
                       isEditing={isEditing}
                       onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, base: parseInt(val) || 0 } })}
                     />
-                    <PriceRow label="車型加價" value={editForm.priceBreakdown.vehicleType} />
-                    <PriceRow label="夜間加價" value={editForm.priceBreakdown.night} />
-                    <PriceRow label="假期加價" value={editForm.priceBreakdown.holiday} />
-                    <PriceRow label="安全座椅" value={editForm.priceBreakdown.carSeat} />
-                    <PriceRow label="舉牌加價" value={editForm.priceBreakdown.signage} />
-                    <PriceRow label="特定地區" value={editForm.priceBreakdown.area} />
-                    <PriceRow label="跨區加價" value={editForm.priceBreakdown.crossDistrict} />
-                    <PriceRow label="加點加價" value={editForm.priceBreakdown.extraStop} />
-                    <PriceRow label="離峰優惠" value={editForm.priceBreakdown.offPeak} />
-                    <PriceRow label="優惠卷折抵" value={editForm.priceBreakdown.coupon} />
+                    <PriceRow
+                      label="偏遠地區加價"
+                      value={editForm.priceBreakdown.area}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, area: parseInt(val) || 0 } })}
+                    />
+                    <PriceRow
+                      label="特定路段加價"
+                      value={editForm.priceBreakdown.route}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, route: parseInt(val) || 0 } })}
+                    />
+                    <PriceRow
+                      label="多點計費"
+                      value={editForm.priceBreakdown.extraStop}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, extraStop: parseInt(val) || 0 } })}
+                    />
+                    <PriceRow
+                      label="夜間加成"
+                      value={editForm.priceBreakdown.night}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, night: parseInt(val) || 0 } })}
+                    />
+                    <PriceRow
+                      label="離峰優惠"
+                      value={editForm.priceBreakdown.offPeak}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, offPeak: parseInt(val) || 0 } })}
+                    />
+                    <PriceRow
+                      label="安全座椅"
+                      value={editForm.priceBreakdown.carSeat}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, carSeat: parseInt(val) || 0 } })}
+                    />
+                    <PriceRow
+                      label="舉牌服務"
+                      value={editForm.priceBreakdown.signage}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, signage: parseInt(val) || 0 } })}
+                    />
+                    {/* Extra fields hidden to maintain 9-item display consistency */}
+                    {/* 
+                    <PriceRow
+                      label="額外加價"
+                      value={editForm.priceBreakdown.vehicleType}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, vehicleType: parseInt(val) || 0 } })}
+                    />
+                    */}
+                    <PriceRow
+                      label="假期加價"
+                      value={editForm.priceBreakdown.holiday}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, holiday: parseInt(val) || 0 } })}
+                    />
+                    <PriceRow
+                      label="優惠卷折抵"
+                      value={editForm.priceBreakdown.coupon}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, coupon: parseInt(val) || 0 } })}
+                    />
                     <div className="col-span-1 md:col-span-2 pt-4 border-t border-gray-100 mt-2">
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-bold text-gray-900">總金額</span>
@@ -1713,22 +1799,22 @@ function DetailRow({ label, value, fullWidth = false, isEditing = false, onChang
   );
 }
 
-function PriceRow({ label, value, isEditing = false, onChange }: { label: string; value: number; isEditing?: boolean; onChange?: (val: string) => void }) {
+function PriceRow({ label, value, isEditing = false, onChange }: { label: string; value: number | string; isEditing?: boolean; onChange?: (val: string) => void }) {
   return (
     <div className="flex justify-between items-center">
       <span className="text-base text-gray-600">{label}</span>
       {isEditing && onChange ? (
         <div className="flex items-center gap-1">
           <input
-            type="number"
+            type={typeof value === 'number' ? "number" : "text"}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-20 px-2 py-1 border border-gray-200 rounded text-right text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-24 px-2 py-1 border border-gray-200 rounded text-right text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           />
-          <span className="text-sm text-gray-500">元</span>
+          {typeof value === 'number' && <span className="text-sm text-gray-500">元</span>}
         </div>
       ) : (
-        <span className="text-base font-medium text-gray-900">{value}元</span>
+        <span className="text-base font-medium text-gray-900">{value}{typeof value === 'number' ? "元" : ""}</span>
       )}
     </div>
   );

@@ -807,17 +807,15 @@ function OrderDetailView({ order, userName }: { order: any; userName: string }) 
                     付款金額
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
-                    <PriceRow label="基本服務" value={1200} />
-                    <PriceRow label="車型加價" value={0} />
-                    <PriceRow label="夜間加價" value={0} />
-                    <PriceRow label="假期加價" value={0} />
-                    <PriceRow label="安全座椅" value={0} />
-                    <PriceRow label="舉牌加價" value={0} />
-                    <PriceRow label="特定地區" value={0} />
-                    <PriceRow label="跨區加價" value={0} />
-                    <PriceRow label="加點加價" value={0} />
+                    <PriceRow label="車輛價格" value={1200} />
+                    <PriceRow label="偏遠地區加價" value={0} />
+                    <PriceRow label="特定路段加價" value={0} />
+                    <PriceRow label="多點計費" value={0} />
+                    <PriceRow label="夜間加成" value={0} />
                     <PriceRow label="離峰優惠" value={0} />
-                    <PriceRow label="優惠卷折抵" value={0} />
+                    <PriceRow label="安全座椅" value={0} />
+                    <PriceRow label="舉牌服務" value={0} />
+                    <PriceRow label="優惠券" value={0} />
                     <div className="col-span-1 md:col-span-2 pt-4 border-t border-gray-100 mt-2">
                         <div className="flex justify-between items-center">
                             <span className="text-lg font-bold text-gray-900">總金額</span>

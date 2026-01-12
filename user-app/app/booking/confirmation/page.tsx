@@ -370,19 +370,24 @@ export default function BookingConfirmationPage() {
                     </div>
 
                     <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
-                        <PriceDetailRow label="基礎矩陣運價" value={prices.base} subLabel={categoryLabels[prices.category]} />
-                        <PriceDetailRow label="高級車種加價" value={prices.modelSurcharge} />
-                        <PriceDetailRow label="夜間服務加價" value={prices.nightSurcharge} />
+                        <PriceDetailRow
+                            label="車輛價格"
+                            value={prices.base + prices.modelSurcharge}
+                            subLabel={categoryLabels[prices.category]}
+                        />
                         <PriceDetailRow label="偏遠地區加價" value={prices.remoteSurcharge} />
-                        <PriceDetailRow label="加點與停靠" value={prices.extraStopSurcharge} />
                         <PriceDetailRow label="特定路段加價" value={prices.routeSurcharge} />
-                        <PriceDetailRow label="安全座椅/舉牌" value={prices.safetySeats + prices.signboard} />
+                        <PriceDetailRow label="多點計費" value={prices.extraStopSurcharge} />
+                        <PriceDetailRow label="夜間加成" value={prices.nightSurcharge} />
+                        <PriceDetailRow label="離峰優惠" value={-prices.discount} isDiscount />
+                        <PriceDetailRow label="安全座椅" value={prices.safetySeats} />
+                        <PriceDetailRow label="舉牌服務" value={prices.signboard} />
 
 
                         {prices.couponDiscount > 0 && (
                             <div className="flex justify-between items-center py-1">
                                 <span className="text-sm text-green-600 font-bold flex items-center gap-1">
-                                    <Ticket size={14} /> 優惠卷折抵
+                                    <Ticket size={14} /> 優惠券
                                 </span>
                                 <span className="text-sm text-green-700 font-black">- NT$ {prices.couponDiscount}</span>
                             </div>
@@ -414,12 +419,6 @@ export default function BookingConfirmationPage() {
                             )}
                         </div>
 
-                        {prices.discount > 0 && (
-                            <div className="flex justify-between items-center py-1">
-                                <span className="text-sm text-red-500 font-bold">離峰時段優惠</span>
-                                <span className="text-sm text-red-600 font-black">- NT$ {prices.discount}</span>
-                            </div>
-                        )}
 
                         <div className="pt-3 border-t border-gray-200 mt-2 flex justify-between items-end">
                             <span className="font-black text-gray-900">應付總額</span>
@@ -511,15 +510,17 @@ function SummaryRow({ label, value, icon }: any) {
     );
 }
 
-function PriceDetailRow({ label, value, subLabel }: any) {
+function PriceDetailRow({ label, value, subLabel, isDiscount = false }: any) {
     if (value === 0) return null;
     return (
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start py-1">
             <div>
-                <span className="text-sm text-gray-600 font-medium">{label}</span>
+                <span className={`text-sm font-medium ${isDiscount ? 'text-red-500' : 'text-gray-600'}`}>{label}</span>
                 {subLabel && <p className="text-[10px] text-blue-500 font-bold">{subLabel}</p>}
             </div>
-            <span className="text-sm font-bold text-gray-900">NT$ {value.toLocaleString()}</span>
+            <span className={`text-sm font-bold ${isDiscount ? 'text-red-500' : 'text-gray-900'}`}>
+                {isDiscount ? '- ' : ''}NT$ {Math.abs(value).toLocaleString()}
+            </span>
         </div>
     );
 }

@@ -28,7 +28,21 @@ interface Order {
     type: string;
     date: string;
     total: number;
-    ride?: any; // Fallback for old structure if needed
+    priceBreakdown?: {
+        base: number;
+        vehicleType: number;
+        night: number;
+        holiday: number;
+        category: string;
+        carSeat: number;
+        signage: number;
+        area: number;
+        route: number;
+        extraStop: number;
+        offPeak: number;
+        coupon: number;
+        total: number;
+    };
     detail: OrderDetail;
 }
 
@@ -147,6 +161,12 @@ export default function DashboardPage() {
                             type: o.vehicle_type || '接送',
                             date: new Date(o.pickup_time).toLocaleString('zh-TW', { hour12: false }).replace(/\//g, '-').slice(0, 16),
                             total: Number(o.price),
+                            priceBreakdown: o.price_breakdown || {
+                                base: Number(o.price) || 0,
+                                total: Number(o.price) || 0,
+                                category: "平日價",
+                                vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0
+                            },
                             detail: {
                                 pickup: o.pickup_address,
                                 dropoff: (o.pickup_address.includes('機場') || o.pickup_address.includes('港') || o.dropoff_address.includes('機場') || o.dropoff_address.includes('港'))
@@ -592,6 +612,18 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
         </div>
     );
 
+    const PriceItem = ({ label, value, isDiscount }: { label: string, value?: number, isDiscount?: boolean }) => {
+        if (!value || value === 0) return null;
+        return (
+            <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">{label}</span>
+                <span className={`font-bold ${isDiscount ? 'text-green-600' : 'text-gray-900'}`}>
+                    {isDiscount ? '-' : '+'}${value?.toLocaleString()}
+                </span>
+            </div>
+        );
+    };
+
     return (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center animate-in fade-in">
             <div className="bg-white w-full max-w-[420px] h-[85vh] sm:h-auto sm:max-h-[85vh] sm:rounded-2xl rounded-t-2xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 duration-300">
@@ -641,10 +673,29 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
 
                     <div className="h-px bg-gray-100 my-2"></div>
 
-                    <div className="space-y-1">
-                        <KV label="總金額" value={`NT$ ${order.total.toLocaleString()}`} highlight />
-                        <KV label="付款方式" value={order.detail.pay || "—"} />
+                    <div className="bg-gray-50 p-4 rounded-xl space-y-2 border border-gray-100">
+                        <div className="flex justify-between items-center text-[10px] text-gray-400 font-black uppercase tracking-wider mb-2">
+                            <span>費用明細</span>
+                            {order.priceBreakdown?.category && (
+                                <span className="bg-white border border-blue-100 text-blue-600 px-2 py-0.5 rounded shadow-sm">{order.priceBreakdown.category}</span>
+                            )}
+                        </div>
+                        <PriceItem label="車輛價格" value={(order.priceBreakdown?.base || 0) + (order.priceBreakdown?.vehicleType || 0)} />
+                        <PriceItem label="偏遠地區加價" value={order.priceBreakdown?.area} />
+                        <PriceItem label="特定路段加價" value={order.priceBreakdown?.route} />
+                        <PriceItem label="多點計費" value={order.priceBreakdown?.extraStop} />
+                        <PriceItem label="夜間加成" value={order.priceBreakdown?.night} />
+                        <PriceItem label="離峰優惠" value={order.priceBreakdown?.offPeak} isDiscount />
+                        <PriceItem label="安全座椅" value={order.priceBreakdown?.carSeat} />
+                        <PriceItem label="舉牌服務" value={order.priceBreakdown?.signage} />
+                        <PriceItem label="優惠券" value={order.priceBreakdown?.coupon} isDiscount />
+                        <div className="pt-2 border-t border-gray-200 mt-2 flex justify-between items-center font-black">
+                            <span className="text-gray-900">總計</span>
+                            <span className="text-blue-600 text-lg">NT$ {order.total.toLocaleString()}</span>
+                        </div>
                     </div>
+
+                    <KV label="付款方式" value={order.detail.pay || "現金"} />
 
                     {order.status === 'ing' && (
                         <div className="pt-4 space-y-3">

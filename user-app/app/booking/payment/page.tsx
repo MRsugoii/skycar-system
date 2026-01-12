@@ -157,9 +157,25 @@ export default function PaymentPage() {
             const memberAccount = sessionStorage.getItem('memberAccount');
             const accountTag = memberAccount ? `[Account: ${memberAccount}] ` : "";
 
+            const priceBreakdown = {
+                base: prices.base,
+                vehicleType: prices.modelSurcharge,
+                night: prices.nightSurcharge,
+                holiday: prices.holidayMatrixSurcharge || 0,
+                category: prices.category || "平日價",
+                carSeat: prices.safetySeats,
+                signage: prices.signboard,
+                area: prices.remoteSurcharge,
+                route: prices.routeSurcharge,
+                extraStop: prices.extraStopSurcharge,
+                offPeak: prices.discount,
+                coupon: prices.couponDiscount,
+                total: prices.total
+            };
+
             const { error } = await supabase.from('orders').insert({
                 id: orderId, // Revert to using custom CH... ID
-                user_id: null,
+                user_id: sbUserId, // Use the detected user ID
                 contact_name: contactInfo.name,
                 contact_phone: contactInfo.phone,
                 pickup_address: pickupAddr,
@@ -169,6 +185,7 @@ export default function PaymentPage() {
                 luggage_count: luggageCount,
                 vehicle_type: vehicleName,
                 price: prices.total,
+                price_breakdown: priceBreakdown,
                 status: 'new',
                 note: accountTag + (rideInfo.notes || "")
             });
@@ -324,21 +341,15 @@ export default function PaymentPage() {
                         <div className="px-6 pb-6 pt-0 border-t border-gray-100">
                             <div className="py-4 space-y-1">
                                 <div className="divide-y divide-gray-100">
-                                    <PriceRow label="基本服務" price={prices.base} isShowZero />
-                                    <PriceRow label="車型加價" price={prices.modelSurcharge} isShowZero />
-                                    <PriceRow label="夜間加價" price={prices.nightSurcharge} isShowZero />
-                                    <PriceRow label="連續假期加價" price={prices.holidaySurcharge} isShowZero />
-                                    <PriceRow label="特定地區加價" price={prices.remoteSurcharge} isShowZero />
-                                    <PriceRow label="跨區自費加價" price={prices.stopSurcharge} isShowZero />
-                                    <PriceRow label="加點加價" price={0} isShowZero />
-
-                                    <PriceRow label="安全座椅加價" price={prices.safetySeats} isShowZero />
-                                    <PriceRow label="舉牌加價" price={prices.signboard} isShowZero />
-                                </div>
-                                <div className="border-t border-dashed border-gray-200 my-2"></div>
-                                <div className="divide-y divide-gray-100">
+                                    <PriceRow label="車輛價格" price={prices.base + (prices.modelSurcharge || 0)} isShowZero />
+                                    <PriceRow label="偏遠地區加價" price={prices.remoteSurcharge} isShowZero />
+                                    <PriceRow label="特定路段加價" price={prices.routeSurcharge} isShowZero />
+                                    <PriceRow label="多點計費" price={prices.extraStopSurcharge} isShowZero />
+                                    <PriceRow label="夜間加成" price={prices.nightSurcharge} isShowZero />
                                     <PriceRow label="離峰優惠" price={-prices.discount} isDiscount isShowZero />
-                                    <PriceRow label="優惠券折抵" price={0} isDiscount isShowZero />
+                                    <PriceRow label="安全座椅" price={prices.safetySeats} isShowZero />
+                                    <PriceRow label="舉牌服務" price={prices.signboard} isShowZero />
+                                    <PriceRow label="優惠券" price={-prices.couponDiscount} isDiscount isShowZero />
                                 </div>
                             </div>
                         </div>
