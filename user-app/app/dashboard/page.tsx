@@ -9,7 +9,7 @@ interface OrderDetail {
     pickup?: string;
     dropoff?: string;
     flight?: string;
-    passengers?: number;
+    passengers?: number | { adults: number; children: number };
     items?: { name: string; qty: number; unitPrice: number }[];
     discount?: number;
     pay?: string;
