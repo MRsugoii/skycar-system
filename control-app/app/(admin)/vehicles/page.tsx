@@ -397,28 +397,29 @@ function VehiclesContent() {
   // --- 4. Route Settings Data ---
   const [routePrices, setRoutePrices] = useState<RouteType[]>([]);
 
-  useEffect(() => {
-    const fetchRoutes = async () => {
-      const { data, error } = await supabase.from('route_prices').select('*').order('id', { ascending: true });
+  const fetchRoutePrices = async () => {
+    const { data, error } = await supabase.from('route_prices').select('*').order('id', { ascending: true });
 
-      if (data && data.length > 0) {
-        setRoutePrices(data.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          start: r.start_location,
-          end: r.end_location,
-          price: r.price,
-          status: r.status
-        })));
-      } else {
-        // Fallback Mock
-        console.log("Using Mock Routes Data");
-        setRoutePrices(MOCK_ROUTES);
-      }
-    };
-    fetchRoutes();
+    if (data && data.length > 0) {
+      setRoutePrices(data.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        start: r.start_location,
+        end: r.end_location,
+        price: r.price,
+        status: r.status
+      })));
+    } else {
+      // Fallback Mock
+      console.log("Using Mock Routes Data");
+      setRoutePrices(MOCK_ROUTES);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoutePrices();
     const channel = supabase.channel('route_prices_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'route_prices' }, () => fetchRoutes())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'route_prices' }, () => fetchRoutePrices())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
@@ -470,19 +471,27 @@ function VehiclesContent() {
 
   const handleSaveExtraSettings = async () => {
     try {
-      if (extraSettings.id === 0) {
+      // Strict number casting + ID handling
+      const payload = {
+        safety_seat_infant_price: Number(extraSettings.safety_seat_infant_price || 0),
+        safety_seat_child_price: Number(extraSettings.safety_seat_child_price || 0),
+        safety_seat_booster_price: Number(extraSettings.safety_seat_booster_price || 0),
+        signboard_price: Number(extraSettings.signboard_price || 0)
+      };
+
+      if (!extraSettings.id || extraSettings.id === 0) {
         // Create new row
-        const { error } = await supabase.from('extra_settings').insert([extraSettings]);
+        const { error } = await supabase.from('extra_settings').insert([payload]);
         if (error) throw error;
       } else {
         // Update
-        const { error } = await supabase.from('extra_settings').update(extraSettings).eq('id', extraSettings.id);
+        const { error } = await supabase.from('extra_settings').update(payload).eq('id', extraSettings.id);
         if (error) throw error;
       }
       alert("額外設定儲存成功");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("儲存失敗");
+      alert(`儲存失敗: ${e.message} ${e.details || ''}`);
     }
   };
 
@@ -492,18 +501,25 @@ function VehiclesContent() {
 
   const handleSaveRoute = async () => {
     try {
+      const payload = {
+        ...toDbRoute(routeFormData),
+        price: Number(routeFormData.price || 0) // Strict cast
+      };
+
       if (editingRoute) {
-        const { error } = await supabase.from('route_prices').update(toDbRoute(routeFormData)).eq('id', editingRoute.id);
+        const { error } = await supabase.from('route_prices').update(payload).eq('id', editingRoute.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('route_prices').insert(toDbRoute(routeFormData));
+        const { error } = await supabase.from('route_prices').insert(payload);
         if (error) throw error;
       }
+      alert("路線儲存成功");
       setIsRouteModalOpen(false);
       setEditingRoute(null);
-    } catch (e) {
+      fetchRoutePrices();
+    } catch (e: any) {
       console.error(e);
-      alert("儲存路線失敗");
+      alert(`儲存失敗: ${e.message} ${e.details || ''}`);
     }
   };
 
@@ -724,15 +740,25 @@ function VehiclesContent() {
   const [newMasterRegion, setNewMasterRegion] = useState("");
 
   // --- Helper: Convert Airport Price to DB ---
-  const toDbAirportPrice = (p: AirportMatrixType) => ({
-    airport: p.airport,
-    region: p.region,
-    category: p.category, // Ensure category is saved
-    prices: p.prices,
-    remote_surcharge: p.remoteSurcharge,
-    holiday_surcharges: p.holidaySurcharges,
-    status: p.status
-  });
+  const toDbAirportPrice = (p: AirportMatrixType) => {
+    // Sanitize prices map
+    const sanitizedPrices: Record<string, number> = {};
+    if (p.prices) {
+      Object.keys(p.prices).forEach(k => {
+        sanitizedPrices[k] = Number(p.prices[Number(k)] || p.prices[k as any] || 0);
+      });
+    }
+
+    return {
+      airport: p.airport,
+      region: p.region,
+      category: p.category,
+      prices: sanitizedPrices,
+      remote_surcharge: Number(p.remoteSurcharge || 0),
+      holiday_surcharges: p.holidaySurcharges || {},
+      status: p.status
+    };
+  };
 
   const handleAddMasterAirport = async () => {
     const airportName = newMasterAirport.trim();
@@ -997,12 +1023,6 @@ function VehiclesContent() {
       const payload = toDbAirportPrice(airportFormData);
 
       // Use UPSERT explicitly matching the unique constraint columns.
-      // This handles:
-      // 1. "Virtual" rows (client-generated IDs) -> Will be INSERTED because they don't match data in DB.
-      // 2. Real existing rows -> Will be UPDATED because they match (airport, region, category).
-      // 3. New rows -> Will be INSERTED.
-      // We omit 'id' so Supabase relies on the unique key constraint for conflict resolution.
-
       const { error } = await supabase
         .from('airport_prices')
         .upsert(payload, { onConflict: 'airport, region, category' });
@@ -1015,7 +1035,7 @@ function VehiclesContent() {
       handleCloseAirportModal();
     } catch (e: any) {
       console.error(e);
-      alert("儲存失敗: " + (e.message || "未知錯誤"));
+      alert(`儲存失敗: ${e.message} ${e.details || ''}`);
     }
   };
 
