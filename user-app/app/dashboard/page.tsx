@@ -162,12 +162,14 @@ export default function DashboardPage() {
                 if (sbOrders.length > 0) {
                     list = sbOrders.map((o: any) => {
                         // Map Status
-                        const parsedId = (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : o.id;
+                        const parsedId = (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (o.id || "Unknown");
 
                         // Map Status with Suffix Logic
+                        const noteUpper = (o.note || "").toUpperCase();
                         let st: any = 'ing';
-                        if (parsedId.includes('-RF')) st = 'refund_pending';
-                        else if (parsedId.includes('-OC')) st = 'cancelled';
+
+                        if (parsedId.toUpperCase().includes('-RF') || noteUpper.includes('-RF')) st = 'refund_pending';
+                        else if (parsedId.toUpperCase().includes('-OC') || noteUpper.includes('-OC')) st = 'cancelled';
                         else if (o.status === 'completed') st = 'done';
                         else if (o.status === 'cancelled') st = 'cancelled';
                         else if (o.status === 'refund' || o.status === 'refund_pending') st = 'refund_pending';
@@ -296,15 +298,18 @@ export default function DashboardPage() {
     };
 
     // Derived state
+    // Derived state
     const ongoingOrders = orders.filter(o =>
         o.status === 'ing' &&
-        !o.orderId.includes('-RF') &&
-        !o.orderId.includes('-OC')
+        !o.orderId.toUpperCase().includes('-RF') &&
+        !o.orderId.toUpperCase().includes('-OC') &&
+        !(o.detail.note || "").toUpperCase().includes('-RF') // Extra safety
     );
     const historyOrders = orders.filter(o =>
         o.status !== 'ing' ||
-        o.orderId.includes('-RF') ||
-        o.orderId.includes('-OC')
+        o.orderId.toUpperCase().includes('-RF') ||
+        o.orderId.toUpperCase().includes('-OC') ||
+        (o.detail.note || "").toUpperCase().includes('-RF')
     );
     const activeCoupons = coupons.filter(c => !c.used && c.expireAt > Date.now());
 
