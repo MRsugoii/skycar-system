@@ -331,9 +331,14 @@ export default function DriverDashboard() {
                                                 {order.from}
                                             </div>
                                             <div className="text-right">
-                                                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">
-                                                    進行中
-                                                </span>
+                                                {(() => {
+                                                    const s = (order.status || "").toLowerCase();
+                                                    if (['ing', 'en_route', 'pickedup'].includes(s)) {
+                                                        return <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">進行中</span>;
+                                                    } else {
+                                                        return <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold">已預約</span>;
+                                                    }
+                                                })()}
                                             </div>
                                             <div className="text-xs font-bold text-gray-400 col-span-2 mt-2 pt-2 border-t border-gray-200/50 flex justify-between">
                                                 <span>預約時間</span>
