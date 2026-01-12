@@ -170,7 +170,7 @@ export default function DashboardPage() {
 
                         if (parsedId.toUpperCase().includes('-RF') || noteUpper.includes('-RF')) st = 'refund_pending';
                         else if (parsedId.toUpperCase().includes('-OC') || noteUpper.includes('-OC')) st = 'cancelled';
-                        else if (o.status === 'completed') st = 'done';
+                        else if (o.status === 'completed' || o.status === 'unpaid') st = 'done';
                         else if (o.status === 'cancelled') st = 'cancelled';
                         else if (o.status === 'refund' || o.status === 'refund_pending') st = 'refund_pending';
                         else st = 'ing';
