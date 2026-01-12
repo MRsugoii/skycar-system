@@ -175,12 +175,24 @@ export default function DashboardPage() {
                         else if (o.status === 'refund' || o.status === 'refund_pending') st = 'refund_pending';
                         else st = 'ing';
 
+                        // Robust Date Formatting (YYYY/MM/DD HH:mm)
+                        let formattedDate = '-';
+                        if (o.pickup_time) {
+                            const d = new Date(o.pickup_time);
+                            const y = d.getFullYear();
+                            const m = String(d.getMonth() + 1).padStart(2, '0');
+                            const day = String(d.getDate()).padStart(2, '0');
+                            const hh = String(d.getHours()).padStart(2, '0');
+                            const mm = String(d.getMinutes()).padStart(2, '0');
+                            formattedDate = `${y}/${m}/${day} ${hh}:${mm}`;
+                        }
+
                         return {
                             orderId: parsedId,
                             status: st,
-                            type: o.vehicle_type || '接送',
-                            date: new Date(o.pickup_time).toLocaleString('zh-TW', { hour12: false }).replace(/\//g, '-').slice(0, 16),
-                            total: Number(o.price),
+                            type: o.service_type || "專車接送",
+                            date: formattedDate,
+                            total: o.total_amount || 0,
                             priceBreakdown: o.price_breakdown || {
                                 base: Number(o.price) || 0,
                                 total: Number(o.price) || 0,
@@ -306,10 +318,14 @@ export default function DashboardPage() {
         !(o.detail.note || "").toUpperCase().includes('-RF') // Extra safety
     );
     const historyOrders = orders.filter(o =>
-        o.status !== 'ing' ||
+        o.status === 'done' ||
+        o.status === 'cancelled' ||
+        o.status === 'refunded' ||
+        o.status === 'refund_pending' ||
         o.orderId.toUpperCase().includes('-RF') ||
         o.orderId.toUpperCase().includes('-OC') ||
-        (o.detail.note || "").toUpperCase().includes('-RF')
+        (o.detail.note || "").toUpperCase().includes('-RF') ||
+        (o.detail.note || "").toUpperCase().includes('-OC')
     );
     const activeCoupons = coupons.filter(c => !c.used && c.expireAt > Date.now());
 
@@ -484,7 +500,7 @@ export default function DashboardPage() {
                             onClick={handleLogout}
                             className="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md transition flex items-center gap-2"
                         >
-                            <LogOut size={14} /> 登出 v1.5
+                            <LogOut size={14} /> 登出 v1.8
                         </button>
                     </div>
 
