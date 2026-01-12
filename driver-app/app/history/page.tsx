@@ -60,23 +60,33 @@ export default function HistoryPage() {
             if (error) {
                 console.error('Error fetching history:', error);
             } else {
-                const mappedOrders = (data || []).map((row: any) => ({
-                    id: (row.note && row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (row.id.length > 20 ? "CH-歷史訂單" : row.id),
-                    status: row.status,
-                    // Map to local fields for UI compatibility
-                    isBilled: false, // Default for now
-                    isPaid: false,  // Default for now
-                    date: row.pickup_time ? new Date(row.pickup_time).toLocaleDateString() : 'N/A', // Format: YYYY/M/D or similar
-                    time: row.pickup_time ? new Date(row.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-                    price: row.price,
-                    serviceType: row.vehicle_type || '接送',
-                    flow: row.status === 'completed' ? 'completed' : 'cancelled', // Derived flow
-                    detail: {
-                        pax: { adult: row.passenger_count || 1, child: 0 },
-                        luggage: { s20: 0, s25: row.luggage_count || 0, s28: 0 },
-                        contact: { name: row.contact_name, phone: row.contact_phone }
-                    }
-                }));
+                const mappedOrders = (data || []).map((row: any) => {
+                    const d = row.pickup_time ? new Date(row.pickup_time) : new Date();
+                    const yearStr = d.getFullYear().toString();
+                    const monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
+                    const dayStr = d.getDate().toString().padStart(2, '0');
+
+                    return {
+                        id: (row.note && row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? row.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : (row.id.length > 20 ? "CH-歷史訂單" : row.id),
+                        status: row.status,
+                        // Map to local fields for UI compatibility
+                        isBilled: false, // Default for now
+                        isPaid: false,  // Default for now
+                        // Explicit date parts for reliable filtering
+                        year: yearStr,
+                        month: monthStr,
+                        date: `${yearStr}/${monthStr}/${dayStr}`,
+                        time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        price: row.price,
+                        serviceType: row.vehicle_type || '接送',
+                        flow: row.status === 'completed' ? 'completed' : 'cancelled', // Derived flow
+                        detail: {
+                            pax: { adult: row.passenger_count || 1, child: 0 },
+                            luggage: { s20: 0, s25: row.luggage_count || 0, s28: 0 },
+                            contact: { name: row.contact_name, phone: row.contact_phone }
+                        }
+                    };
+                });
                 setOrders(mappedOrders);
             }
             setLoading(false);
@@ -85,27 +95,14 @@ export default function HistoryPage() {
         fetchHistory();
     }, []);
 
-    // Derived Years
-    const years = Array.from(new Set(orders.map(o => o.date.split('/')[0] || "2025"))).sort().reverse();
-    if (years.length === 0) years.push("2025");
+    // Derived Years - Reliable
+    const years = Array.from(new Set(orders.map(o => o.year))).sort().reverse();
+    if (years.length === 0) years.push(new Date().getFullYear().toString());
 
-    // Filter Logic
+    // Filter Logic - Reliable
     const filtered = orders.filter(o => {
-        // Standardize date parsing from LocaleDateString (could be 2025/12/01 or 12/1/2025 etc depending on locale, but standardizing to parts)
-        const dateStr = o.date.includes('/') ? o.date : o.date.replace(/-/g, '/');
-        const parts = dateStr.split(' ')[0].split('/');
-        // Simple check for YMD order. Assuming YYYY/MM/DD for now based on previous component logic
-        const oYear = parts[0].length === 4 ? parts[0] : parts[2];
-        const oMonth = parts[0].length === 4 ? parts[1] : parts[0];
-
-        if (year && oYear !== year) return false;
-
-        // Month filter: padStart to ensure '01' matches '1' if needed, or loose match
-        if (month) {
-            const mInt = parseInt(oMonth, 10);
-            const targetInt = parseInt(month, 10);
-            if (mInt !== targetInt) return false;
-        }
+        if (year && o.year !== year) return false;
+        if (month && o.month !== month) return false;
 
         // Status Filter Logic
         if (statusFilter === 'unreq') return !o.isBilled && !o.isPaid;
