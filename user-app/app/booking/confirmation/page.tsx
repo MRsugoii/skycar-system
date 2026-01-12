@@ -156,7 +156,7 @@ function ConfirmationContent() {
         const { data: routes } = await supabase.from("route_prices").select("*").eq("status", true);
         if (routes) {
             const locationStr = `${mainLoc.city}${mainLoc.district}${mainLoc.address}`;
-            const matchedRoute = routes.find(r =>
+            const matchedRoute = routes.find((r: any) =>
                 locationStr.includes(r.start_location || '$$$') ||
                 locationStr.includes(r.end_location || '$$$') ||
                 locationStr.includes(r.name) // Allow matching by Route Name (Keyword)
