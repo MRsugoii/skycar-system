@@ -123,7 +123,8 @@ export default function OrderDetailsPage() {
     // Helpers
     const paxStr = d.headcount ?? (pax.adult != null ? `${pax.adult}大 ${pax.child || 0}小` : `${order.pax || 0} 人`);
     const lugTotal = (lug.s20 || 0) + (lug.s25 || 0) + (lug.s28 || 0);
-    const lugStr = lugTotal > 0 ? `${lugTotal} 件` : (order.luggage ? `${order.luggage} 件` : '—');
+    const finalLugCount = lugTotal > 0 ? lugTotal : (d.luggage?.count || order.luggage || 0);
+    const lugStr = finalLugCount > 0 ? `${finalLugCount} 件` : '—';
     const csStr = (cs.rear != null || cs.front != null || cs.booster != null)
         ? `後${cs.rear || 0} / 前${cs.front || 0} / 增${cs.booster || 0}`
         : '—';
