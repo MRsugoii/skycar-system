@@ -12,8 +12,9 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(true);
 
     // Filters
-    const [year, setYear] = useState("2025");
-    const [month, setMonth] = useState("12"); // Default to Dec for demo or Current
+    const now = new Date();
+    const [year, setYear] = useState(now.getFullYear().toString());
+    const [month, setMonth] = useState((now.getMonth() + 1).toString().padStart(2, '0'));
     const [statusFilter, setStatusFilter] = useState("all");
 
     useEffect(() => {
@@ -53,7 +54,7 @@ export default function HistoryPage() {
                 .from('orders')
                 .select('*')
                 .eq('driver_id', driverId)
-                .in('status', ['completed', 'cancelled']) // Fetch completed and cancelled
+                .in('status', ['completed', 'cancelled', 'unpaid']) // Fetch completed, cancelled, and unpaid
                 .order('pickup_time', { ascending: false });
 
             if (error) {
