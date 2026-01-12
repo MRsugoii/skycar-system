@@ -349,11 +349,22 @@ export default function BookingConfirmationPage() {
                             <SummaryRow label="額外加點" value={`共 ${extraLocationsCount} 個停靠點`} />
                         )}
 
-                        <SummaryRow label="乘車人數" value={`${(rideInfo?.passengers?.adults || 0) + (rideInfo?.passengers?.children || 0)} 人 (含 ${rideInfo?.passengers?.adults || 0} 成 ${rideInfo?.passengers?.children || 0} 孩)`} />
+                        <SummaryRow label="乘車人數" value={`${rideInfo?.passengers?.adults || 0}大 ${rideInfo?.passengers?.children || 0}小`} />
 
-                        {(rideInfo?.seats?.infant > 0 || rideInfo?.seats?.child > 0 || rideInfo?.seats?.booster > 0) && (
-                            <SummaryRow label="安全座椅" value={`已選購 ${rideInfo?.seats?.infant + rideInfo?.seats?.child + rideInfo?.seats?.booster} 張`} />
-                        )}
+                        <SummaryRow
+                            label="兒童座椅"
+                            value={
+                                (!rideInfo?.seats?.infant && !rideInfo?.seats?.child && !rideInfo?.seats?.booster)
+                                    ? null
+                                    : [
+                                        (rideInfo?.seats?.infant > 0 ? `嬰兒(${rideInfo?.seats?.infant})` : ''),
+                                        (rideInfo?.seats?.child > 0 ? `幼童(${rideInfo?.seats?.child})` : ''),
+                                        (rideInfo?.seats?.booster > 0 ? `學童(${rideInfo?.seats?.booster})` : '')
+                                    ].filter(Boolean).join(' ')
+                            }
+                        />
+
+                        <SummaryRow label="行李件數" value={`${(rideInfo?.luggage?.s || 0) + (rideInfo?.luggage?.m || 0) + (rideInfo?.luggage?.l || 0)} 件`} />
 
                         <SummaryRow label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要` : "不需要"} />
                     </div>
