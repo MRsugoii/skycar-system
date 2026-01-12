@@ -523,7 +523,9 @@ export default function DashboardPage() {
     // HISTORY ORDERS VIEW
     if (currentView === 'history') {
         // Derived Logic for History Filters
-        const years = ['2025', '2024']; // Simplified for demo
+        // Derived Logic for History Filters
+        const currentYear = new Date().getFullYear();
+        const years = Array.from({ length: 3 }, (_, i) => (currentYear - i).toString()); // Dynamic years
 
         const filteredHistory = historyOrders.filter(o => {
             if (!o.date) return false; // Safety check
