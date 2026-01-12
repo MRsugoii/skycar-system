@@ -132,17 +132,30 @@ export default function DashboardPage() {
                 }
             }
 
-            // A. Fetch from Supabase (Filter by Account Tag in Note)
-            // Logic: We prioritize finding orders tagged with [Account: ...]
+            // A. Fetch from Supabase (Filter by Account Tag OR Phone Number)
             let sbOrders = [];
 
             if (acc) {
-                // ILIKE operator to find the tag within the note text
-                const { data, error } = await supabase
+                let userPhone = '';
+                if (uStr) {
+                    try {
+                        const parsedUser = JSON.parse(uStr);
+                        userPhone = parsedUser.phone || '';
+                    } catch (e) { console.error("Error parsing user data"); }
+                }
+
+                let query = supabase
                     .from('orders')
                     .select('*')
-                    .ilike('note', `%[Account: ${acc}]%`)
                     .order('created_at', { ascending: false });
+
+                if (userPhone) {
+                    query = query.or(`note.ilike.%[Account: ${acc}]%,contact_phone.eq.${userPhone}`);
+                } else {
+                    query = query.ilike('note', `%[Account: ${acc}]%`);
+                }
+
+                const { data, error } = await query;
 
                 if (data) sbOrders = data;
 
