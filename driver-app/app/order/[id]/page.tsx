@@ -121,7 +121,7 @@ export default function OrderDetailsPage() {
     const flowText = flowTextMap[flow] || '—';
 
     // Helpers
-    const paxStr = d.headcount ?? (pax.adult != null ? `${pax.adult} 位成人 ${pax.child || 0} 位小孩` : `${order.pax || 0} 位乘客`);
+    const paxStr = d.headcount ?? (pax.adult != null ? `${pax.adult}大 ${pax.child || 0}小` : `${order.pax || 0} 人`);
     const lugTotal = (lug.s20 || 0) + (lug.s25 || 0) + (lug.s28 || 0);
     const lugStr = lugTotal > 0 ? `${lugTotal} 件` : (order.luggage ? `${order.luggage} 件` : '—');
     const csStr = (cs.rear != null || cs.front != null || cs.booster != null)
