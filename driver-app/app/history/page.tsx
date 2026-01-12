@@ -140,22 +140,22 @@ export default function HistoryPage() {
                             <div className="relative">
                                 <select
                                     value={year} onChange={e => setYear(e.target.value)}
-                                    className="appearance-none bg-white border border-blue-200 text-blue-900 font-bold rounded-full pl-6 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                    className="appearance-none bg-white border border-blue-300 hover:border-blue-400 text-blue-800 font-bold rounded-full pl-6 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-lg tracking-wide transition-colors cursor-pointer"
                                 >
                                     {years.map(y => <option key={y} value={y}>{y} 年</option>)}
                                 </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" size={16} />
+                                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" size={20} strokeWidth={2.5} />
                             </div>
                             <div className="relative">
                                 <select
                                     value={month} onChange={e => setMonth(e.target.value)}
-                                    className="appearance-none bg-white border border-blue-200 text-blue-900 font-bold rounded-full pl-6 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                    className="appearance-none bg-white border border-blue-300 hover:border-blue-400 text-blue-800 font-bold rounded-full pl-6 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-lg tracking-wide transition-colors cursor-pointer"
                                 >
                                     {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                                         <option key={m} value={m.toString().padStart(2, '0')}>{m} 月</option>
                                     ))}
                                 </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" size={16} />
+                                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" size={20} strokeWidth={2.5} />
                             </div>
                         </div>
 
