@@ -149,14 +149,19 @@ export default function DashboardPage() {
                 if (sbOrders.length > 0) {
                     list = sbOrders.map((o: any) => {
                         // Map Status
+                        const parsedId = (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : o.id;
+
+                        // Map Status with Suffix Logic
                         let st: any = 'ing';
-                        if (o.status === 'completed') st = 'done';
+                        if (parsedId.includes('-RF')) st = 'refund_pending';
+                        else if (parsedId.includes('-OC')) st = 'cancelled';
+                        else if (o.status === 'completed') st = 'done';
                         else if (o.status === 'cancelled') st = 'cancelled';
                         else if (o.status === 'refund' || o.status === 'refund_pending') st = 'refund_pending';
                         else st = 'ing';
 
                         return {
-                            orderId: (o.note && o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)) ? o.note.match(/\[ID:\s?(CH[A-Z0-9-]+)\]/)[1] : o.id,
+                            orderId: parsedId,
                             status: st,
                             type: o.vehicle_type || '接送',
                             date: new Date(o.pickup_time).toLocaleString('zh-TW', { hour12: false }).replace(/\//g, '-').slice(0, 16),
