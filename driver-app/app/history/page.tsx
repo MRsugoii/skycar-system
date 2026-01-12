@@ -64,8 +64,9 @@ export default function HistoryPage() {
                     .filter((row: any) => {
                         const note = (row.note || "").toUpperCase();
                         const id = (row.id || "").toUpperCase();
-                        // Only filter out OC (Cancelled) orders. RF and NA should stay visible as they are completed trips.
-                        return !note.includes("-OC") && !id.includes("-OC");
+                        // Strictly filter out RF, NA, and OC orders from driver view.
+                        return !note.includes("-RF") && !note.includes("-NA") && !note.includes("-OC") &&
+                            !id.includes("-RF") && !id.includes("-NA") && !id.includes("-OC");
                     })
                     .map((row: any) => {
                         const d = row.pickup_time ? new Date(row.pickup_time) : new Date();
@@ -133,7 +134,7 @@ export default function HistoryPage() {
             <div className="absolute top-0 left-0 right-0 h-[220px] bg-blue-600 rounded-b-[40px] shadow-lg z-0"></div>
 
             <div className="relative z-10 flex flex-col min-h-screen pb-20">
-                <PageHeader title="歷史帳單 v1.4" variant="ghost" />
+                <PageHeader title="歷史帳單 v1.5" variant="ghost" />
 
                 <div className="px-4 mt-4">
                     {/* Main Content Card */}
