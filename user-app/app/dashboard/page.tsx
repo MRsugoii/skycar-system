@@ -283,8 +283,16 @@ export default function DashboardPage() {
     };
 
     // Derived state
-    const ongoingOrders = orders.filter(o => o.status === 'ing');
-    const historyOrders = orders.filter(o => o.status !== 'ing');
+    const ongoingOrders = orders.filter(o =>
+        o.status === 'ing' &&
+        !o.orderId.includes('-RF') &&
+        !o.orderId.includes('-OC')
+    );
+    const historyOrders = orders.filter(o =>
+        o.status !== 'ing' ||
+        o.orderId.includes('-RF') ||
+        o.orderId.includes('-OC')
+    );
     const activeCoupons = coupons.filter(c => !c.used && c.expireAt > Date.now());
 
     // Determine Level
