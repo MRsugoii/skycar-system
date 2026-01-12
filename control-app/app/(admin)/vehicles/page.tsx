@@ -471,18 +471,16 @@ function VehiclesContent() {
 
   const handleSaveExtraSettings = async () => {
     try {
-      // Strict number casting
+      // Force update logic (Row 0 is confirmed to exist)
       const payload = {
-        id: extraSettings.id, // Include ID for upsert (even if 0)
         safety_seat_infant_price: Number(extraSettings.safety_seat_infant_price || 0),
         safety_seat_child_price: Number(extraSettings.safety_seat_child_price || 0),
         safety_seat_booster_price: Number(extraSettings.safety_seat_booster_price || 0),
         signboard_price: Number(extraSettings.signboard_price || 0)
       };
 
-      // Use upsert to handle both new (if deleted) and existing (id=0) cases gracefully
-      // This solves the "Duplicate Key" error when id=0 exists but logic tried to INSERT
-      const { error } = await supabase.from('extra_settings').upsert(payload);
+      // Direct Update Row 0 (Skip Upsert check)
+      const { error } = await supabase.from('extra_settings').update(payload).eq('id', 0);
 
       if (error) throw error;
 
