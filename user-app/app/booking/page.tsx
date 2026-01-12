@@ -11,23 +11,39 @@ export default function BookingPage() {
 
     useEffect(() => {
         const checkActiveOrder = async () => {
-            const uid = sessionStorage.getItem('supabaseUserId');
-            if (uid) {
-                // Check for any incomplete orders
-                const { data } = await supabase
-                    .from('orders')
-                    .select('id')
-                    .eq('user_id', uid)
-                    .in('status', ['new', 'unconfirmed', 'confirmed', 'assigned', 'en_route', 'pickedup', 'arriving'])
-                    .limit(1);
-
-                if (data && data.length > 0) {
-                    alert("您目前有進行中的訂單，請先完成該行程後再預約。");
-                    router.push('/dashboard');
+            try {
+                // Defensive check to ensure supabase client exists
+                if (!supabase) {
+                    console.warn("Supabase client not initialized, skipping check");
+                    return;
                 }
+
+                const uid = sessionStorage.getItem('supabaseUserId');
+                if (uid) {
+                    // Check for any incomplete orders
+                    const { data, error } = await supabase
+                        .from('orders')
+                        .select('id')
+                        .eq('user_id', uid)
+                        .in('status', ['new', 'unconfirmed', 'confirmed', 'assigned', 'en_route', 'pickedup', 'arriving'])
+                        .limit(1);
+
+                    if (error) {
+                        console.error("Check active order error:", error);
+                        return; // Fail gracefully
+                    }
+
+                    if (data && data.length > 0) {
+                        alert("您目前有進行中的訂單，請先完成該行程後再預約。");
+                        router.push('/dashboard');
+                    }
+                }
+            } catch (err) {
+                console.error("Critical error in booking check:", err);
             }
         };
-        checkActiveOrder();
+        // Run check safely
+        checkActiveOrder().catch(err => console.error("Async check failed:", err));
     }, []);
 
     const handleStart = () => {
