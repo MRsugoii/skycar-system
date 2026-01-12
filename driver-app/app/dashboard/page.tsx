@@ -115,7 +115,7 @@ export default function DriverDashboard() {
                 .from('orders')
                 .select('*')
                 .eq('driver_id', driverId)
-                .in('status', ['confirmed', 'pickedUp', 'completed', 'assigned', 'en_route'])
+                .in('status', ['confirmed', 'pickedUp', 'completed', 'assigned', 'en_route', 'ing'])
                 .order('pickup_time', { ascending: true });
 
             if (error) {
