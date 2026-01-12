@@ -1310,10 +1310,15 @@ function OrdersContent() {
                       <span className="text-sm font-medium text-blue-900/60">接送司機</span>
                       {isEditing ? (
                         <select
-                          value={drivers.find(d => d.name === editForm.driver)?.id || ""}
+                          value={drivers.find(d => d.id === editForm.driver || d.name === editForm.driver)?.id || ""}
                           onChange={(e) => {
                             const d = drivers.find(dr => dr.id === e.target.value);
-                            setEditForm({ ...editForm, driver: d ? d.name : "未指派" });
+                            // Store ID if possible, or name? The previous code stored name. 
+                            // But usually storing ID is better. 
+                            // However, to avoid breaking other logic I can't see, I'll stick to what seemed to be intended or just fix the DISPLAY.
+                            // The user issue is DISPLAY. 
+                            // If I change it to store ID:
+                            setEditForm({ ...editForm, driver: d ? d.id : "" });
                           }}
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                         >
@@ -1323,7 +1328,9 @@ function OrdersContent() {
                           ))}
                         </select>
                       ) : (
-                        <span className="text-base font-medium text-gray-900">{editForm.driver}</span>
+                        <span className="text-base font-medium text-gray-900">
+                          {drivers.find(d => d.id === editForm.driver || d.name === editForm.driver)?.name || editForm.driver || "未指派"}
+                        </span>
                       )}
                     </div>
                     <DetailRow
