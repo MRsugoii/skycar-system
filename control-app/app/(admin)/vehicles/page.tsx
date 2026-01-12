@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense, Fragment } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { updateExtraSettingsAction } from "@/app/actions"; // Server Action Import
+import { updateExtraSettingsAction, upsertAirportPricesAction } from "@/app/actions"; // Server Action Import
 import { Truck, Ticket, Search, Plus, Edit, Trash2, X, Save, Camera, Image as ImageIcon, MoreHorizontal, AlertCircle, Download, Calendar, FileText, DollarSign, Armchair, Users, Briefcase, Car, Plane, MapPin, Route, ChevronRight, ChevronDown, Check, Settings, Upload } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import * as XLSX from "xlsx";
@@ -729,7 +729,7 @@ function VehiclesContent() {
 
   // Manage Locations Master Lists State
   // Ensure we have a default list if DB is empty, but update from DB
-  const [availableAirports, setAvailableAirports] = useState<string[]>(["桃園國際機場", "臺北松山機場", "台中清泉崗機場", "高雄小港機場"]);
+  const [availableAirports, setAvailableAirports] = useState<string[]>(["桃園機場", "松山機場", "台中清泉崗機場", "高雄小港機場"]);
   const [availableRegions, setAvailableRegions] = useState<string[]>(() => {
     const allDistricts = Object.values(TAIWAN_LOCATIONS).flatMap(c => c.districts);
     const dbRegions = Array.from(new Set(airportPrices.map(p => p.region)));
@@ -994,7 +994,7 @@ function VehiclesContent() {
 
 
   // Airport Modal State
-  const [expandedAirports, setExpandedAirports] = useState<string[]>(["桃園國際機場", "臺北松山機場"]);
+  const [expandedAirports, setExpandedAirports] = useState<string[]>(["桃園機場", "松山機場"]);
   const [isAirportModalOpen, setIsAirportModalOpen] = useState(false);
   const [editingAirport, setEditingAirport] = useState<AirportMatrixType | null>(null);
   const initialAirportFormState: Omit<AirportMatrixType, 'id'> = {
@@ -1339,6 +1339,29 @@ function VehiclesContent() {
     }
 
     setAirportPrices(updatedPrices);
+
+    // Call Server Action for Bulk Upsert
+    try {
+      // Filter out only the rows that we just touched/created
+      // Actually, we can just upsert the ones matching this airport/category from the updated array
+      // But we need to handle "new" rows which have random ID.
+      // toDbAirportPrice handles structure, but we need to pass the prices map correctly.
+
+      const payload = updatedPrices
+        .filter(p => p.airport === airport && p.category === selectedCategory)
+        .map(p => toDbAirportPrice(p));
+
+      // Auth Token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await upsertAirportPricesAction(payload, session.access_token);
+        // Silently success or console log
+        console.log("Bulk Upsert (Airport Group) Success");
+      }
+    } catch (err) {
+      console.error("Bulk Upsert Error:", err);
+      // alert("儲存失敗"); // Optional
+    }
   };
 
   const toggleCityGroupStatus = (airport: string, districts: string[], currentStatus: boolean, e: React.MouseEvent) => {
@@ -1373,6 +1396,21 @@ function VehiclesContent() {
       });
     }
     setAirportPrices(updatedPrices);
+
+    // Call Server Action for Bulk Upsert (City Group)
+    try {
+      const payload = updatedPrices
+        .filter(p => p.airport === airport && districts.includes(p.region) && p.category === selectedCategory)
+        .map(p => toDbAirportPrice(p));
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await upsertAirportPricesAction(payload, session.access_token);
+        console.log("Bulk Upsert (City Group) Success");
+      }
+    } catch (err) {
+      console.error("Bulk Upsert (City) Error:", err);
+    }
   };
 
   const toggleSingleStatus = async (p: AirportMatrixType, e: React.MouseEvent) => {
@@ -1384,19 +1422,23 @@ function VehiclesContent() {
 
     // 2. Visual Group Status Update will be handled by the useEffect [airportPrices]
 
-    // 3. Database Update (Crucial: was missing!)
+    // 3. Database Update (Switch to Upsert Action)
     try {
-      const { error } = await supabase
-        .from('airport_prices')
-        .update({ status: newStatus })
-        .eq('id', p.id);
+      const payload = [toDbAirportPrice({ ...p, status: newStatus })];
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (error) throw error;
+      if (session?.access_token) {
+        const res = await upsertAirportPricesAction(payload, session.access_token);
+        if (!res.success) throw new Error(res.error);
+      } else {
+        // Fallback for no auth (should not happen in admin)
+        throw new Error("No Auth Session");
+      }
     } catch (err) {
       console.error("Error toggling airport price status:", err);
-      // alert("更新狀態失敗"); // Optional: minimize intrusive alerts
-      // Rollback state if desired
-      setAirportPrices(airportPrices.map(item => (item.id === p.id) ? { ...item, status: !newStatus } : item));
+      alert("更新失敗");
+      // Rollback state
+      setAirportPrices(prev => prev.map(item => (item.id === p.id) ? { ...item, status: !newStatus } : item));
     }
   };
 

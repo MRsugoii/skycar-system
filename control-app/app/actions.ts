@@ -36,3 +36,33 @@ export async function updateExtraSettingsAction(payload: any, accessToken: strin
         return { success: false, error: err.message };
     }
 }
+
+export async function upsertAirportPricesAction(payload: any[], accessToken: string) {
+    console.log(`Server Action (Auth): Upserting Airport Prices (${payload.length} items)...`);
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        },
+    });
+
+    try {
+        const { data, error } = await supabase
+            .from('airport_prices')
+            .upsert(payload, { onConflict: 'airport, region, category' })
+            .select();
+
+        if (error) {
+            console.error("Server Action DB Error:", error);
+            return { success: false, error: `${error.message} (${error.details || ''})` };
+        }
+
+        return { success: true, data };
+    } catch (err: any) {
+        console.error("Server Action Unexpected Error:", err);
+        return { success: false, error: err.message };
+    }
+}
+

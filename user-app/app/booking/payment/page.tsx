@@ -309,10 +309,20 @@ export default function PaymentPage() {
                                 <div className="my-2 border-t border-dashed border-gray-200"></div>
 
                                 <div className="divide-y divide-gray-100">
-                                    <SummaryRowSimple label="乘客人數" value={`${(rideInfo?.passengers?.adults || 0) + (rideInfo?.passengers?.children || 0)} 人`} />
-                                    <SummaryRowSimple label="成人 / 小孩" value={`${rideInfo?.passengers?.adults || 0} 位 / ${rideInfo?.passengers?.children || 0} 位`} />
-                                    <SummaryRowSimple label="行李件數" value={`20吋以下 ${rideInfo?.luggage?.s || 0} 件 ; 21-25吋 ${rideInfo?.luggage?.m || 0} 件 ; 26-28吋 ${rideInfo?.luggage?.l || 0} 件`} />
-                                    <SummaryRowSimple label="安全座椅" value={`後向式 ${rideInfo?.seats?.infant || 0} 張 ; 前向式 ${rideInfo?.seats?.child || 0} 張 ; 增高墊 ${rideInfo?.seats?.booster || 0} 張`} />
+                                    <SummaryRowSimple label="乘客人數" value={`${rideInfo?.passengers?.adults || 0}大 ${rideInfo?.passengers?.children || 0}小`} />
+                                    <SummaryRowSimple label="行李件數" value={`${(rideInfo?.luggage?.s || 0) + (rideInfo?.luggage?.m || 0) + (rideInfo?.luggage?.l || 0)} 件`} />
+                                    <SummaryRowSimple
+                                        label="兒童座椅"
+                                        value={
+                                            (!rideInfo?.seats?.infant && !rideInfo?.seats?.child && !rideInfo?.seats?.booster)
+                                                ? "—"
+                                                : [
+                                                    (rideInfo?.seats?.infant > 0 ? `嬰兒座椅(0-1歲) ${rideInfo?.seats?.infant}張` : ''),
+                                                    (rideInfo?.seats?.child > 0 ? `幼童座椅(1-4歲) ${rideInfo?.seats?.child}張` : ''),
+                                                    (rideInfo?.seats?.booster > 0 ? `學童座椅(4-7歲) ${rideInfo?.seats?.booster}張` : '')
+                                                ].filter(Boolean).join(' ; ')
+                                        }
+                                    />
                                     <SummaryRowSimple label="選擇車型" value={vehicleName || '-'} />
                                     <SummaryRowSimple label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要 (${rideInfo?.signboard?.title})` : "不需要"} />
                                     <SummaryRowSimple label="備註" value={rideInfo?.notes || "-"} />
