@@ -24,7 +24,7 @@ interface OrderDetail {
 
 interface Order {
     orderId: string;
-    status: 'ing' | 'done' | 'refund' | 'notapproved' | 'cancelled' | 'refund_pending';
+    status: 'ing' | 'done' | 'refund' | 'notapproved' | 'cancelled' | 'refund_pending' | 'refunded';
     type: string;
     date: string;
     total: number;
@@ -88,8 +88,8 @@ export default function DashboardPage() {
     const [pwdNew2, setPwdNew2] = useState('');
 
     // History Filters
-    const [filterYear, setFilterYear] = useState('2025');
-    const [filterMonth, setFilterMonth] = useState('12');
+    const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+    const [filterMonth, setFilterMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
     const [filterStatus, setFilterStatus] = useState('all');
 
     useEffect(() => {
@@ -168,7 +168,7 @@ export default function DashboardPage() {
                         const noteUpper = (o.note || "").toUpperCase();
                         let st: any = 'ing';
 
-                        if (parsedId.toUpperCase().includes('-RF') || noteUpper.includes('-RF')) st = 'refund_pending';
+                        if (parsedId.toUpperCase().includes('-RF') || noteUpper.includes('-RF')) st = 'refunded';
                         else if (parsedId.toUpperCase().includes('-OC') || noteUpper.includes('-OC')) st = 'cancelled';
                         else if (o.status === 'completed' || o.status === 'unpaid') st = 'done';
                         else if (o.status === 'cancelled') st = 'cancelled';
@@ -484,7 +484,7 @@ export default function DashboardPage() {
                             onClick={handleLogout}
                             className="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md transition flex items-center gap-2"
                         >
-                            <LogOut size={14} /> 登出 v1.3
+                            <LogOut size={14} /> 登出 v1.4
                         </button>
                     </div>
 
@@ -579,13 +579,15 @@ export default function DashboardPage() {
                                     <span className="font-black text-gray-900 text-lg tracking-tight">{o.orderId}</span>
                                     <span className={`px-2 py-0.5 rounded text-xs font-bold border ${o.status === 'done' ? 'bg-green-50 text-green-700 border-green-200' :
                                         o.status === 'cancelled' ? 'bg-gray-50 text-gray-500 border-gray-200' :
-                                            o.status === 'refund_pending' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                                'bg-amber-50 text-amber-700 border-amber-100'
+                                            o.status === 'refunded' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                                o.status === 'refund_pending' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                                    'bg-amber-50 text-amber-700 border-amber-100'
                                         }`}>
                                         {o.status === 'done' ? '已完成' :
                                             o.status === 'cancelled' ? '已取消' :
-                                                o.status === 'refund_pending' ? '退款申請中' :
-                                                    o.type}
+                                                o.status === 'refunded' ? '已退費' :
+                                                    o.status === 'refund_pending' ? '退款申請中' :
+                                                        o.type}
                                     </span>
                                 </div>
                                 <div className="text-gray-500 text-xs font-bold flex justify-between pr-4 mt-2">
