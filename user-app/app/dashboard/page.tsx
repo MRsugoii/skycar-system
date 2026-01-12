@@ -410,6 +410,11 @@ export default function DashboardPage() {
                                                     <Navigation size={16} className="text-blue-500 mt-0.5" />
                                                     <span className="font-medium line-clamp-1">{o.detail.dropoff}</span>
                                                 </div>
+                                                <div className="flex items-center gap-3 text-sm text-gray-500 mt-2 pl-1 border-t border-dashed border-gray-100 pt-2">
+                                                    <span>{typeof o.detail.passengers === 'object' ? `${o.detail.passengers.adults}大 ${o.detail.passengers.children}小` : `${o.detail.passengers || 0} 位乘客`}</span>
+                                                    <span>•</span>
+                                                    <span>{o.detail.luggage ? `${(o.detail.luggage.s20 || 0) + (o.detail.luggage.s25 || 0) + (o.detail.luggage.s28 || 0)} 件行李` : '無行李'}</span>
+                                                </div>
                                             </div>
                                             <div className="flex justify-between items-end border-t border-gray-50 pt-3">
                                                 <span className="text-xs text-gray-400 font-medium">點擊查看詳情</span>
