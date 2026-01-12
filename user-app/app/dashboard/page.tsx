@@ -666,7 +666,7 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                         <KV label="航班/船班" value={order.detail.flight || "—"} />
                         <KV label="乘客人數" value={`${order.detail.passengers || 0} 人`} />
                         <KV label="兒童座椅" value={order.detail.seats ? `後${order.detail.seats.rear || 0} / 前${order.detail.seats.front || 0} / 增${order.detail.seats.booster || 0}` : '—'} />
-                        <KV label="行李件數" value={order.detail.luggage ? `20"(${order.detail.luggage.s20}), 25"(${order.detail.luggage.s25}), 28"(${order.detail.luggage.s28})` : '—'} />
+                        <KV label="行李件數" value={order.detail.luggage ? `${(order.detail.luggage.s20 || 0) + (order.detail.luggage.s25 || 0) + (order.detail.luggage.s28 || 0)} 件` : '—'} />
                         <KV label="舉牌服務" value={order.detail.signage ? `需要 (${order.detail.signageText || ''})` : '不需要'} />
                         <KV label="備註" value={order.detail.note || "—"} />
                     </div>
