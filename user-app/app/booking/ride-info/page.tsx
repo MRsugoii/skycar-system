@@ -161,6 +161,7 @@ export default function RideInfoPage() {
     // -- Calculated Limits --
     const maxPax = selectedVehicle?.max_passengers || 4;
     const baseLuggageLimit = selectedVehicle?.max_luggage || 2;
+    const vehicleSeatLimit = selectedVehicle?.safety_seat_limit || 2;
 
     // Custom Luggage Rules
     // Group A: 經濟四人座, 豪華轎車, 電動專車 ({4:3, 3:3, 2:4, 1:5})

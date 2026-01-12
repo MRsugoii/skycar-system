@@ -190,14 +190,12 @@ export default function DashboardPage() {
                         return {
                             orderId: parsedId,
                             status: st,
-                            type: o.service_type || "專車接送",
+                            type: o.vehicle_type || "專車接送",
                             date: formattedDate,
-                            total: o.total_amount || 0,
+                            total: Number(o.price) || 0,
                             priceBreakdown: o.price_breakdown || {
                                 base: Number(o.price) || 0,
                                 total: Number(o.price) || 0,
-                                category: "平日價",
-                                vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0
                             },
                             detail: {
                                 pickup: o.pickup_address,
@@ -500,7 +498,7 @@ export default function DashboardPage() {
                             onClick={handleLogout}
                             className="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md transition flex items-center gap-2"
                         >
-                            <LogOut size={14} /> 登出 v1.8
+                            <LogOut size={14} /> 登出 v2.0
                         </button>
                     </div>
 
