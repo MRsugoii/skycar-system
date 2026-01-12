@@ -173,7 +173,10 @@ export default function DashboardPage() {
                                     ? o.dropoff_address
                                     : '桃園機場',
                                 carName: o.vehicle_type,
-                                passengers: o.passenger_count,
+                                passengers: {
+                                    adults: o.adult_count || o.passenger_count, // Fallback to total if adult_count missing
+                                    children: o.child_count || 0
+                                },
                                 note: o.note,
                                 pay: '現金',
                                 flight: o.flight_number,
@@ -664,7 +667,7 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                         <KV label="上車地點" value={order.detail.pickup} icon={<MapPin size={16} className="text-gray-400 mt-0.5" />} />
                         <KV label="下車地點" value={order.detail.dropoff} icon={<Navigation size={16} className="text-gray-400 mt-0.5" />} /> {/* Using Note icon as requested */}
                         <KV label="航班/船班" value={order.detail.flight || "—"} />
-                        <KV label="乘客人數" value={`${order.detail.passengers || 0} 人`} />
+                        <KV label="乘客人數" value={typeof order.detail.passengers === 'object' ? `${order.detail.passengers.adults} 位成人 ${order.detail.passengers.children} 位小孩` : `${order.detail.passengers || 0} 位乘客`} />
                         <KV label="兒童座椅" value={order.detail.seats ? `後${order.detail.seats.rear || 0} / 前${order.detail.seats.front || 0} / 增${order.detail.seats.booster || 0}` : '—'} />
                         <KV label="行李件數" value={order.detail.luggage ? `${(order.detail.luggage.s20 || 0) + (order.detail.luggage.s25 || 0) + (order.detail.luggage.s28 || 0)} 件` : '—'} />
                         <KV label="舉牌服務" value={order.detail.signage ? `需要 (${order.detail.signageText || ''})` : '不需要'} />
