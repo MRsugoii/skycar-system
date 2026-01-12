@@ -472,7 +472,7 @@ function VehiclesContent() {
 
   const handleSaveExtraSettings = async () => {
     try {
-      console.log("Starting Extra Settings Save (Server Action)...");
+      console.log("Starting Extra Settings Save (Server Action + Auth)...");
 
       const payload = {
         safety_seat_infant_price: Number(extraSettings.safety_seat_infant_price || 0),
@@ -483,15 +483,22 @@ function VehiclesContent() {
 
       console.log(`Payload: ${JSON.stringify(payload)}`);
 
-      // Call Server Action (Runs on Backend, No CORS)
-      const result = await updateExtraSettingsAction(payload);
+      // Get Current User Session for Auth Token
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("無法驗證使用者身份 (Missing Access Token)");
+      }
+
+      // Call Server Action with Token (Authenticated Backend Request)
+      const result = await updateExtraSettingsAction(payload, session.access_token);
 
       if (!result.success) {
         throw new Error(result.error);
       }
 
       console.log(`SUCCESS! Data: ${JSON.stringify(result.data)}`);
-      alert("額外設定儲存成功 (Server Action)");
+      alert("額外設定儲存成功 (Authenticated v3.3)");
     } catch (e: any) {
       console.error(e);
       console.error(`CATCH ERROR: ${e.message}`);
@@ -1782,7 +1789,7 @@ function VehiclesContent() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-6 max-w-4xl mx-auto">
         <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4">
           <Settings size={20} className="text-blue-600" />
-          額外服務設定 <span className="text-xs text-blue-600 font-bold ml-2">(v3.2 Final)</span>
+          額外服務設定 <span className="text-xs text-blue-600 font-bold ml-2">(v3.3 Auth)</span>
         </h3>
 
         <div className="space-y-8">
