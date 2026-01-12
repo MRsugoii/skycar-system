@@ -247,7 +247,7 @@ export default function DriverDashboard() {
 
             <div className="w-full max-w-[390px] relative z-20 h-full flex flex-col">
                 <PageHeader title="司機帳戶" variant="ghost" showBack={false} />
-                <span className="text-[10px] text-blue-200/80 absolute right-6 top-6">v1.2</span>
+                <span className="text-[10px] text-blue-200/80 absolute right-6 top-6">v1.3</span>
 
                 {/* Welcome Section */}
                 {driver && (
