@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense, Fragment } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { updateExtraSettingsAction } from "@/app/actions"; // Server Action Import
 import { Truck, Ticket, Search, Plus, Edit, Trash2, X, Save, Camera, Image as ImageIcon, MoreHorizontal, AlertCircle, Download, Calendar, FileText, DollarSign, Armchair, Users, Briefcase, Car, Plane, MapPin, Route, ChevronRight, ChevronDown, Check, Settings, Upload } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import * as XLSX from "xlsx";
@@ -471,10 +472,8 @@ function VehiclesContent() {
 
   const handleSaveExtraSettings = async () => {
     try {
-      console.log("Starting Extra Settings Save...");
-      console.log(`Supabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20)}...`);
+      console.log("Starting Extra Settings Save (Server Action)...");
 
-      // Force update logic (Row 0 is confirmed to exist)
       const payload = {
         safety_seat_infant_price: Number(extraSettings.safety_seat_infant_price || 0),
         safety_seat_child_price: Number(extraSettings.safety_seat_child_price || 0),
@@ -484,20 +483,19 @@ function VehiclesContent() {
 
       console.log(`Payload: ${JSON.stringify(payload)}`);
 
-      // Direct Update Row 0 (Skip Upsert check)
-      const { data, error } = await supabase.from('extra_settings').update(payload).eq('id', 0).select();
+      // Call Server Action (Runs on Backend, No CORS)
+      const result = await updateExtraSettingsAction(payload);
 
-      if (error) {
-        console.error(`ERROR: ${error.message} (${error.details})`);
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error);
       }
 
-      console.log(`SUCCESS! Data: ${JSON.stringify(data)}`);
-      alert("額外設定儲存成功");
+      console.log(`SUCCESS! Data: ${JSON.stringify(result.data)}`);
+      alert("額外設定儲存成功 (Server Action)");
     } catch (e: any) {
       console.error(e);
       console.error(`CATCH ERROR: ${e.message}`);
-      alert(`儲存失敗: ${e.message} ${e.details || ''}`);
+      alert(`儲存失敗: ${e.message}`);
     }
   };
 
@@ -1784,7 +1782,7 @@ function VehiclesContent() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-6 max-w-4xl mx-auto">
         <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4">
           <Settings size={20} className="text-blue-600" />
-          額外服務設定 <span className="text-xs text-blue-500 font-normal ml-2">(v3.1 Stable)</span>
+          額外服務設定 <span className="text-xs text-blue-600 font-bold ml-2">(v3.2 Final)</span>
         </h3>
 
         <div className="space-y-8">
