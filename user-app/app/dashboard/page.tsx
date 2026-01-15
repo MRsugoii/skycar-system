@@ -242,7 +242,8 @@ function DashboardContent() {
                 let localOrders = [];
                 try {
                     localOrders = oStr ? JSON.parse(oStr) : [];
-                } catch (e) { console.error("Local orders corrupt", e); }
+                    if (!Array.isArray(localOrders)) localOrders = [];
+                } catch (e) { console.error("Local orders corrupt", e); localOrders = []; }
 
                 // C. Merge Logic (Fix for Consistency)
                 if (list.length > 0) {
@@ -287,8 +288,9 @@ function DashboardContent() {
         const cStr = localStorage.getItem(`coupons_${acc}`);
         if (cStr) {
             try {
-                setCoupons(JSON.parse(cStr));
-            } catch (e) { console.error("Coupons corrupt"); }
+                const parsed = JSON.parse(cStr);
+                setCoupons(Array.isArray(parsed) ? parsed : []);
+            } catch (e) { console.error("Coupons corrupt"); setCoupons([]); }
         } else {
             const now = Date.now();
             const day = 86400000;
