@@ -53,6 +53,7 @@ function PaymentContent() {
 
     // DEMO: Result Simulation
     const [demoResultStatus, setDemoResultStatus] = useState<'success' | 'failure'>('success');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         // Load data
@@ -99,6 +100,7 @@ function PaymentContent() {
     };
 
     const handleSubmit = async () => {
+        if (isSubmitting) return;
         if (!paymentMethod) {
             alert("請選擇付款方式");
             return;
@@ -112,494 +114,499 @@ function PaymentContent() {
             }
         }
 
+    }
+
+    setIsSubmitting(true);
+
+    try {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const nextSerial = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); // 4 digits
+        const orderId = `CH${y}${m}${d}${nextSerial}`;
+
+        const isPickup = basicInfo.type === 'pickup';
+        const pickupAddr = isPickup
+            ? `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`
+            : `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`;
+        const dropoffAddr = isPickup
+            ? `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`
+            : `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`;
+
+        // Determine correct date/time to use
+        const dateStr = basicInfo.pickupTime?.date || basicInfo.flightInfo?.date;
+        const timeStr = basicInfo.pickupTime?.time || basicInfo.flightInfo?.time;
+
+        // Safe date parsing
+        let pickupTime: string;
         try {
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = String(now.getMonth() + 1).padStart(2, '0');
-            const d = String(now.getDate()).padStart(2, '0');
-            const nextSerial = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); // 4 digits
-            const orderId = `CH${y}${m}${d}${nextSerial}`;
-
-            const isPickup = basicInfo.type === 'pickup';
-            const pickupAddr = isPickup
-                ? `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`
-                : `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`;
-            const dropoffAddr = isPickup
-                ? `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`
-                : `${basicInfo.flightInfo?.airport} ${basicInfo.flightInfo?.flightNumber || ''}`;
-
-            // Determine correct date/time to use
-            const dateStr = basicInfo.pickupTime?.date || basicInfo.flightInfo?.date;
-            const timeStr = basicInfo.pickupTime?.time || basicInfo.flightInfo?.time;
-
-            // Safe date parsing
-            let pickupTime: string;
-            try {
-                if (!dateStr || !timeStr) throw new Error("Missing date/time");
-                const d = new Date(`${dateStr}T${timeStr}:00`);
-                if (isNaN(d.getTime())) throw new Error("Invalid date");
-                pickupTime = d.toISOString();
-            } catch (e) {
-                console.error("Date parsing error:", e);
-                pickupTime = new Date().toISOString(); // Fallback to now to prevent crash, or handle explicitly
-            }
-
-            const passengerCount = (rideInfo.passengers?.adults || 0) + (rideInfo.passengers?.children || 0);
-            const luggageCount = (rideInfo.luggage?.s || 0) + (rideInfo.luggage?.m || 0) + (rideInfo.luggage?.l || 0);
-            const vehicleName = VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name || 'Unknown';
-
-            let sbUserId = sessionStorage.getItem('supabaseUserId');
-
-            // If missing, attempt to find by phone (in case session cleared or guest logic)
-            if (!sbUserId) {
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('phone', contactInfo.phone)
-                    .single();
-                if (userData?.id) {
-                    sbUserId = userData.id;
-                    sessionStorage.setItem('supabaseUserId', userData.id);
-                }
-            }
-
-            // Get Member Account to tag the order
-            const memberAccount = sessionStorage.getItem('memberAccount');
-            const accountTag = memberAccount ? `[Account: ${memberAccount}] ` : "";
-
-            const priceBreakdown = {
-                base: prices.base,
-                vehicleType: prices.modelSurcharge,
-                night: prices.nightSurcharge,
-                holiday: prices.holidayMatrixSurcharge || 0,
-                category: prices.category || "平日價",
-                carSeat: prices.safetySeats,
-                signage: prices.signboard,
-                area: prices.remoteSurcharge,
-                route: prices.routeSurcharge,
-                extraStop: prices.extraStopSurcharge,
-                offPeak: prices.discount,
-                coupon: prices.couponDiscount,
-                total: prices.total
-            };
-
-            const { error } = await supabase.from('orders').insert({
-                id: orderId, // Revert to using custom CH... ID
-                user_id: sbUserId, // Use the detected user ID
-                contact_name: contactInfo.name,
-                contact_phone: contactInfo.phone,
-                pickup_address: pickupAddr,
-                dropoff_address: dropoffAddr,
-                pickup_time: pickupTime,
-                passenger_count: passengerCount,
-                luggage_count: luggageCount,
-                vehicle_type: vehicleName,
-                price: prices.total,
-                price_breakdown: priceBreakdown,
-                status: 'new',
-                note: accountTag + (rideInfo.notes || "")
-            });
-
-            if (error) {
-                console.error('Supabase Insert Error:', error);
-                alert("建立訂單時發生錯誤: " + (error.message || "請檢查網路連線"));
-                return;
-            }
-
-            // [Demo Fix] Save Order ID to LocalStorage so Dashboard can find it without User Auth
-            const existing = JSON.parse(localStorage.getItem('demo_guest_orders') || '[]');
-            localStorage.setItem('demo_guest_orders', JSON.stringify([...existing, orderId]));
-
-            // Also keep local storage for Result page display if needed, or just rely on URL params
-            // We'll keep the minimal local storage just in case the result page needs it, but mostly we rely on Supabase now.
-            // keeping this for legacy demo compatibility if result page reads it:
-            const newOrder = {
-                orderId: orderId,
-                status: 'pending',
-                total: prices.total,
-                // ... other fields if needed by Result page
-            };
-            const account = memberAccount;
-            if (account) {
-                const key = `orders_${account}`;
-                const existingOrders = JSON.parse(localStorage.getItem(key) || '[]');
-                localStorage.setItem(key, JSON.stringify([newOrder, ...existingOrders]));
-            } else {
-                const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-                localStorage.setItem('orders', JSON.stringify([newOrder, ...existingOrders]));
-            }
-
-
-            if (demoResultStatus === 'success') {
-                alert("付款成功！訂單已成立。");
-            } else {
-                // If simulating failure, we might still want the order specifically for the 'retry' flow, or not.
-                // For this demo, let's assume the order is created but payment 'failed'.
-            }
-            router.push(`/booking/result?status=${demoResultStatus}&orderId=${orderId}`);
-
-        } catch (err: any) {
-            console.error("Submit Error:", err);
-            alert("訂單建立失敗: " + (err.message || "未知錯誤"));
+            if (!dateStr || !timeStr) throw new Error("Missing date/time");
+            const d = new Date(`${dateStr}T${timeStr}:00`);
+            if (isNaN(d.getTime())) throw new Error("Invalid date");
+            pickupTime = d.toISOString();
+        } catch (e) {
+            console.error("Date parsing error:", e);
+            pickupTime = new Date().toISOString(); // Fallback to now to prevent crash, or handle explicitly
         }
-    };
 
-    if (!isLoaded) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
+        const passengerCount = (rideInfo.passengers?.adults || 0) + (rideInfo.passengers?.children || 0);
+        const luggageCount = (rideInfo.luggage?.s || 0) + (rideInfo.luggage?.m || 0) + (rideInfo.luggage?.l || 0);
+        const vehicleName = VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name || 'Unknown';
 
-    const isPickup = basicInfo.type === 'pickup';
-    const locationStr = `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`;
-    const extraLocations = basicInfo.locations.slice(1).length;
-    const vehicleName = VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name;
+        let sbUserId = sessionStorage.getItem('supabaseUserId');
 
-    return (
-        <div className="min-h-screen bg-gray-50 pb-36 text-gray-900 max-w-[420px] mx-auto relative overflow-hidden flex flex-col">
+        // If missing, attempt to find by phone (in case session cleared or guest logic)
+        if (!sbUserId) {
+            const { data: userData } = await supabase
+                .from('users')
+                .select('id')
+                .eq('phone', contactInfo.phone)
+                .single();
+            if (userData?.id) {
+                sbUserId = userData.id;
+                sessionStorage.setItem('supabaseUserId', userData.id);
+            }
+        }
 
-            {/* Header */}
-            <div className="bg-blue-600 px-4 pt-8 pb-10 text-white rounded-b-[40px] shadow-lg relative z-0 mb-[-40px]">
+        // Get Member Account to tag the order
+        const memberAccount = sessionStorage.getItem('memberAccount');
+        const accountTag = memberAccount ? `[Account: ${memberAccount}] ` : "";
+
+        const priceBreakdown = {
+            base: prices.base,
+            vehicleType: prices.modelSurcharge,
+            night: prices.nightSurcharge,
+            holiday: prices.holidayMatrixSurcharge || 0,
+            category: prices.category || "平日價",
+            carSeat: prices.safetySeats,
+            signage: prices.signboard,
+            area: prices.remoteSurcharge,
+            route: prices.routeSurcharge,
+            extraStop: prices.extraStopSurcharge,
+            offPeak: prices.discount,
+            coupon: prices.couponDiscount,
+            total: prices.total
+        };
+
+        const { error } = await supabase.from('orders').insert({
+            id: orderId, // Revert to using custom CH... ID
+            user_id: sbUserId, // Use the detected user ID
+            contact_name: contactInfo.name,
+            contact_phone: contactInfo.phone,
+            pickup_address: pickupAddr,
+            dropoff_address: dropoffAddr,
+            pickup_time: pickupTime,
+            passenger_count: passengerCount,
+            luggage_count: luggageCount,
+            vehicle_type: vehicleName,
+            price: prices.total,
+            price_breakdown: priceBreakdown,
+            status: 'new',
+            note: accountTag + (rideInfo.notes || "")
+        });
+
+        if (error) {
+            console.error('Supabase Insert Error:', error);
+            alert("建立訂單時發生錯誤: " + (error.message || "請檢查網路連線"));
+            return;
+        }
+
+        // [Demo Fix] Save Order ID to LocalStorage so Dashboard can find it without User Auth
+        const existing = JSON.parse(localStorage.getItem('demo_guest_orders') || '[]');
+        localStorage.setItem('demo_guest_orders', JSON.stringify([...existing, orderId]));
+
+        // Also keep local storage for Result page display if needed, or just rely on URL params
+        // We'll keep the minimal local storage just in case the result page needs it, but mostly we rely on Supabase now.
+        // keeping this for legacy demo compatibility if result page reads it:
+        const newOrder = {
+            orderId: orderId,
+            status: 'pending',
+            total: prices.total,
+            // ... other fields if needed by Result page
+        };
+        const account = memberAccount;
+        if (account) {
+            const key = `orders_${account}`;
+            const existingOrders = JSON.parse(localStorage.getItem(key) || '[]');
+            localStorage.setItem(key, JSON.stringify([newOrder, ...existingOrders]));
+        } else {
+            const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+            localStorage.setItem('orders', JSON.stringify([newOrder, ...existingOrders]));
+        }
+
+
+        if (demoResultStatus === 'success') {
+            alert("付款成功！訂單已成立。");
+        } else {
+            // If simulating failure, we might still want the order specifically for the 'retry' flow, or not.
+            // For this demo, let's assume the order is created but payment 'failed'.
+        }
+        router.push(`/booking/result?status=${demoResultStatus}&orderId=${orderId}`);
+
+    } catch (err: any) {
+        console.error("Submit Error:", err);
+        alert("訂單建立失敗: " + (err.message || "未知錯誤"));
+        setIsSubmitting(false);
+    }
+};
+
+if (!isLoaded) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
+
+const isPickup = basicInfo.type === 'pickup';
+const locationStr = `${basicInfo.locations[0].city}${basicInfo.locations[0].district}${basicInfo.locations[0].address}`;
+const extraLocations = basicInfo.locations.slice(1).length;
+const vehicleName = VEHICLES.find(v => v.id === rideInfo.vehicleId)?.name;
+
+return (
+    <div className="min-h-screen bg-gray-50 pb-36 text-gray-900 max-w-[420px] mx-auto relative overflow-hidden flex flex-col">
+
+        {/* Header */}
+        <div className="bg-blue-600 px-4 pt-8 pb-10 text-white rounded-b-[40px] shadow-lg relative z-0 mb-[-40px]">
+            <button
+                onClick={() => router.push('/booking/confirmation')}
+                className="absolute left-6 top-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition"
+            >
+                <ChevronLeft size={24} className="text-white" />
+            </button>
+            <h1 className="text-lg font-bold text-center mt-2">付款頁面</h1>
+        </div>
+
+        <div className="px-4 relative z-10 pt-4 space-y-4">
+
+            {/* 1. Collapsible Order Details */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                 <button
-                    onClick={() => router.push('/booking/confirmation')}
-                    className="absolute left-6 top-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition"
+                    onClick={() => setIsOrderDetailsOpen(!isOrderDetailsOpen)}
+                    className="w-full flex items-center justify-between p-6 bg-white hover:bg-gray-50 transition"
                 >
-                    <ChevronLeft size={24} className="text-white" />
+                    <div className="flex items-center gap-3">
+                        <div className="font-bold text-gray-900 text-lg">訂單明細</div>
+                    </div>
+                    {isOrderDetailsOpen ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
                 </button>
-                <h1 className="text-lg font-bold text-center mt-2">付款頁面</h1>
-            </div>
 
-            <div className="px-4 relative z-10 pt-4 space-y-4">
-
-                {/* 1. Collapsible Order Details */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <button
-                        onClick={() => setIsOrderDetailsOpen(!isOrderDetailsOpen)}
-                        className="w-full flex items-center justify-between p-6 bg-white hover:bg-gray-50 transition"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="font-bold text-gray-900 text-lg">訂單明細</div>
-                        </div>
-                        {isOrderDetailsOpen ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
-                    </button>
-
-                    {isOrderDetailsOpen && (
-                        <div className="px-6 pb-6 pt-0 border-t border-gray-100">
-                            <div className="py-4 space-y-1">
-                                <div className="divide-y divide-gray-100">
-                                    <SummaryRowSimple label="乘客姓名" value={contactInfo.name} />
-                                    <SummaryRowSimple label="手機號碼" value={contactInfo.phone} />
-                                    <SummaryRowSimple label="Email" value={contactInfo.email} />
-                                </div>
-
-                                <div className="my-2 border-t border-dashed border-gray-200"></div>
-
-                                <div className="divide-y divide-gray-100">
-                                    <SummaryRowSimple label="服務類型" value={isPickup ? "回國接機 / 港口接送" : "出國送機 / 送到港口"} />
-                                    <SummaryRowSimple
-                                        label="起點"
-                                        value={isPickup
-                                            ? `${basicInfo?.flightInfo?.airport} ${basicInfo?.flightInfo?.flightNumber ? `(${basicInfo?.flightInfo?.flightNumber})` : ''}`
-                                            : locationStr + (extraLocations > 0 ? ` (+${extraLocations}點)` : '')
-                                        }
-                                    />
-                                    <SummaryRowSimple
-                                        label="終點"
-                                        value={!isPickup
-                                            ? `${basicInfo?.flightInfo?.airport} ${basicInfo?.flightInfo?.flightNumber ? `(${basicInfo?.flightInfo?.flightNumber})` : ''}`
-                                            : locationStr + (extraLocations > 0 ? ` (+${extraLocations}點)` : '')
-                                        }
-                                    />
-                                    {!isPickup && (
-                                        <SummaryRowSimple label="指定乘車時間" value={`${basicInfo?.pickupTime?.date} ${basicInfo?.pickupTime?.time}`} />
-                                    )}
-                                    <SummaryRowSimple
-                                        label={isPickup ? "航班抵達" : "航班起飛"}
-                                        value={`${basicInfo?.flightInfo?.date} ${basicInfo?.flightInfo?.time}`}
-                                    />
-                                    <SummaryRowSimple label="航班 / 船班" value={basicInfo?.flightInfo?.flightNumber} />
-                                </div>
-
-                                <div className="my-2 border-t border-dashed border-gray-200"></div>
-
-                                <div className="divide-y divide-gray-100">
-                                    <SummaryRowSimple label="乘客人數" value={`${rideInfo?.passengers?.adults || 0}大 ${rideInfo?.passengers?.children || 0}小`} />
-                                    <SummaryRowSimple label="行李件數" value={`${(rideInfo?.luggage?.s || 0) + (rideInfo?.luggage?.m || 0) + (rideInfo?.luggage?.l || 0)} 件`} />
-                                    <SummaryRowSimple
-                                        label="兒童座椅"
-                                        value={
-                                            (!rideInfo?.seats?.infant && !rideInfo?.seats?.child && !rideInfo?.seats?.booster)
-                                                ? "—"
-                                                : [
-                                                    (rideInfo?.seats?.infant > 0 ? `嬰兒座椅(0-1歲) ${rideInfo?.seats?.infant}張` : ''),
-                                                    (rideInfo?.seats?.child > 0 ? `幼童座椅(1-4歲) ${rideInfo?.seats?.child}張` : ''),
-                                                    (rideInfo?.seats?.booster > 0 ? `學童座椅(4-7歲) ${rideInfo?.seats?.booster}張` : '')
-                                                ].filter(Boolean).join(' ; ')
-                                        }
-                                    />
-                                    <SummaryRowSimple label="選擇車型" value={vehicleName || '-'} />
-                                    <SummaryRowSimple label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要 (${rideInfo?.signboard?.title})` : "不需要"} />
-                                    <SummaryRowSimple label="備註" value={rideInfo?.notes || "-"} />
-                                </div>
+                {isOrderDetailsOpen && (
+                    <div className="px-6 pb-6 pt-0 border-t border-gray-100">
+                        <div className="py-4 space-y-1">
+                            <div className="divide-y divide-gray-100">
+                                <SummaryRowSimple label="乘客姓名" value={contactInfo.name} />
+                                <SummaryRowSimple label="手機號碼" value={contactInfo.phone} />
+                                <SummaryRowSimple label="Email" value={contactInfo.email} />
                             </div>
-                        </div>
-                    )}
-                </div>
 
-                {/* 2. Collapsible Price Details */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <button
-                        onClick={() => setIsPriceDetailsOpen(!isPriceDetailsOpen)}
-                        className="w-full flex items-center justify-between p-6 bg-white hover:bg-gray-50 transition"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="font-bold text-gray-900 text-lg">金額詳情</div>
-                            <div className="text-blue-600 font-bold text-lg ml-auto mr-2">
-                                ${prices.total.toLocaleString()}
-                            </div>
-                        </div>
-                        {isPriceDetailsOpen ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
-                    </button>
+                            <div className="my-2 border-t border-dashed border-gray-200"></div>
 
-                    {isPriceDetailsOpen && (
-                        <div className="px-6 pb-6 pt-0 border-t border-gray-100">
-                            <div className="py-4 space-y-1">
-                                <div className="divide-y divide-gray-100">
-                                    <PriceRow label="車輛價格" price={prices.base + (prices.modelSurcharge || 0)} isShowZero />
-                                    <PriceRow label="偏遠地區加價" price={prices.remoteSurcharge} isShowZero />
-                                    <PriceRow label="特定路段加價" price={prices.routeSurcharge} isShowZero />
-                                    <PriceRow label="多點計費" price={prices.extraStopSurcharge} isShowZero />
-                                    <PriceRow label="夜間加成" price={prices.nightSurcharge} isShowZero />
-                                    <PriceRow label="離峰優惠" price={-prices.discount} isDiscount isShowZero />
-                                    <PriceRow label="安全座椅" price={prices.safetySeats} isShowZero />
-                                    <PriceRow label="舉牌服務" price={prices.signboard} isShowZero />
-                                    <PriceRow label="優惠券" price={-prices.couponDiscount} isDiscount isShowZero />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* 3. Invoice Info */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4">
-                    <h2 className="text-lg font-bold text-gray-900">發票資訊</h2>
-                    <div className="relative">
-                        <select
-                            value={invoiceType}
-                            onChange={(e) => {
-                                setInvoiceType(e.target.value);
-                                setInvoiceValue("");
-                            }}
-                            className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 appearance-none font-bold text-gray-700 outline-none focus:border-blue-500"
-                        >
-                            <option value="electronic">電子發票</option>
-                            <option value="mobile">手機載具</option>
-                            <option value="taxId">統編電子發票</option>
-                            <option value="donation">捐贈 (創世基金會)</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                    </div>
-                    {invoiceType === 'taxId' && (
-                        <input
-                            type="text"
-                            placeholder="請輸入統一編號"
-                            value={invoiceValue}
-                            onChange={(e) => setInvoiceValue(e.target.value)}
-                            className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-medium"
-                        />
-                    )}
-                    {invoiceType === 'mobile' && (
-                        <input
-                            type="text"
-                            placeholder="請輸入手機載具 (例如 /ABC1234)"
-                            value={invoiceValue}
-                            onChange={(e) => setInvoiceValue(e.target.value)}
-                            className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-medium"
-                        />
-                    )}
-                </div>
-
-                {/* 4. Payment Details */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4">
-                    <h2 className="text-lg font-bold text-gray-900">付款資訊</h2>
-
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">信用卡號碼</label>
-                            <div className="">
-                                <input
-                                    type="text"
-                                    placeholder="0000 0000 0000 0000"
-                                    value={cardNumber}
-                                    onChange={(e) => {
-                                        const v = e.target.value.replace(/\D/g, '').slice(0, 16);
-                                        setCardNumber(v.replace(/(\d{4})(?=\d)/g, '$1 '));
-                                        setPaymentMethod('creditcard');
-                                    }}
-                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
+                            <div className="divide-y divide-gray-100">
+                                <SummaryRowSimple label="服務類型" value={isPickup ? "回國接機 / 港口接送" : "出國送機 / 送到港口"} />
+                                <SummaryRowSimple
+                                    label="起點"
+                                    value={isPickup
+                                        ? `${basicInfo?.flightInfo?.airport} ${basicInfo?.flightInfo?.flightNumber ? `(${basicInfo?.flightInfo?.flightNumber})` : ''}`
+                                        : locationStr + (extraLocations > 0 ? ` (+${extraLocations}點)` : '')
+                                    }
                                 />
+                                <SummaryRowSimple
+                                    label="終點"
+                                    value={!isPickup
+                                        ? `${basicInfo?.flightInfo?.airport} ${basicInfo?.flightInfo?.flightNumber ? `(${basicInfo?.flightInfo?.flightNumber})` : ''}`
+                                        : locationStr + (extraLocations > 0 ? ` (+${extraLocations}點)` : '')
+                                    }
+                                />
+                                {!isPickup && (
+                                    <SummaryRowSimple label="指定乘車時間" value={`${basicInfo?.pickupTime?.date} ${basicInfo?.pickupTime?.time}`} />
+                                )}
+                                <SummaryRowSimple
+                                    label={isPickup ? "航班抵達" : "航班起飛"}
+                                    value={`${basicInfo?.flightInfo?.date} ${basicInfo?.flightInfo?.time}`}
+                                />
+                                <SummaryRowSimple label="航班 / 船班" value={basicInfo?.flightInfo?.flightNumber} />
                             </div>
-                        </div>
 
-                        <div className="flex gap-4">
-                            <div className="space-y-2 w-1/2">
-                                <label className="text-sm font-bold text-gray-700">有效期限</label>
-                                <input
-                                    type="text"
-                                    placeholder="MM/YY"
-                                    value={cardExpiry}
-                                    onChange={(e) => {
-                                        let v = e.target.value.replace(/\D/g, '').slice(0, 4);
-                                        if (v.length >= 2) v = v.slice(0, 2) + '/' + v.slice(2);
-                                        setCardExpiry(v);
-                                    }}
-                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
+                            <div className="my-2 border-t border-dashed border-gray-200"></div>
+
+                            <div className="divide-y divide-gray-100">
+                                <SummaryRowSimple label="乘客人數" value={`${rideInfo?.passengers?.adults || 0}大 ${rideInfo?.passengers?.children || 0}小`} />
+                                <SummaryRowSimple label="行李件數" value={`${(rideInfo?.luggage?.s || 0) + (rideInfo?.luggage?.m || 0) + (rideInfo?.luggage?.l || 0)} 件`} />
+                                <SummaryRowSimple
+                                    label="兒童座椅"
+                                    value={
+                                        (!rideInfo?.seats?.infant && !rideInfo?.seats?.child && !rideInfo?.seats?.booster)
+                                            ? "—"
+                                            : [
+                                                (rideInfo?.seats?.infant > 0 ? `嬰兒座椅(0-1歲) ${rideInfo?.seats?.infant}張` : ''),
+                                                (rideInfo?.seats?.child > 0 ? `幼童座椅(1-4歲) ${rideInfo?.seats?.child}張` : ''),
+                                                (rideInfo?.seats?.booster > 0 ? `學童座椅(4-7歲) ${rideInfo?.seats?.booster}張` : '')
+                                            ].filter(Boolean).join(' ; ')
+                                    }
                                 />
-                            </div>
-                            <div className="space-y-2 w-1/2">
-                                <label className="text-sm font-bold text-gray-700">CVC / CVV</label>
-                                <input
-                                    type="text"
-                                    placeholder="123"
-                                    value={cardCvc}
-                                    onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
-                                />
+                                <SummaryRowSimple label="選擇車型" value={vehicleName || '-'} />
+                                <SummaryRowSimple label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要 (${rideInfo?.signboard?.title})` : "不需要"} />
+                                <SummaryRowSimple label="備註" value={rideInfo?.notes || "-"} />
                             </div>
                         </div>
                     </div>
-                </div>
-
-                {/* 5. Member / Guest Section */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4">
-                    {!memberAccount ? (
-                        <>
-                            <div className="text-center text-gray-500 text-sm mb-2">付款前請先登入或註冊，以便套用優惠與查詢訂單。</div>
-                            <button
-                                onClick={() => setShowLoginModal(true)}
-                                className="w-full py-3 bg-blue-600 rounded-xl text-white font-bold text-lg shadow-lg hover:bg-blue-700 transition"
-                            >
-                                會員登入
-                            </button>
-                            <button
-                                onClick={handleRegisterClick}
-                                className="w-full py-3 bg-white border border-blue-600 rounded-xl text-blue-600 font-bold text-lg hover:bg-blue-50 transition"
-                            >
-                                用戶註冊
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-2">
-                                <div className="bg-blue-50 px-4 py-2 rounded-full text-blue-800 font-bold text-sm flex items-center gap-2">
-                                    <User size={16} />
-                                    會員：{memberAccount}
-                                </div>
-                                <button
-                                    onClick={handleLogoutMock}
-                                    className="text-blue-600 font-bold text-sm px-4 py-2 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center gap-1"
-                                >
-                                    <LogOut size={14} />
-                                    登出
-                                </button>
-                            </div>
-
-                            <h3 className="text-lg font-bold text-gray-900 mt-2">優惠券</h3>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="輸入折抵碼 (如 WELCOME200)"
-                                    value={couponCode}
-                                    onChange={(e) => setCouponCode(e.target.value)}
-                                    className="flex-1 p-3 border border-gray-300 rounded-xl text-base outline-none focus:border-blue-500 uppercase"
-                                />
-                            </div>
-                            <button className="w-full py-3 bg-blue-600 rounded-xl text-white font-bold text-lg hover:bg-blue-700 transition shadow-md">
-                                套用
-                            </button>
-                            <p className="text-xs text-gray-400">示範可用：WELCOME200、VIP500；或輸入數字（例：300）。</p>
-                        </>
-                    )}
-                </div>
-
+                )}
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 z-20 flex flex-col gap-3 items-center">
-
-                {/* Demo Toggle */}
-                <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-full border border-gray-200">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Demo Result</span>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${demoResultStatus === 'success' ? 'border-green-500 bg-green-500' : 'border-gray-300 bg-white'}`}>
-                            {demoResultStatus === 'success' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+            {/* 2. Collapsible Price Details */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                <button
+                    onClick={() => setIsPriceDetailsOpen(!isPriceDetailsOpen)}
+                    className="w-full flex items-center justify-between p-6 bg-white hover:bg-gray-50 transition"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="font-bold text-gray-900 text-lg">金額詳情</div>
+                        <div className="text-blue-600 font-bold text-lg ml-auto mr-2">
+                            ${prices.total.toLocaleString()}
                         </div>
-                        <span className={`text-sm font-bold ${demoResultStatus === 'success' ? 'text-green-600' : 'text-gray-500'}`}>成功</span>
-                        <input type="radio" className="hidden" checked={demoResultStatus === 'success'} onChange={() => setDemoResultStatus('success')} />
-                    </label>
-                    <div className="w-px h-4 bg-gray-300"></div>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${demoResultStatus === 'failure' ? 'border-red-500 bg-red-500' : 'border-gray-300 bg-white'}`}>
-                            {demoResultStatus === 'failure' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                        </div>
-                        <span className={`text-sm font-bold ${demoResultStatus === 'failure' ? 'text-red-600' : 'text-gray-500'}`}>失敗</span>
-                        <input type="radio" className="hidden" checked={demoResultStatus === 'failure'} onChange={() => setDemoResultStatus('failure')} />
-                    </label>
-                </div>
+                    </div>
+                    {isPriceDetailsOpen ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
+                </button>
 
-                <div className="w-full max-w-[420px]">
-                    <button
-                        onClick={handleSubmit}
-                        className={`w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg transition flex items-center justify-center gap-2 ${paymentMethod
-                            ? 'bg-blue-600 shadow-blue-200 hover:bg-blue-700 active:scale-95'
-                            : 'bg-gray-300 cursor-not-allowed'
-                            }`}
-                        disabled={!paymentMethod}
+                {isPriceDetailsOpen && (
+                    <div className="px-6 pb-6 pt-0 border-t border-gray-100">
+                        <div className="py-4 space-y-1">
+                            <div className="divide-y divide-gray-100">
+                                <PriceRow label="車輛價格" price={prices.base + (prices.modelSurcharge || 0)} isShowZero />
+                                <PriceRow label="偏遠地區加價" price={prices.remoteSurcharge} isShowZero />
+                                <PriceRow label="特定路段加價" price={prices.routeSurcharge} isShowZero />
+                                <PriceRow label="多點計費" price={prices.extraStopSurcharge} isShowZero />
+                                <PriceRow label="夜間加成" price={prices.nightSurcharge} isShowZero />
+                                <PriceRow label="離峰優惠" price={-prices.discount} isDiscount isShowZero />
+                                <PriceRow label="安全座椅" price={prices.safetySeats} isShowZero />
+                                <PriceRow label="舉牌服務" price={prices.signboard} isShowZero />
+                                <PriceRow label="優惠券" price={-prices.couponDiscount} isDiscount isShowZero />
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 3. Invoice Info */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4">
+                <h2 className="text-lg font-bold text-gray-900">發票資訊</h2>
+                <div className="relative">
+                    <select
+                        value={invoiceType}
+                        onChange={(e) => {
+                            setInvoiceType(e.target.value);
+                            setInvoiceValue("");
+                        }}
+                        className="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 appearance-none font-bold text-gray-700 outline-none focus:border-blue-500"
                     >
-                        確認付款
-                    </button>
+                        <option value="electronic">電子發票</option>
+                        <option value="mobile">手機載具</option>
+                        <option value="taxId">統編電子發票</option>
+                        <option value="donation">捐贈 (創世基金會)</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                </div>
+                {invoiceType === 'taxId' && (
+                    <input
+                        type="text"
+                        placeholder="請輸入統一編號"
+                        value={invoiceValue}
+                        onChange={(e) => setInvoiceValue(e.target.value)}
+                        className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-medium"
+                    />
+                )}
+                {invoiceType === 'mobile' && (
+                    <input
+                        type="text"
+                        placeholder="請輸入手機載具 (例如 /ABC1234)"
+                        value={invoiceValue}
+                        onChange={(e) => setInvoiceValue(e.target.value)}
+                        className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-medium"
+                    />
+                )}
+            </div>
+
+            {/* 4. Payment Details */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4">
+                <h2 className="text-lg font-bold text-gray-900">付款資訊</h2>
+
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-gray-700">信用卡號碼</label>
+                        <div className="">
+                            <input
+                                type="text"
+                                placeholder="0000 0000 0000 0000"
+                                value={cardNumber}
+                                onChange={(e) => {
+                                    const v = e.target.value.replace(/\D/g, '').slice(0, 16);
+                                    setCardNumber(v.replace(/(\d{4})(?=\d)/g, '$1 '));
+                                    setPaymentMethod('creditcard');
+                                }}
+                                className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <div className="space-y-2 w-1/2">
+                            <label className="text-sm font-bold text-gray-700">有效期限</label>
+                            <input
+                                type="text"
+                                placeholder="MM/YY"
+                                value={cardExpiry}
+                                onChange={(e) => {
+                                    let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                    if (v.length >= 2) v = v.slice(0, 2) + '/' + v.slice(2);
+                                    setCardExpiry(v);
+                                }}
+                                className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
+                            />
+                        </div>
+                        <div className="space-y-2 w-1/2">
+                            <label className="text-sm font-bold text-gray-700">CVC / CVV</label>
+                            <input
+                                type="text"
+                                placeholder="123"
+                                value={cardCvc}
+                                onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                                className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 font-mono text-lg"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Login Modal */}
-            {showLoginModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl w-full max-w-sm p-8 relative shadow-2xl animate-in fade-in zoom-in duration-200">
+            {/* 5. Member / Guest Section */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4">
+                {!memberAccount ? (
+                    <>
+                        <div className="text-center text-gray-500 text-sm mb-2">付款前請先登入或註冊，以便套用優惠與查詢訂單。</div>
                         <button
-                            onClick={() => setShowLoginModal(false)}
-                            className="absolute right-4 top-4 p-2 hover:bg-gray-100 rounded-full transition"
+                            onClick={() => setShowLoginModal(true)}
+                            className="w-full py-3 bg-blue-600 rounded-xl text-white font-bold text-lg shadow-lg hover:bg-blue-700 transition"
                         >
-                            <X size={24} className="text-gray-500" />
+                            會員登入
                         </button>
-                        <div className="text-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-900">會員登入</h2>
-                        </div>
-                        <form onSubmit={handleLoginSubmit} className="space-y-6">
-                            <div className="space-y-2 text-left">
-                                <label className="font-bold text-gray-700">帳號</label>
-                                <input
-                                    type="text"
-                                    placeholder="身分證字號"
-                                    value={loginId}
-                                    onChange={(e) => setLoginId(e.target.value)}
-                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-lg"
-                                />
+                        <button
+                            onClick={handleRegisterClick}
+                            className="w-full py-3 bg-white border border-blue-600 rounded-xl text-blue-600 font-bold text-lg hover:bg-blue-50 transition"
+                        >
+                            用戶註冊
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-2">
+                            <div className="bg-blue-50 px-4 py-2 rounded-full text-blue-800 font-bold text-sm flex items-center gap-2">
+                                <User size={16} />
+                                會員：{memberAccount}
                             </div>
-                            <div className="space-y-2 text-left">
-                                <label className="font-bold text-gray-700">密碼</label>
-                                <input
-                                    type="password"
-                                    placeholder="請輸入密碼"
-                                    value={loginPwd}
-                                    onChange={(e) => setLoginPwd(e.target.value)}
-                                    className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-lg"
-                                />
-                            </div>
-                            <button type="submit" className="w-full py-4 bg-blue-600 text-white font-bold text-xl rounded-xl shadow-lg hover:bg-blue-700 transition">
-                                登入
+                            <button
+                                onClick={handleLogoutMock}
+                                className="text-blue-600 font-bold text-sm px-4 py-2 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center gap-1"
+                            >
+                                <LogOut size={14} />
+                                登出
                             </button>
-                        </form>
-                    </div>
-                </div>
-            )}
+                        </div>
+
+                        <h3 className="text-lg font-bold text-gray-900 mt-2">優惠券</h3>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="輸入折抵碼 (如 WELCOME200)"
+                                value={couponCode}
+                                onChange={(e) => setCouponCode(e.target.value)}
+                                className="flex-1 p-3 border border-gray-300 rounded-xl text-base outline-none focus:border-blue-500 uppercase"
+                            />
+                        </div>
+                        <button className="w-full py-3 bg-blue-600 rounded-xl text-white font-bold text-lg hover:bg-blue-700 transition shadow-md">
+                            套用
+                        </button>
+                        <p className="text-xs text-gray-400">示範可用：WELCOME200、VIP500；或輸入數字（例：300）。</p>
+                    </>
+                )}
+            </div>
 
         </div>
-    );
+
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 z-20 flex flex-col gap-3 items-center">
+
+            {/* Demo Toggle */}
+            <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-full border border-gray-200">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Demo Result</span>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${demoResultStatus === 'success' ? 'border-green-500 bg-green-500' : 'border-gray-300 bg-white'}`}>
+                        {demoResultStatus === 'success' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                    </div>
+                    <span className={`text-sm font-bold ${demoResultStatus === 'success' ? 'text-green-600' : 'text-gray-500'}`}>成功</span>
+                    <input type="radio" className="hidden" checked={demoResultStatus === 'success'} onChange={() => setDemoResultStatus('success')} />
+                </label>
+                <div className="w-px h-4 bg-gray-300"></div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${demoResultStatus === 'failure' ? 'border-red-500 bg-red-500' : 'border-gray-300 bg-white'}`}>
+                        {demoResultStatus === 'failure' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                    </div>
+                    <span className={`text-sm font-bold ${demoResultStatus === 'failure' ? 'text-red-600' : 'text-gray-500'}`}>失敗</span>
+                    <input type="radio" className="hidden" checked={demoResultStatus === 'failure'} onChange={() => setDemoResultStatus('failure')} />
+                </label>
+            </div>
+
+            <div className="w-full max-w-[420px]">
+                <button
+                    onClick={handleSubmit}
+                    className={`w-full py-3.5 rounded-xl font-bold text-lg text-white shadow-lg transition flex items-center justify-center gap-2 ${paymentMethod && !isSubmitting
+                        ? 'bg-blue-600 shadow-blue-200 hover:bg-blue-700 active:scale-95'
+                        : 'bg-gray-300 cursor-not-allowed'
+                        }`}
+                    disabled={!paymentMethod || isSubmitting}
+                >
+                    {isSubmitting ? '處理中...' : '確認付款'}
+                </button>
+            </div>
+        </div>
+
+        {/* Login Modal */}
+        {showLoginModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="bg-white rounded-3xl w-full max-w-sm p-8 relative shadow-2xl animate-in fade-in zoom-in duration-200">
+                    <button
+                        onClick={() => setShowLoginModal(false)}
+                        className="absolute right-4 top-4 p-2 hover:bg-gray-100 rounded-full transition"
+                    >
+                        <X size={24} className="text-gray-500" />
+                    </button>
+                    <div className="text-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900">會員登入</h2>
+                    </div>
+                    <form onSubmit={handleLoginSubmit} className="space-y-6">
+                        <div className="space-y-2 text-left">
+                            <label className="font-bold text-gray-700">帳號</label>
+                            <input
+                                type="text"
+                                placeholder="身分證字號"
+                                value={loginId}
+                                onChange={(e) => setLoginId(e.target.value)}
+                                className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-lg"
+                            />
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <label className="font-bold text-gray-700">密碼</label>
+                            <input
+                                type="password"
+                                placeholder="請輸入密碼"
+                                value={loginPwd}
+                                onChange={(e) => setLoginPwd(e.target.value)}
+                                className="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-lg"
+                            />
+                        </div>
+                        <button type="submit" className="w-full py-4 bg-blue-600 text-white font-bold text-xl rounded-xl shadow-lg hover:bg-blue-700 transition">
+                            登入
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )}
+
+    </div>
+);
 }
 
 function SummaryRowSimple({ label, value }: { label: string, value: string }) {

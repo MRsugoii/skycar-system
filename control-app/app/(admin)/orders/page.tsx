@@ -774,9 +774,16 @@ function OrdersContent() {
         o.status.toLowerCase() === currentStatus.toLowerCase() ||
         (currentStatus === 'unconfirmed' && ['pending', 'new', 'unconfirmed'].includes(o.status.toLowerCase())) ||
         (currentStatus === 'confirmed' && ['assigned', 'pickedup', 'pickedup', 'en_route', 'en-route', 'confirmed', 'ing'].includes(o.status.toLowerCase())) ||
-        (currentStatus === 'refund' && (o.status.toLowerCase() === 'refund' || o.status.toLowerCase() === 'refund_pending')) ||
+        // Explicitly check for refunded statuses in completed tab
+        (currentStatus === 'completed' && ['completed', 'refunded', 'refund_rejected'].includes(o.status.toLowerCase().trim())) ||
+        (currentStatus === 'refund' && ['refund', 'refund_pending'].includes(o.status.toLowerCase())) ||
         (currentStatus === 'trash' && o.status.toLowerCase() === 'cancelled')
       );
+
+      // Debug Logging (Temporary)
+      if (currentStatus === 'completed' && o.status === 'refunded' && !statusMatch) {
+        console.log("Filter Logic Check Failed:", { id: o.id, status: o.status, currentStatus });
+      }
     }
 
     const nameMatch = o.user.toLowerCase().includes(activeSearch.name.toLowerCase());

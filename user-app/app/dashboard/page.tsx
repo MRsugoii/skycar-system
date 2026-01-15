@@ -501,12 +501,12 @@ function DashboardContent() {
                     </div>
 
                     {/* Logout Button */}
-                    <div className="pt-4 pb-4">
+                    <div className="pt-4 pb-8 flex justify-center">
                         <button
                             onClick={handleLogout}
-                            className="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md transition flex items-center gap-2"
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-500 px-6 py-2 rounded-full text-sm font-medium transition flex items-center gap-2"
                         >
-                            <LogOut size={14} /> 登出 v2.53
+                            <LogOut size={16} /> 登出帳戶 <span className="text-xs opacity-60">v2.54</span>
                         </button>
                     </div>
 
