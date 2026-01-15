@@ -95,16 +95,21 @@ function DashboardContent() {
     const [pwdNew, setPwdNew] = useState('');
     const [pwdNew2, setPwdNew2] = useState('');
 
-    // History Filters
-    const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
-    const [filterMonth, setFilterMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
+    // History Filters (Initialize empty to avoid hydration mismatch)
+    const [filterYear, setFilterYear] = useState('');
+    const [filterMonth, setFilterMonth] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
 
     useEffect(() => {
-        const hour = new Date().getHours();
+        const now = new Date();
+        const hour = now.getHours();
         if (hour >= 6 && hour < 11) setGreeting("早安");
         else if (hour >= 11 && hour < 18) setGreeting("午安");
         else setGreeting("晚安");
+
+        // Set initial date filters on client side only
+        setFilterYear(now.getFullYear().toString());
+        setFilterMonth((now.getMonth() + 1).toString().padStart(2, '0'));
     }, []);
 
     useEffect(() => {
