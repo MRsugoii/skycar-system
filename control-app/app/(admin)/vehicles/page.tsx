@@ -1294,7 +1294,7 @@ function VehiclesContent() {
     setExpandedAirports(Array.from(newExpanded));
   };
 
-  const toggleAirportGroupStatus = (airport: string, currentStatus: boolean, e: React.MouseEvent) => {
+  const toggleAirportGroupStatus = async (airport: string, currentStatus: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
     const newStatus = !currentStatus;
 
@@ -1364,7 +1364,7 @@ function VehiclesContent() {
     }
   };
 
-  const toggleCityGroupStatus = (airport: string, districts: string[], currentStatus: boolean, e: React.MouseEvent) => {
+  const toggleCityGroupStatus = async (airport: string, districts: string[], currentStatus: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
     const newStatus = !currentStatus;
 
