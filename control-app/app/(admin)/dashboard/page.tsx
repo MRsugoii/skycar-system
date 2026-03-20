@@ -111,12 +111,6 @@ export default function DashboardPage() {
                     <p className="text-sm text-gray-500 mt-1">歡迎回來，查看今日的派車狀況。</p>
                 </div>
                 <div className="flex gap-3">
-                    <button
-                        onClick={() => setIsReportModalOpen(true)}
-                        className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm flex items-center gap-2">
-                        <Download size={16} />
-                        下載報表
-                    </button>
                     <Link href="/orders?new=true" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm shadow-blue-200 flex items-center">
                         新增訂單
                     </Link>
@@ -132,9 +126,9 @@ export default function DashboardPage() {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
                 {/* Today's Order Overview */}
-                <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                         <h3 className="text-lg font-semibold text-gray-900">今日訂單狀況 ({new Date().toLocaleDateString()})</h3>
                         <Link href="/orders" className="text-sm text-blue-600 font-medium hover:underline">查看全部</Link>
@@ -144,71 +138,8 @@ export default function DashboardPage() {
                         <StatusCard label="執行中" count={stats.todayOrders.ongoing} color="blue" icon={<Car size={20} />} total={stats.todayOrders.total || 1} />
                         <StatusCard label="已完成" count={stats.todayOrders.completed} color="green" icon={<CheckCircle size={20} />} total={stats.todayOrders.total || 1} />
                     </div>
-                    <div className="px-6 pb-6">
-                        <h4 className="text-sm font-medium text-gray-700 mb-4">系統即時動態</h4>
-                        <div className="space-y-4">
-                            {logs.slice(0, 5).map((log) => (
-                                <div key={log.id} className="flex items-center gap-3 text-sm animate-in slide-in-from-left-2 duration-300">
-                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${log.type === 'success' ? 'bg-green-500' : log.type === 'warning' ? 'bg-orange-500' : log.type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                                    <span className="text-gray-600 flex-1 truncate">{log.text}</span>
-                                    <span className="text-gray-400 text-xs whitespace-nowrap">{log.time}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </div>
 
-                {/* Recent Orders List */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                        <h3 className="text-lg font-semibold text-gray-900">最新訂單</h3>
-                        <button className="p-1 hover:bg-gray-50 rounded text-gray-400">
-                            <MoreHorizontal size={20} />
-                        </button>
-                    </div>
-                    <div className="flex-1 overflow-auto p-2 min-h-[300px]">
-                        {loading ? (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">載入中...</div>
-                        ) : recentOrders.length === 0 ? (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">無最新訂單</div>
-                        ) : (
-                            recentOrders.map((o) => (
-                                <div key={o.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors group cursor-pointer">
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold text-sm bg-blue-100 text-blue-600`}>
-                                            <Car size={18} />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors truncate">{o.route}</p>
-                                            <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                {/* Shorten ID for display */}
-                                                #{o.id.toString().substring(0, 8)}... • {o.time}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right shrink-0 ml-2">
-                                        <p className="text-sm font-bold text-gray-900">${o.price}</p>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${o.status === 'confirmed' || o.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
-                                            o.status === 'pickedUp' ? 'bg-blue-100 text-blue-700' :
-                                                o.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                    'bg-gray-100 text-gray-600'
-                                            }`}>
-                                            {o.status === 'confirmed' ? '待執行' :
-                                                o.status === 'assigned' ? '已派單' :
-                                                    o.status === 'pickedUp' ? '進行中' :
-                                                        o.status === 'completed' ? '已完成' : o.status}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                    <div className="p-4 border-t border-gray-100">
-                        <Link href="/orders" className="block w-full py-2 text-sm text-center text-gray-600 hover:text-gray-900 font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                            查看所有訂單
-                        </Link>
-                    </div>
-                </div>
             </div>
 
             {/* Report Download Modal */}
@@ -317,10 +248,6 @@ function StatCard({ title, value, change, trend, icon, color }: any) {
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 group">
             <div className="flex items-center justify-between mb-4">
                 <div className={`p-3 rounded-xl ${bgColors[color]} group-hover:scale-110 transition-transform duration-200`}>{icon}</div>
-                <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${trend === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {change}
-                    {trend === 'up' ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                </div>
             </div>
             <h3 className="text-sm font-medium text-gray-500">{title}</h3>
             <p className="text-3xl font-bold text-gray-900 mt-1 tracking-tight">{value}</p>
