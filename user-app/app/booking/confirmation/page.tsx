@@ -46,6 +46,7 @@ function ConfirmationContent() {
         routeSurcharge: 0,
         safetySeats: 0,
         signboard: 0,
+        petFriendly: 0,
         discount: 0,
         couponDiscount: 0, // [NEW] Coupon
         total: 0,
@@ -134,6 +135,7 @@ function ConfirmationContent() {
             ((rInfo.seats?.booster || 0) * Number(settings.safety_seat_booster_price));
 
         const signboardCost = rInfo.signboard?.needed ? Number(settings.signboard_price) : 0;
+        const petFriendlyCost = rInfo.petFriendly?.needed ? Number(settings.pet_friendly_price) : 0;
 
         // --- Step 4: Time-based Adjustments ---
         let nightSurcharge = 0;
@@ -171,7 +173,7 @@ function ConfirmationContent() {
 
         const modelSurcharge = Number(vehicle.model_surcharge || 0);
 
-        const totalPriceBeforeDiscount = basePrice + modelSurcharge + nightSurcharge + remotePrice + extraStopSurcharge + routeSurcharge + safetySeatCost + signboardCost;
+        const totalPriceBeforeDiscount = basePrice + modelSurcharge + nightSurcharge + remotePrice + extraStopSurcharge + routeSurcharge + safetySeatCost + signboardCost + petFriendlyCost;
         const finalPrice = Math.max(0, totalPriceBeforeDiscount - (offPeakDiscount || 0));
 
         setPrices({
@@ -184,6 +186,7 @@ function ConfirmationContent() {
             routeSurcharge: routeSurcharge,
             safetySeats: safetySeatCost,
             signboard: signboardCost,
+            petFriendly: petFriendlyCost,
             discount: offPeakDiscount,
             couponDiscount: 0, // Reset coupon on re-calc
             total: finalPrice,
@@ -377,6 +380,7 @@ function ConfirmationContent() {
                         <SummaryRow label="行李件數" value={`${(rideInfo?.luggage?.s || 0) + (rideInfo?.luggage?.m || 0) + (rideInfo?.luggage?.l || 0) + (rideInfo?.luggage?.total || 0)} 件${rideInfo?.luggage?.strollers > 0 ? ` (含嬰兒車 ${rideInfo.luggage.strollers} 台)` : ''}`} />
 
                         <SummaryRow label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要` : "不需要"} />
+                        <SummaryRow label="寵物同行" value={rideInfo?.petFriendly?.needed ? `需要` : "不需要"} />
                     </div>
                 </div>
 
@@ -403,6 +407,7 @@ function ConfirmationContent() {
                         <PriceDetailRow label="離峰優惠" value={-prices.discount} isDiscount />
                         <PriceDetailRow label="安全座椅" value={prices.safetySeats} />
                         <PriceDetailRow label="舉牌服務" value={prices.signboard} />
+                        <PriceDetailRow label="寵物同行" value={prices.petFriendly} />
 
 
                         {prices.couponDiscount > 0 && (

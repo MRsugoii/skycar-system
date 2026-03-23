@@ -36,6 +36,7 @@ type Order = {
     boosterSeat: string;
     vehicleType: string;
     signage: string;
+    petFriendly?: string;
     notes: string;
   };
   priceBreakdown: {
@@ -46,6 +47,7 @@ type Order = {
     category: string;       // 價格種類: 平日價 / 假日價 / 特價
     carSeat: number;        // 安全座椅
     signage: number;        // 舉牌服務
+    petFriendly?: number;   // 寵物同行
     area: number;           // 偏遠地區加價
     route: number;          // 特定路段加價
     extraStop: number;      // 多點下車
@@ -113,6 +115,7 @@ function OrdersContent() {
           boosterSeat: row['增高墊'] || "無",
           vehicleType: row['車型'] || "一般轎車",
           signage: row['舉牌'] || "無",
+          petFriendly: row['寵物'] || "無",
           notes: row['備註'] || "無"
         },
         priceBreakdown: {
@@ -123,6 +126,7 @@ function OrdersContent() {
           category: "平日價",
           carSeat: 0,
           signage: 0,
+          petFriendly: 0,
           area: 0,
           route: 0,
           extraStop: 0,
@@ -231,6 +235,7 @@ function OrdersContent() {
               boosterSeat: "無",
               vehicleType: row.vehicle_type,
               signage: "無",
+              petFriendly: row.price_breakdown?.petFriendly !== undefined ? "有" : "無",
               notes: row.note || "無"
             },
             priceBreakdown: row.price_breakdown || {
@@ -241,6 +246,7 @@ function OrdersContent() {
               category: "平日價",
               carSeat: 0,
               signage: 0,
+              petFriendly: 0,
               area: 0,
               route: 0,
               extraStop: 0,
@@ -525,8 +531,8 @@ function OrdersContent() {
       arrivalTime: "",
       passengerCount: "1人",
       luggageCount: "無",
-      specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", notes: "無" },
-      priceBreakdown: { base: 0, vehicleType: 0, night: 0, holiday: 0, category: "平日價", carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 0 }
+      specialRequests: { carSeat: "無", boosterSeat: "無", vehicleType: "一般轎車", signage: "無", petFriendly: "無", notes: "無" },
+      priceBreakdown: { base: 0, vehicleType: 0, night: 0, holiday: 0, category: "平日價", carSeat: 0, signage: 0, petFriendly: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0, total: 0 }
     };
     setCurrentOrder(newOrder);
     setEditForm(newOrder);
@@ -1469,6 +1475,12 @@ function OrdersContent() {
                       isEditing={isEditing}
                       onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, signage: parseInt(val) || 0 } })}
                     />
+                    <PriceRow
+                      label="寵物同行"
+                      value={editForm.priceBreakdown.petFriendly || 0}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, priceBreakdown: { ...editForm.priceBreakdown, petFriendly: parseInt(val) || 0 } })}
+                    />
                     {/* Extra fields hidden to maintain 9-item display consistency */}
                     {/* 
                     <PriceRow
@@ -1569,6 +1581,12 @@ function OrdersContent() {
                       value={editForm.specialRequests.signage}
                       isEditing={isEditing}
                       onChange={(val) => setEditForm({ ...editForm, specialRequests: { ...editForm.specialRequests, signage: val } })}
+                    />
+                    <DetailRow
+                      label="寵物同行"
+                      value={editForm.specialRequests.petFriendly || "無"}
+                      isEditing={isEditing}
+                      onChange={(val) => setEditForm({ ...editForm, specialRequests: { ...editForm.specialRequests, petFriendly: val } })}
                     />
                     <DetailRow
                       label="備註"

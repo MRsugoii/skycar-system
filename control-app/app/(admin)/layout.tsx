@@ -68,9 +68,10 @@ export default function AdminLayout({
                             <NavItem href="/users" icon={<Users size={20} />} label="用戶管理" />
 
                             <Suspense fallback={<div className="h-10 bg-gray-800/50 rounded animate-pulse" />}>
-                                <NavGroup icon={<Truck size={20} />} label="前台管理" activePaths={["/vehicles", "/coupons"]} mainHref="/vehicles">
+                                <NavGroup icon={<Truck size={20} />} label="前台管理" activePaths={["/vehicles", "/coupons", "/driver-bonus"]} mainHref="/vehicles">
                                     <SubNavItem href="/vehicles" label="價格管理" />
                                     <SubNavItem href="/coupons" label="優惠卷管理" />
+                                    <SubNavItem href="/driver-bonus" label="司機加成" />
                                 </NavGroup>
                             </Suspense>
                             <NavItem href="/finance" icon={<Wallet size={20} />} label="財務管理" />

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { Ticket, Search, Plus, Edit, Trash2, X, Save, MoreHorizontal, Calendar, Tag, User, Layers, DollarSign } from "lucide-react";
+import { Ticket, Search, Plus, Edit, Trash2, X, Save, MoreHorizontal, Calendar, Tag, User, Layers, DollarSign, Briefcase } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 // Define Coupon Type matching DB Schema
@@ -252,6 +252,13 @@ function CouponsContent() {
                     >
                         <Ticket size={18} />
                         優惠卷管理
+                    </Link>
+                    <Link
+                        href="/driver-bonus"
+                        className="pb-3 text-base font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center gap-2"
+                    >
+                        <Briefcase size={18} />
+                        司機加成
                     </Link>
                 </nav>
             </div>

@@ -93,7 +93,7 @@ interface AirportMatrixType {
   prices: Record<number, number>; // vehicleTypeId -> price
   remoteSurcharge: number;
   holidaySurcharges?: Record<number, number>; // holidayId -> price
-  category?: 'weekday' | 'holiday' | 'special';
+  category?: 'weekday' | 'holiday' | 'special' | 'custom1' | 'custom2';
   status: boolean;
 }
 
@@ -393,7 +393,7 @@ function VehiclesContent() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const [selectedCategory, setSelectedCategory] = useState<'weekday' | 'holiday' | 'special'>('weekday');
+  const [selectedCategory, setSelectedCategory] = useState<'weekday' | 'holiday' | 'special' | 'custom1' | 'custom2'>('weekday');
 
   // --- 4. Route Settings Data ---
   const [routePrices, setRoutePrices] = useState<RouteType[]>([]);
@@ -444,21 +444,30 @@ function VehiclesContent() {
   });
 
   // --- 5. Extra Settings Data ---
-  const [extraSettings, setExtraSettings] = useState<ExtraSettingsType>({
+  const [extraSettings, setExtraSettings] = useState<ExtraSettingsType & { pet_friendly_price?: number }>({
     id: 0,
     safety_seat_infant_price: 0,
     safety_seat_child_price: 0,
     safety_seat_booster_price: 0,
-    signboard_price: 0
+    signboard_price: 0,
+    pet_friendly_price: 0
   });
+  
+  const [adminAddons, setAdminAddons] = useState<any>({});
 
   const fetchExtraSettings = async () => {
     const { data, error } = await supabase.from('extra_settings').select('*').single();
     if (data) {
-      setExtraSettings(data);
+      setExtraSettings(prev => ({ ...prev, ...data }));
     } else {
-      // Create default if not exists (should be handled by seed, but safe fallback)
       console.log("No extra settings found, using default");
+    }
+    
+    // Fetch pet_friendly_price from admin_settings
+    const { data: adminSet } = await supabase.from('admin_settings').select('*').eq('key', 'addon_prices').single();
+    if (adminSet) {
+      setAdminAddons(adminSet.value);
+      setExtraSettings(prev => ({ ...prev, pet_friendly_price: adminSet.value?.pet_friendly || 0 }));
     }
   };
 
@@ -481,6 +490,10 @@ function VehiclesContent() {
         signboard_price: Number(extraSettings.signboard_price || 0)
       };
 
+      // Ensure pet friendly price is saved into admin_settings correctly
+      const newAddons = { ...adminAddons, pet_friendly: Number(extraSettings.pet_friendly_price || 0) };
+      await supabase.from('admin_settings').upsert({ key: 'addon_prices', value: newAddons });
+
       console.log(`Payload: ${JSON.stringify(payload)}`);
 
       // Get Current User Session for Auth Token
@@ -498,7 +511,7 @@ function VehiclesContent() {
       }
 
       console.log(`SUCCESS! Data: ${JSON.stringify(result.data)}`);
-      alert("額外設定儲存成功 (Authenticated v3.3)");
+      alert("額外設定儲存成功");
     } catch (e: any) {
       console.error(e);
       console.error(`CATCH ERROR: ${e.message}`);
@@ -775,7 +788,7 @@ function VehiclesContent() {
     const airportName = newMasterAirport.trim();
     if (airportName && !availableAirports.includes(airportName)) {
       try {
-        const categories = ['weekday', 'holiday', 'special'];
+        const categories = ['weekday', 'holiday', 'special', 'custom1', 'custom2'];
         const newRows = [];
         for (const cat of categories) {
           for (const region of availableRegions) {
@@ -892,7 +905,7 @@ function VehiclesContent() {
       }
 
       // 2. Perform Insert(s)
-      const categories = ['weekday', 'holiday', 'special'];
+      const categories = ['weekday', 'holiday', 'special', 'custom1', 'custom2'];
       const newRows = [];
 
       // For every region to add, we must ensure it has a price row in the DB.
@@ -1479,7 +1492,7 @@ function VehiclesContent() {
 
   const handleDownloadTemplate = () => {
     // 1. Prepare Headers: Airport, Region, Category, Remote Surcharge, [Vehicle Names...]
-    const headers = ["機場/港口", "區域", "價格類別(weekday/holiday/special)", "偏遠地區加價"];
+    const headers = ["機場/港口", "區域", "價格類別(weekday/holiday/special/custom1/custom2)", "偏遠地區加價"];
     vehicles.forEach(v => {
       headers.push(v.name);
     });
@@ -1593,7 +1606,9 @@ function VehiclesContent() {
               {[
                 { id: 'weekday', label: '平日價' },
                 { id: 'holiday', label: '假日價' },
-                { id: 'special', label: '特價' }
+                { id: 'special', label: '特價' },
+                { id: 'custom1', label: '自訂價1' },
+                { id: 'custom2', label: '自訂價2' }
               ].map(cat => (
                 <button
                   key={cat.id}
@@ -1899,6 +1914,17 @@ function VehiclesContent() {
                   onChange={(v) => setExtraSettings({ ...extraSettings, signboard_price: Math.max(0, Number(v) || 0) })}
                 />
               </div>
+              <div className="p-4 rounded-xl border border-gray-100 bg-white hover:border-blue-200 transition-colors space-y-3">
+                <h5 className="text-sm font-bold text-gray-900">寵物友善</h5>
+                <InputField
+                  label="加價"
+                  type="number"
+                  required
+                  suffix="元"
+                  value={extraSettings.pet_friendly_price}
+                  onChange={(v) => setExtraSettings({ ...extraSettings, pet_friendly_price: Math.max(0, Number(v) || 0) })}
+                />
+              </div>
             </div>
           </div>
 
@@ -2164,6 +2190,13 @@ function VehiclesContent() {
             <Ticket size={18} />
             優惠卷管理
           </Link>
+          <Link
+            href="/driver-bonus"
+            className="pb-3 text-base font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center gap-2"
+          >
+            <Briefcase size={18} />
+            司機加成
+          </Link>
         </nav>
       </div>
 
@@ -2353,7 +2386,9 @@ function VehiclesContent() {
                       {[
                         { value: 'weekday', label: '使用平日價' },
                         { value: 'holiday', label: '使用假日價' },
-                        { value: 'special', label: '使用特價' }
+                        { value: 'special', label: '使用特價' },
+                        { value: 'custom1', label: '使用自訂價1' },
+                        { value: 'custom2', label: '使用自訂價2' }
                       ].map((option) => (
                         <label key={option.value} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-100 rounded-lg transition-colors">
                           <input
@@ -2799,13 +2834,26 @@ function VehiclesContent() {
                       計費設定
                     </h3>
                     <div className="space-y-6">
+                      
+                      {/* Vehicle Base Setup */}
+                      <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-100 space-y-4">
+                        <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2">
+                          <Car size={16} />
+                          車輛基礎計費
+                        </h4>
+                        <InputField label="車輛起始價" type="number" required suffix="元" value={formData.dispatchPrice} onChange={(v) => setFormData({ ...formData, dispatchPrice: Math.max(0, parseInt(v) || 0) })} />
+                      </div>
+
                       {/* Multi-stop */}
                       <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-4">
                         <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
                           <AlertCircle size={16} />
                           多點下車距離計費 (加點)
                         </h4>
-                        <InputField label="每公里費用" type="number" required suffix="元" value={formData.overDistancePrice} onChange={(v) => setFormData({ ...formData, overDistancePrice: Math.max(0, parseInt(v) || 0) })} />
+                        <div className="grid grid-cols-2 gap-4">
+                          <InputField label="< 五公里費用" type="number" required suffix="元" value={formData.basePrice} onChange={(v) => setFormData({ ...formData, basePrice: Math.max(0, parseInt(v) || 0) })} />
+                          <InputField label="> 五公里費用 (每公里)" type="number" required suffix="元" value={formData.overDistancePrice} onChange={(v) => setFormData({ ...formData, overDistancePrice: Math.max(0, parseInt(v) || 0) })} />
+                        </div>
                       </div>
 
                       {/* Surcharges */}

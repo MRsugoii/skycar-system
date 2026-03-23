@@ -18,6 +18,7 @@ interface OrderDetail {
     luggage?: { s20: number; s25: number; s28: number };
     signage?: boolean;
     signageText?: string;
+    petFriendly?: boolean;
     carName?: string;
     car?: string; // fallback
 }
@@ -36,6 +37,7 @@ interface Order {
         category: string;
         carSeat: number;
         signage: number;
+        petFriendly?: number;
         area: number;
         route: number;
         extraStop: number;
@@ -727,7 +729,8 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                         <KV label="乘客人數" value={typeof order.detail?.passengers === 'object' ? `${order.detail.passengers.adults}大 ${order.detail.passengers.children}小` : `${order.detail?.passengers || 0} 位乘客`} />
                         <KV label="兒童座椅" value={order.detail?.seats ? `後${order.detail.seats.rear || 0} / 前${order.detail.seats.front || 0} / 增${order.detail.seats.booster || 0}` : '—'} />
                         <KV label="行李件數" value={order.detail?.luggage ? `${(order.detail.luggage.s20 || 0) + (order.detail.luggage.s25 || 0) + (order.detail.luggage.s28 || 0)} 件` : '—'} />
-                        <KV label="舉牌服務" value={order.detail?.signage ? `需要 (${order.detail.signageText || ''})` : '不需要'} />
+                        <KV label="舉牌服務" value={order.detail?.signage || (order.priceBreakdown?.signage ?? 0) > 0 ? `需要 (${order.detail?.signageText || ''})` : '不需要'} />
+                        <KV label="寵物同行" value={order.detail?.petFriendly || (order.priceBreakdown?.petFriendly ?? 0) > 0 ? `需要` : '不需要'} />
                         <KV label="備註" value={order.detail?.note || "—"} />
                     </div>
 
@@ -748,6 +751,7 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                         <PriceItem label="離峰優惠" value={order.priceBreakdown?.offPeak} isDiscount />
                         <PriceItem label="安全座椅" value={order.priceBreakdown?.carSeat} />
                         <PriceItem label="舉牌服務" value={order.priceBreakdown?.signage} />
+                        <PriceItem label="寵物同行" value={order.priceBreakdown?.petFriendly} />
                         <PriceItem label="優惠券" value={order.priceBreakdown?.coupon} isDiscount />
                         <div className="pt-2 border-t border-gray-200 mt-2 flex justify-between items-center font-black">
                             <span className="text-gray-900">總計</span>

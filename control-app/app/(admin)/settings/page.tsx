@@ -7,7 +7,7 @@ interface Permissions {
     orders: { unconfirmed: boolean; confirmed: boolean; completed: boolean; refund: boolean; trash: boolean; };
     drivers: { list: boolean; audit: boolean; failed: boolean; };
     users: boolean;
-    frontend: { pricing: boolean; coupons: boolean; };
+    frontend: { pricing: boolean; coupons: boolean; driverBonus: boolean; };
     finance: boolean;
     notifications: boolean;
 }
@@ -28,7 +28,7 @@ const INITIAL_PERMISSIONS: Permissions = {
     orders: { unconfirmed: true, confirmed: true, completed: true, refund: true, trash: true },
     drivers: { list: true, audit: true, failed: true },
     users: true,
-    frontend: { pricing: true, coupons: true },
+    frontend: { pricing: true, coupons: true, driverBonus: true },
     finance: true,
     notifications: true
 };
@@ -70,7 +70,7 @@ const MOCK_USERS: AdminUser[] = [
         permissions: {
             ...INITIAL_PERMISSIONS,
             finance: false,
-            frontend: { pricing: false, coupons: false }
+            frontend: { pricing: false, coupons: false, driverBonus: false }
         },
     },
 ];
@@ -94,7 +94,7 @@ export default function SettingsPage() {
             orders: { unconfirmed: false, confirmed: false, completed: false, refund: false, trash: false },
             drivers: { list: false, audit: false, failed: false },
             users: false,
-            frontend: { pricing: false, coupons: false },
+            frontend: { pricing: false, coupons: false, driverBonus: false },
             finance: false,
             notifications: false
         },
@@ -130,7 +130,7 @@ export default function SettingsPage() {
                     orders: { unconfirmed: false, confirmed: false, completed: false, refund: false, trash: false },
                     drivers: { list: false, audit: false, failed: false },
                     users: false,
-                    frontend: { pricing: false, coupons: false },
+                    frontend: { pricing: false, coupons: false, driverBonus: false },
                     finance: false,
                     notifications: false
                 },
@@ -327,6 +327,7 @@ export default function SettingsPage() {
                                                 options={[
                                                     { label: "價格管理", value: formData.permissions.frontend.pricing, onChange: (v) => setFormData({ ...formData, permissions: { ...formData.permissions, frontend: { ...formData.permissions.frontend, pricing: v } } }) },
                                                     { label: "優惠券管理", value: formData.permissions.frontend.coupons, onChange: (v) => setFormData({ ...formData, permissions: { ...formData.permissions, frontend: { ...formData.permissions.frontend, coupons: v } } }) },
+                                                    { label: "司機加成", value: formData.permissions.frontend.driverBonus, onChange: (v) => setFormData({ ...formData, permissions: { ...formData.permissions, frontend: { ...formData.permissions.frontend, driverBonus: v } } }) },
                                                 ]}
                                             />
 

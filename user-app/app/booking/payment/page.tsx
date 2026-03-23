@@ -114,8 +114,6 @@ function PaymentContent() {
             }
         }
 
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -181,6 +179,7 @@ function PaymentContent() {
             category: prices.category || "平日價",
             carSeat: prices.safetySeats,
             signage: prices.signboard,
+            petFriendly: prices.petFriendly,
             area: prices.remoteSurcharge,
             route: prices.routeSurcharge,
             extraStop: prices.extraStopSurcharge,
@@ -342,6 +341,7 @@ return (
                                 />
                                 <SummaryRowSimple label="選擇車型" value={vehicleName || '-'} />
                                 <SummaryRowSimple label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要 (${rideInfo?.signboard?.title})` : "不需要"} />
+                                <SummaryRowSimple label="寵物同行" value={rideInfo?.petFriendly?.needed ? "需要" : "不需要"} />
                                 <SummaryRowSimple label="備註" value={rideInfo?.notes || "-"} />
                             </div>
                         </div>
@@ -376,6 +376,7 @@ return (
                                 <PriceRow label="離峰優惠" price={-prices.discount} isDiscount isShowZero />
                                 <PriceRow label="安全座椅" price={prices.safetySeats} isShowZero />
                                 <PriceRow label="舉牌服務" price={prices.signboard} isShowZero />
+                                <PriceRow label="寵物同行" price={prices.petFriendly} isShowZero />
                                 <PriceRow label="優惠券" price={-prices.couponDiscount} isDiscount isShowZero />
                             </div>
                         </div>

@@ -31,6 +31,7 @@ export default function RideInfoPage() {
     const [notes, setNotes] = useState("");
     const [isSignboard, setIsSignboard] = useState(false);
     const [signboardTitle, setSignboardTitle] = useState("");
+    const [isPetFriendly, setIsPetFriendly] = useState(false);
 
     // -- Fetch Data --
     useEffect(() => {
@@ -62,6 +63,9 @@ export default function RideInfoPage() {
                     if (data.signboard?.needed) {
                         setIsSignboard(true);
                         setSignboardTitle(data.signboard.title || "");
+                    }
+                    if (data.petFriendly?.needed) {
+                        setIsPetFriendly(true);
                     }
                 } else if (vData?.[0]) {
                     setSelectedVehicleId(vData[0].id);
@@ -291,6 +295,10 @@ export default function RideInfoPage() {
                 needed: true,
                 title: signboardTitle,
                 price: extraSettings?.signboard_price || 0
+            } : { needed: false },
+            petFriendly: isPetFriendly ? {
+                needed: true,
+                price: extraSettings?.pet_friendly_price || 0
             } : { needed: false }
         };
         sessionStorage.setItem('booking_ride_info', JSON.stringify(rideInfo));
@@ -569,6 +577,27 @@ export default function RideInfoPage() {
                             />
                         </div>
                     )}
+                </div>
+
+                {/* 7. Pet Friendly Service */}
+                <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
+                    <div className="border-l-4 border-emerald-500 pl-3">
+                        <h2 className="text-lg font-bold text-gray-900">寵物友善服務</h2>
+                        <p className="text-xs text-gray-500 mt-1">※ 需加價 NT$ {extraSettings?.pet_friendly_price || 0} / 趟</p>
+                    </div>
+
+                    <label className="flex items-center gap-4 cursor-pointer group">
+                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isPetFriendly ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-gray-200 group-hover:border-emerald-400'}`}>
+                            {isPetFriendly && <Plus size={16} strokeWidth={4} />}
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={isPetFriendly}
+                            onChange={(e) => setIsPetFriendly(e.target.checked)}
+                        />
+                        <span className="font-bold text-gray-700">攜帶寵物同行 (需自備提籠)</span>
+                    </label>
                 </div>
 
             </div>
