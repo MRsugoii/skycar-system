@@ -374,7 +374,7 @@ function ConfirmationContent() {
                             }
                         />
 
-                        <SummaryRow label="行李件數" value={`${(rideInfo?.luggage?.s || 0) + (rideInfo?.luggage?.m || 0) + (rideInfo?.luggage?.l || 0)} 件`} />
+                        <SummaryRow label="行李件數" value={`${(rideInfo?.luggage?.s || 0) + (rideInfo?.luggage?.m || 0) + (rideInfo?.luggage?.l || 0) + (rideInfo?.luggage?.total || 0)} 件${rideInfo?.luggage?.strollers > 0 ? ` (含嬰兒車 ${rideInfo.luggage.strollers} 台)` : ''}`} />
 
                         <SummaryRow label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要` : "不需要"} />
                     </div>

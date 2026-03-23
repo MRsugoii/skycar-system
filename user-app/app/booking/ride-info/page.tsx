@@ -25,6 +25,7 @@ export default function RideInfoPage() {
 
     // Luggage
     const [luggageCount, setLuggageCount] = useState(0);
+    const [strollers, setStrollers] = useState(0);
 
     // Other
     const [notes, setNotes] = useState("");
@@ -56,6 +57,7 @@ export default function RideInfoPage() {
                     setChildSeats(data.seats?.child || 0);
                     setBoosters(data.seats?.booster || 0);
                     setLuggageCount(data.luggage?.total || 0);
+                    setStrollers(data.luggage?.strollers || 0);
                     setNotes(data.notes || "");
                     if (data.signboard?.needed) {
                         setIsSignboard(true);
@@ -72,6 +74,17 @@ export default function RideInfoPage() {
         };
         fetchData();
     }, []);
+
+    // ... (Price Check Logic omitted for brevity, unchanged) ...
+    // NOTE: In a real Replace, I would keep the surrounding unchanged code or use MultiReplace if it was far apart?
+    // Actually, I am replacing a chunk. I need to be careful not to delete the useEffect inside.
+    // Wait, the previous block I selected "Luggage" down to "fetchData" covers lines 26 to 74.
+    // But I can't skip the "Price Check Logic" block if I use ReplaceFileContent with a huge block.
+    // I should use MultiReplace to insert the state and update the effect.
+    // HOWEVER, I am currently using ReplaceFileContent. I should probably switch to MultiReplace or keep the range smaller.
+    // Let's look at the TargetContent again. Ah, I see I can't easily reference "..." in the ReplacementContent.
+    // I will Cancel this tool call and use MultiReplaceFileContent instead.
+
 
     // -- Price Check Logic --
     const [priceMap, setPriceMap] = useState<Record<string, number>>({});
@@ -191,13 +204,22 @@ export default function RideInfoPage() {
     }
 
     // Auto-clamp luggage count if it exceeds limit when conditions change (e.g. passengers inc)
-    // NOTE: User wants "No Fool-proofing" as complaint that it allowed excess. 
-    // So we should enforce it.
+    // NOTE: Srollers count as luggage (1:1)
     useEffect(() => {
-        if (luggageCount > dynamicLuggageLimit) {
-            setLuggageCount(dynamicLuggageLimit);
+        const currentTotal = luggageCount + strollers;
+        if (currentTotal > dynamicLuggageLimit) {
+            // Priority: keep strollers if possible? Or just reduce luggage?
+            // Strategy: Reduce luggage first.
+            const overflow = currentTotal - dynamicLuggageLimit;
+            if (luggageCount >= overflow) {
+                setLuggageCount(luggageCount - overflow);
+            } else {
+                setLuggageCount(0);
+                const remainingOverflow = overflow - luggageCount;
+                setStrollers(Math.max(0, strollers - remainingOverflow));
+            }
         }
-    }, [dynamicLuggageLimit, luggageCount]);
+    }, [dynamicLuggageLimit, luggageCount, strollers]);
 
     const totalSafetySeats = infantSeats + childSeats + boosters;
 
@@ -252,13 +274,9 @@ export default function RideInfoPage() {
             return;
         }
 
-        // Validation: Luggage Limit
-        if (luggageCount > dynamicLuggageLimit) {
-            if (isCustomRule) {
-                alert(`目前 ${totalPassengers} 位乘客，依照車型配置最多僅能攜帶 ${dynamicLuggageLimit} 件行李`);
-            } else {
-                alert(`目前人數 (${totalPassengers}人) 下，總行李上限為 ${dynamicLuggageLimit} 件 (含座位區加載)`);
-            }
+        // Validation: Luggage + Stroller Limit
+        if ((luggageCount + strollers) > dynamicLuggageLimit) {
+            alert(`目前人數 (${totalPassengers}人) 下，"行李 + 嬰兒車" 總上限為 ${dynamicLuggageLimit} 件`);
             return;
         }
 
@@ -267,7 +285,7 @@ export default function RideInfoPage() {
             vehicleId: selectedVehicleId,
             passengers: { adults, children },
             seats: { infant: infantSeats, child: childSeats, booster: boosters },
-            luggage: { total: luggageCount },
+            luggage: { total: luggageCount, strollers: strollers },
             notes,
             signboard: isSignboard ? {
                 needed: true,
@@ -389,12 +407,12 @@ export default function RideInfoPage() {
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
                     <div className="border-l-4 border-blue-500 pl-3 flex justify-between items-start">
                         <div>
-                            <h2 className="text-lg font-bold text-gray-900">行李件數</h2>
-                            <p className="text-[10px] text-gray-400 mt-1">※ 26-28 吋大行李</p>
+                            <h2 className="text-lg font-bold text-gray-900">行李與嬰兒車</h2>
+                            <p className="text-[10px] text-gray-400 mt-1">※ 嬰兒車視同 1 件大行李</p>
                         </div>
                         <div className="text-right">
-                            <span className="text-xs font-bold text-blue-600 block">目前上限</span>
-                            <span className="text-lg font-black text-blue-700">{dynamicLuggageLimit} </span>
+                            <span className="text-xs font-bold text-blue-600 block">目前剩餘額度</span>
+                            <span className="text-lg font-black text-blue-700">{Math.max(0, dynamicLuggageLimit - luggageCount - strollers)} </span>
                             <span className="text-xs text-blue-600">件</span>
                         </div>
                     </div>
@@ -402,7 +420,7 @@ export default function RideInfoPage() {
                         <div className="bg-blue-50 p-3 rounded-2xl flex items-start gap-2 border border-blue-100 animate-in fade-in duration-300">
                             <AlertCircle size={14} className="text-blue-500 mt-0.5 shrink-0" />
                             <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
-                                依照此車型配置，<span className="font-bold">{totalPassengers} 人</span> 最多可攜帶 <span className="font-bold text-blue-800 underline">{dynamicLuggageLimit} 件</span> 行李。
+                                依照此車型配置，<span className="font-bold">{totalPassengers} 人</span> 最多可攜帶 <span className="font-bold text-blue-800 underline">{dynamicLuggageLimit} 件</span> (含行李+嬰兒車)。
                             </p>
                         </div>
                     ) : (
@@ -410,17 +428,42 @@ export default function RideInfoPage() {
                             <div className="bg-blue-50 p-3 rounded-2xl flex items-start gap-2 border border-blue-100 animate-in fade-in duration-300">
                                 <AlertCircle size={14} className="text-blue-500 mt-0.5 shrink-0" />
                                 <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
-                                    偵測到有空位！已為您自動增加 <span className="underline font-bold text-blue-800">{Math.max(0, maxPax - totalPassengers)} 件</span> 行李扣度 (可放置於座位區)。
+                                    偵測到有空位！已為您自動增加 <span className="underline font-bold text-blue-800">{Math.max(0, maxPax - totalPassengers)} 件</span> 額度 (可放置於座位區)。
                                 </p>
                             </div>
                         )
                     )}
 
+                    {/* Strollers Input */}
+                    <div className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0">
+                        <div>
+                            <div className="font-bold text-gray-900">嬰兒車</div>
+                            <div className="text-[10px] text-gray-400 font-medium">需折疊 (扣除 1 件行李額度)</div>
+                        </div>
+                        <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+                            <button
+                                onClick={() => setStrollers(Math.max(0, strollers - 1))}
+                                disabled={strollers <= 0}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${strollers <= 0 ? 'text-gray-300 cursor-not-allowed' : 'bg-white text-gray-700 shadow-sm hover:scale-105'}`}
+                            >
+                                <Minus size={18} strokeWidth={3} />
+                            </button>
+                            <span className="w-6 text-center font-black text-lg text-gray-900">{strollers}</span>
+                            <button
+                                onClick={() => setStrollers(strollers + 1)}
+                                disabled={(luggageCount + strollers) >= dynamicLuggageLimit}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${(luggageCount + strollers) >= dynamicLuggageLimit ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white shadow-lg shadow-blue-100 hover:scale-105'}`}
+                            >
+                                <Plus size={18} strokeWidth={3} />
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Unified Luggage Input */}
                     <div className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0">
                         <div>
-                            <div className="font-bold text-gray-900">總行李數</div>
-                            <div className="text-[10px] text-gray-400 font-medium">請輸入總件數</div>
+                            <div className="font-bold text-gray-900">大行李</div>
+                            <div className="text-[10px] text-gray-400 font-medium">26-29 吋</div>
                         </div>
                         <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
                             <button
@@ -432,9 +475,9 @@ export default function RideInfoPage() {
                             </button>
                             <span className="w-6 text-center font-black text-lg text-gray-900">{luggageCount}</span>
                             <button
-                                onClick={() => setLuggageCount(Math.min(dynamicLuggageLimit, luggageCount + 1))}
-                                disabled={luggageCount >= dynamicLuggageLimit}
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${luggageCount >= dynamicLuggageLimit ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white shadow-lg shadow-blue-100 hover:scale-105'}`}
+                                onClick={() => setLuggageCount(luggageCount + 1)}
+                                disabled={(luggageCount + strollers) >= dynamicLuggageLimit}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${(luggageCount + strollers) >= dynamicLuggageLimit ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white shadow-lg shadow-blue-100 hover:scale-105'}`}
                             >
                                 <Plus size={18} strokeWidth={3} />
                             </button>

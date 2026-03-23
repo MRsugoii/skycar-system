@@ -187,9 +187,9 @@ function DashboardContent() {
                             const noteUpper = (o.note || "").toUpperCase();
                             let st: any = 'ing';
 
-                            if (parsedId.toUpperCase().includes('-RF') || noteUpper.includes('-RF')) st = 'refunded';
-                            else if (parsedId.toUpperCase().includes('-NA') || noteUpper.includes('-NA')) st = 'notapproved';
-                            else if (parsedId.toUpperCase().includes('-OC') || noteUpper.includes('-OC')) st = 'cancelled';
+                            if ((parsedId || "").toUpperCase().includes('-RF') || noteUpper.includes('-RF')) st = 'refunded';
+                            else if ((parsedId || "").toUpperCase().includes('-NA') || noteUpper.includes('-NA')) st = 'notapproved';
+                            else if ((parsedId || "").toUpperCase().includes('-OC') || noteUpper.includes('-OC')) st = 'cancelled';
                             else if (o.status === 'completed' || o.status === 'unpaid') st = 'done';
                             else if (o.status === 'cancelled') st = 'cancelled';
                             else if (o.status === 'refund' || o.status === 'refund_pending') st = 'refund_pending';
@@ -336,19 +336,19 @@ function DashboardContent() {
     // Derived state
     const ongoingOrders = orders.filter(o =>
         o.status === 'ing' &&
-        !o.orderId.toUpperCase().includes('-RF') &&
-        !o.orderId.toUpperCase().includes('-OC') &&
-        !(o.detail.note || "").toUpperCase().includes('-RF')
+        !(o.orderId || "").toUpperCase().includes('-RF') &&
+        !(o.orderId || "").toUpperCase().includes('-OC') &&
+        !(o.detail?.note || "").toUpperCase().includes('-RF')
     );
     const historyOrders = orders.filter(o =>
         o.status === 'done' ||
         o.status === 'cancelled' ||
         o.status === 'refunded' ||
         o.status === 'refund_pending' ||
-        o.orderId.toUpperCase().includes('-RF') ||
-        o.orderId.toUpperCase().includes('-OC') ||
-        (o.detail.note || "").toUpperCase().includes('-RF') ||
-        (o.detail.note || "").toUpperCase().includes('-OC')
+        (o.orderId || "").toUpperCase().includes('-RF') ||
+        (o.orderId || "").toUpperCase().includes('-OC') ||
+        (o.detail?.note || "").toUpperCase().includes('-RF') ||
+        (o.detail?.note || "").toUpperCase().includes('-OC')
     );
     const activeCoupons = coupons.filter(c => !c.used && c.expireAt > Date.now());
 
@@ -464,16 +464,16 @@ function DashboardContent() {
                                                 </div>
                                                 <div className="flex items-start gap-3 text-sm text-gray-600">
                                                     <MapPin size={16} className="text-blue-500 mt-0.5" />
-                                                    <span className="font-medium line-clamp-1">{o.detail.pickup}</span>
+                                                    <span className="font-medium line-clamp-1">{o.detail?.pickup}</span>
                                                 </div>
                                                 <div className="flex items-start gap-3 text-sm text-gray-600">
                                                     <Navigation size={16} className="text-blue-500 mt-0.5" />
-                                                    <span className="font-medium line-clamp-1">{o.detail.dropoff}</span>
+                                                    <span className="font-medium line-clamp-1">{o.detail?.dropoff}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3 text-sm text-gray-500 mt-2 pl-1 border-t border-dashed border-gray-100 pt-2">
-                                                    <span>{typeof o.detail.passengers === 'object' ? `${o.detail.passengers.adults}大 ${o.detail.passengers.children}小` : `${o.detail.passengers || 0} 位乘客`}</span>
+                                                    <span>{typeof o.detail?.passengers === 'object' ? `${o.detail.passengers.adults}大 ${o.detail.passengers.children}小` : `${o.detail?.passengers || 0} 位乘客`}</span>
                                                     <span>•</span>
-                                                    <span>{o.detail.luggage ? `${(o.detail.luggage.s20 || 0) + (o.detail.luggage.s25 || 0) + (o.detail.luggage.s28 || 0)} 件行李` : '無行李'}</span>
+                                                    <span>{o.detail?.luggage ? `${(o.detail.luggage.s20 || 0) + (o.detail.luggage.s25 || 0) + (o.detail.luggage.s28 || 0)} 件行李` : '無行李'}</span>
                                                 </div>
                                             </div>
                                             <div className="flex justify-between items-end border-t border-gray-50 pt-3">
@@ -720,15 +720,15 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                     <div className="h-px bg-gray-100 my-2"></div>
 
                     <div className="space-y-1">
-                        <KV label="車型" value={order.detail.carName || "—"} />
-                        <KV label="上車地點" value={order.detail.pickup} icon={<MapPin size={16} className="text-gray-400 mt-0.5" />} />
-                        <KV label="下車地點" value={order.detail.dropoff} icon={<Navigation size={16} className="text-gray-400 mt-0.5" />} />
-                        <KV label="航班/船班" value={order.detail.flight || "—"} />
-                        <KV label="乘客人數" value={typeof order.detail.passengers === 'object' ? `${order.detail.passengers.adults}大 ${order.detail.passengers.children}小` : `${order.detail.passengers || 0} 位乘客`} />
-                        <KV label="兒童座椅" value={order.detail.seats ? `後${order.detail.seats.rear || 0} / 前${order.detail.seats.front || 0} / 增${order.detail.seats.booster || 0}` : '—'} />
-                        <KV label="行李件數" value={order.detail.luggage ? `${(order.detail.luggage.s20 || 0) + (order.detail.luggage.s25 || 0) + (order.detail.luggage.s28 || 0)} 件` : '—'} />
-                        <KV label="舉牌服務" value={order.detail.signage ? `需要 (${order.detail.signageText || ''})` : '不需要'} />
-                        <KV label="備註" value={order.detail.note || "—"} />
+                        <KV label="車型" value={order.detail?.carName || "—"} />
+                        <KV label="上車地點" value={order.detail?.pickup} icon={<MapPin size={16} className="text-gray-400 mt-0.5" />} />
+                        <KV label="下車地點" value={order.detail?.dropoff} icon={<Navigation size={16} className="text-gray-400 mt-0.5" />} />
+                        <KV label="航班/船班" value={order.detail?.flight || "—"} />
+                        <KV label="乘客人數" value={typeof order.detail?.passengers === 'object' ? `${order.detail.passengers.adults}大 ${order.detail.passengers.children}小` : `${order.detail?.passengers || 0} 位乘客`} />
+                        <KV label="兒童座椅" value={order.detail?.seats ? `後${order.detail.seats.rear || 0} / 前${order.detail.seats.front || 0} / 增${order.detail.seats.booster || 0}` : '—'} />
+                        <KV label="行李件數" value={order.detail?.luggage ? `${(order.detail.luggage.s20 || 0) + (order.detail.luggage.s25 || 0) + (order.detail.luggage.s28 || 0)} 件` : '—'} />
+                        <KV label="舉牌服務" value={order.detail?.signage ? `需要 (${order.detail.signageText || ''})` : '不需要'} />
+                        <KV label="備註" value={order.detail?.note || "—"} />
                     </div>
 
                     <div className="h-px bg-gray-100 my-2"></div>
@@ -755,7 +755,7 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                         </div>
                     </div>
 
-                    <KV label="付款方式" value={order.detail.pay || "現金"} />
+                    <KV label="付款方式" value={order.detail?.pay || "現金"} />
 
                     {order.status === 'ing' && (
                         <div className="pt-4 space-y-3">

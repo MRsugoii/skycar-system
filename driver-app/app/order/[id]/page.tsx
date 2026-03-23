@@ -63,6 +63,23 @@ export default function OrderDetailsPage() {
                 }
             };
             setOrder(mapped);
+        } else {
+            // Fallback to localStorage for mock demo orders
+            const localOrders = JSON.parse(localStorage.getItem("orders") || "[]");
+            const mockOrder = localOrders.find((o: any) => o.id === orderId);
+            if (mockOrder) {
+                setOrder({
+                    ...mockOrder,
+                    orderId: mockOrder.id,
+                    audit: mockOrder.audit || {},
+                    priceBreakdown: mockOrder.priceBreakdown || {
+                        base: Number(mockOrder.price) || 0,
+                        total: Number(mockOrder.price) || 0,
+                        category: "平日價",
+                        vehicleType: 0, night: 0, holiday: 0, carSeat: 0, signage: 0, area: 0, route: 0, extraStop: 0, offPeak: 0, coupon: 0
+                    }
+                });
+            }
         }
         setLoading(false);
     };
@@ -87,6 +104,27 @@ export default function OrderDetailsPage() {
         if (newFlow === 'enRoute') newStatus = 'en_route';
         if (newFlow === 'picked') newStatus = 'pickedup';
         if (newFlow === 'completed') newStatus = 'completed';
+
+        if (orderId === "CH20251208999" || (orderId as string).startsWith("CH") || (orderId as string).startsWith("HIST")) {
+            const localOrders = JSON.parse(localStorage.getItem("orders") || "[]");
+            const pIndex = localOrders.findIndex((o: any) => o.id === orderId);
+            if (pIndex >= 0) {
+                localOrders[pIndex].status = newStatus;
+                localOrders[pIndex].flow = newFlow;
+                if (!localOrders[pIndex].audit) localOrders[pIndex].audit = {};
+                if (newFlow === 'enRoute') localOrders[pIndex].audit.enRouteAt = new Date().toISOString();
+                if (newFlow === 'picked') localOrders[pIndex].audit.pickedAt = new Date().toISOString();
+                if (newFlow === 'completed') localOrders[pIndex].audit.completedAt = new Date().toISOString();
+                localStorage.setItem("orders", JSON.stringify(localOrders));
+                
+                await fetchOrder();
+                if (newFlow === 'completed') {
+                    alert('訂單已完成！(範例)');
+                    router.push('/dashboard');
+                }
+            }
+            return;
+        }
 
         const { error } = await supabase
             .from('orders')
