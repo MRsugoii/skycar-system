@@ -123,22 +123,6 @@ export default function LoginPage() {
                             />
                         </div>
                         <button
-                            type="button"
-                            onClick={() => {
-                                setIdno('A123456789');
-                                setPassword('0912345678');
-                                // Force DOM update for aggressive overriding browsers
-                                const idInput = document.getElementById('idno') as HTMLInputElement;
-                                const pwdInput = document.getElementById('password') as HTMLInputElement;
-                                if(idInput) idInput.value = 'A123456789';
-                                if(pwdInput) pwdInput.value = '0912345678';
-                            }}
-                            className="w-full bg-blue-50 text-blue-600 font-bold py-2 rounded-xl border border-blue-200 hover:bg-blue-100 transition-all text-sm mb-2"
-                        >
-                            💡 一鍵填入示範帳密
-                        </button>
-
-                        <button
                             type="submit"
                             disabled={isLoading}
                             className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] hover:bg-blue-700 transition-all text-base mt-2 disabled:bg-blue-400 disabled:cursor-not-allowed flex justify-center items-center gap-2"
