@@ -13,7 +13,6 @@ export default function OrderDetailsPage() {
 
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [isDocsOpen, setIsDocsOpen] = useState(false);
 
     const fetchOrder = async () => {
         if (!orderId) return;
@@ -28,9 +27,11 @@ export default function OrderDetailsPage() {
             const mapStatusToFlow = (s: string) => {
                 const ls = (s || "").toLowerCase();
                 if (ls === 'completed') return 'completed';
+                if (ls === 'rejected') return 'rejected';
                 if (ls === 'pickedup') return 'picked';
                 if (ls === 'en_route' || ls === 'en-route') return 'enRoute';
-                return 'idle';
+                if (ls === 'confirmed') return 'idle';
+                return 'unconfirmed';
             };
 
             const mapped = {
@@ -104,6 +105,8 @@ export default function OrderDetailsPage() {
         if (newFlow === 'enRoute') newStatus = 'en_route';
         if (newFlow === 'picked') newStatus = 'pickedup';
         if (newFlow === 'completed') newStatus = 'completed';
+        if (newFlow === 'rejected') newStatus = 'rejected';
+        if (newFlow === 'idle') newStatus = 'confirmed';
 
         if (orderId === "CH20251208999" || (orderId as string).startsWith("CH") || (orderId as string).startsWith("HIST")) {
             const localOrders = JSON.parse(localStorage.getItem("orders") || "[]");
@@ -120,6 +123,9 @@ export default function OrderDetailsPage() {
                 await fetchOrder();
                 if (newFlow === 'completed') {
                     alert('訂單已完成！(範例)');
+                    router.push('/dashboard');
+                } else if (newFlow === 'rejected') {
+                    alert('已拒絕訂單。');
                     router.push('/dashboard');
                 }
             }
@@ -139,6 +145,9 @@ export default function OrderDetailsPage() {
             if (newFlow === 'completed') {
                 alert('訂單已完成！');
                 router.push('/dashboard');
+            } else if (newFlow === 'rejected') {
+                alert('已拒絕訂單。');
+                router.push('/dashboard');
             }
         }
     };
@@ -154,8 +163,8 @@ export default function OrderDetailsPage() {
     const cs = d.childSeat || {};
     const bs = d.boardSign || {};
 
-    const statusText = flow === 'completed' ? '已完成' : '進行中';
-    const flowTextMap: any = { idle: '尚未開始', enRoute: '前往接客', picked: '已接到客戶', completed: '訂單已完成' };
+    const statusText = flow === 'completed' ? '已完成' : (flow === 'rejected' ? '已拒絕' : (flow === 'unconfirmed' ? '待確認' : '進行中'));
+    const flowTextMap: any = { unconfirmed: '尚未確認', idle: '尚未開始', enRoute: '前往接客', picked: '已接到客戶', completed: '訂單已完成', rejected: '已拒絕' };
     const flowText = flowTextMap[flow] || '—';
 
     // Helpers
@@ -194,9 +203,6 @@ export default function OrderDetailsPage() {
                                     <div className="text-xs text-gray-500 font-bold">{order.date} {order.time}</div>
                                 </div>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${flow === 'completed' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                                {statusText}
-                            </span>
                         </div>
 
                         <div className="space-y-3">
@@ -214,6 +220,7 @@ export default function OrderDetailsPage() {
                             <KV label="兒童座椅" value={csStr} />
                             <KV label="行李件數" value={lugStr} />
                             <KV label="舉牌服務" value={bs.need ? `需要 (${bs.text || ''})` : '不需要'} />
+                            <KV label="寵物友善" value={order.detail?.petFriendly || (order.priceBreakdown?.petFriendly ?? 0) > 0 ? `需要` : '不需要'} />
                             <KV label="備註" value={order.note || "—"} />
                             <div className="h-px bg-gray-100 my-4"></div>
                             <KV label="乘客姓名" value={d.contact?.name || "—"} />
@@ -236,6 +243,7 @@ export default function OrderDetailsPage() {
                             <PriceItem label="離峰優惠" value={order.priceBreakdown?.offPeak} isDiscount />
                             <PriceItem label="安全座椅" value={order.priceBreakdown?.carSeat} />
                             <PriceItem label="舉牌服務" value={order.priceBreakdown?.signage} />
+                            <PriceItem label="寵物友善" value={order.priceBreakdown?.petFriendly} />
                             <PriceItem label="優惠券" value={order.priceBreakdown?.coupon} isDiscount />
                             <div className="pt-2 border-t border-gray-200 mt-2 flex justify-between items-center font-black">
                                 <span className="text-gray-900">總額應收</span>
@@ -243,12 +251,8 @@ export default function OrderDetailsPage() {
                             </div>
                         </div>
 
-                        <div className="pt-3">
-                            <KV label="付款方式" value={d.pay || "現金"} />
-                        </div>
-
                         {/* Trip Log Card - Integrated (Hide for Completed/History Orders) */}
-                        {flow !== 'completed' && order.status !== 'completed' && (
+                        {flow !== 'completed' && order.status !== 'completed' && order.status !== 'rejected' && flow !== 'unconfirmed' && (
                             <div className="bg-gray-50 rounded-xl p-4 mt-6 space-y-3 border border-gray-100">
                                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">行程記錄</h4>
                                 <div className="flex justify-between items-center text-sm">
@@ -275,8 +279,26 @@ export default function OrderDetailsPage() {
                 </div>
             </div>
 
-            {/* Footer Actions - Only show if NOT completed */}
-            {flow !== 'completed' && order.status !== 'completed' && (
+            {/* Footer Actions - Confirm or Reject */}
+            {flow === 'unconfirmed' && (
+                <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-t border-gray-100 p-4 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.1)] max-w-[420px] mx-auto">
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                        <ActionButton
+                            label="確認接單"
+                            onClick={() => { if (confirm("確定接單？")) updateFlow('idle'); }}
+                            variant="blue"
+                        />
+                        <ActionButton
+                            label="拒絕接單"
+                            onClick={() => { if (confirm("確定拒絕本訂單？")) updateFlow('rejected'); }}
+                            variant="red"
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Footer Actions - Only show if NOT completed, rejected, or unconfirmed */}
+            {flow !== 'completed' && flow !== 'unconfirmed' && flow !== 'rejected' && order.status !== 'completed' && order.status !== 'rejected' && (
                 <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-t border-gray-100 p-4 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.1)] max-w-[420px] mx-auto">
                     <div className="grid grid-cols-2 gap-3">
                         <ActionButton
@@ -298,29 +320,13 @@ export default function OrderDetailsPage() {
                             variant="blue"
                         />
                         <ActionButton
-                            label="異常回報"
+                            label="申請取消"
                             onClick={() => window.location.href = 'tel:0912345678'}
                             variant="red"
                         />
                     </div>
-                    <div className="mt-3">
-                        <ActionButton
-                            label="【 汽車出租單 】"
-                            onClick={() => setIsDocsOpen(true)}
-                            variant="outline"
-                            icon={<FileText size={18} className="text-gray-500" />}
-                        />
-                    </div>
                     <p className="text-[10px] text-center text-gray-400 mt-2 font-medium">請依序點擊按鈕以更新行程狀態</p>
                 </div>
-            )}
-
-            {/* Rental Contract Modal */}
-            {isDocsOpen && (
-                <RentalContractModal
-                    order={order}
-                    onClose={() => setIsDocsOpen(false)}
-                />
             )}
         </div>
     );

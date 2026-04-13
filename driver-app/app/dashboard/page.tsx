@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '../../components/PageHeader';
 import { FileButton } from '../../components/FileButton';
-import { User, FileText, ChevronRight, LogOut, CheckCircle, Smartphone, Globe, ShieldCheck, ClipboardList, AlertCircle, X, Camera, AlertTriangle, Upload } from "lucide-react";
+import { User, FileText, ChevronRight, LogOut, CheckCircle, Smartphone, Globe, ShieldCheck, ClipboardList, AlertCircle, X, Camera, AlertTriangle, Upload, Calendar, MapPin, Navigation, Clock } from "lucide-react";
 import { supabase } from '../../lib/supabase';
 
 export default function DriverDashboard() {
@@ -315,7 +315,7 @@ export default function DriverDashboard() {
 
                     {/* 3. Assigned Orders - Only show if verified (statusAlert === 'none') */}
                     {statusAlert === 'none' && (
-                        <div className="bg-white rounded-xl shadow-xl p-6 border border-gray-100 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-150">
+                        <div className="animate-in fade-in slide-in-from-bottom-5 duration-700 delay-150">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-gray-900 text-lg">指派訂單</h3>
                                 {ongoingOrders.length > 0 && <span className="flex h-2.5 w-2.5 relative">
@@ -330,30 +330,44 @@ export default function DriverDashboard() {
                                         <div
                                             key={order.id}
                                             onClick={() => router.push(`/order/${order.id}`)}
-                                            className="bg-gray-50 border border-gray-100 rounded-xl p-4 grid grid-cols-[1fr_auto] gap-y-1 gap-x-3 cursor-pointer hover:bg-blue-50/50 hover:border-blue-100 transition-all group"
+                                            className="bg-white p-5 rounded-xl shadow-md border border-blue-100 cursor-pointer hover:shadow-lg transition relative overflow-hidden group"
                                         >
-                                            <div className="font-black text-gray-900 text-lg group-hover:text-blue-700 transition-colors">
-                                                {(order as any).displayId ? (order as any).displayId : order.id.substring(0, 8) + "..."}
+                                            <div className="flex flex-col gap-1 mb-3">
+                                                <span className="font-bold text-gray-900 text-lg">
+                                                    {(order as any).displayId ? (order as any).displayId : order.id}
+                                                </span>
+                                                <span className="text-sm text-blue-600 font-bold">{order.type || "尊榮轎車"}</span>
                                             </div>
-                                            <div className="text-right font-black text-gray-900 text-lg">${order.price?.toLocaleString()}</div>
-
-                                            <div className="text-sm font-bold text-gray-500 flex items-center gap-1">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                                                {order.from}
+                                            <div className="space-y-2 mb-4">
+                                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                                    <Calendar size={16} className="text-blue-500" />
+                                                    <span className="font-medium">{order.date} {order.time}</span>
+                                                </div>
+                                                <div className="flex items-start gap-3 text-sm text-gray-600">
+                                                    <MapPin size={16} className="text-blue-500 mt-0.5" />
+                                                    <span className="font-medium line-clamp-1">{order.from}</span>
+                                                </div>
+                                                <div className="flex items-start gap-3 text-sm text-gray-600">
+                                                    <Navigation size={16} className="text-blue-500 mt-0.5" />
+                                                    <span className="font-medium line-clamp-1">{order.to}</span>
+                                                </div>
+                                                {(order.detail?.pax || order.detail?.luggage) ? (
+                                                    <div className="flex items-center gap-3 text-sm text-gray-500 mt-2 pl-1 border-t border-dashed border-gray-100 pt-2">
+                                                        <span>{order.detail?.pax ? `${order.detail.pax.adult || 0}大 ${order.detail.pax.child || 0}小` : `1大 0小`}</span>
+                                                        <span>•</span>
+                                                        <span>{order.detail?.luggage ? `${(order.detail.luggage.s20 || 0) + (order.detail.luggage.s25 || 0) + (order.detail.luggage.s28 || 0)} 件行李` : '無行李'}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-3 text-sm text-gray-500 mt-2 pl-1 border-t border-dashed border-gray-100 pt-2">
+                                                        <span>1大 0小</span>
+                                                        <span>•</span>
+                                                        <span>1 件行李</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="text-right">
-                                                {(() => {
-                                                    const s = (order.status || "").toLowerCase();
-                                                    if (['ing', 'en_route', 'pickedup'].includes(s)) {
-                                                        return <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">進行中</span>;
-                                                    } else {
-                                                        return <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold">已預約</span>;
-                                                    }
-                                                })()}
-                                            </div>
-                                            <div className="text-xs font-bold text-gray-400 col-span-2 mt-2 pt-2 border-t border-gray-200/50 flex justify-between">
-                                                <span>預約時間</span>
-                                                <span>{order.date} {order.time}</span>
+                                            <div className="flex justify-between items-end border-t border-gray-50 pt-3">
+                                                <span className="text-xs text-gray-400 font-medium group-hover:text-blue-600 transition-colors">點擊查看詳情</span>
+                                                <span className="font-bold text-xl text-blue-600">NT$ {order.price?.toLocaleString() || "1,500"}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -365,13 +379,14 @@ export default function DriverDashboard() {
                                         onClick={() => {
                                             const demoOrder = {
                                                 id: "CH20251208999",
-                                                status: "confirmed",
+                                                status: "pending",
                                                 price: 1200,
                                                 from: "台北市信義區信義路五段7號 (台北101)",
                                                 to: "桃園國際機場 (TTE)",
                                                 date: "2025/12/08",
                                                 time: "14:00",
-                                                flow: "idle",
+                                                flow: "unconfirmed",
+                                                type: "尊榮轎車",
                                                 detail: {
                                                     pax: { adult: 2, child: 0 },
                                                     luggage: { s20: 0, s25: 1, s28: 1 },
@@ -389,23 +404,37 @@ export default function DriverDashboard() {
 
                                             router.push("/order/CH20251208999");
                                         }}
-                                        className="bg-white border-2 border-dashed border-gray-200 rounded-xl p-4 grid grid-cols-[1fr_auto] gap-y-1 gap-x-3 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all group opacity-70 hover:opacity-100"
+                                        className="bg-white p-5 rounded-xl shadow-md border border-blue-100 cursor-pointer hover:shadow-lg transition relative overflow-hidden group"
                                     >
-                                        <div className="font-black text-gray-400 text-lg group-hover:text-blue-600 transition-colors">範例訂單 #CH2025...</div>
-                                        <div className="text-right font-black text-gray-400 text-lg">$1,200</div>
-
-                                        <div className="text-sm font-bold text-gray-400 flex items-center gap-1">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                            台北市信義區...
+                                        <div className="absolute top-0 right-0 bg-gray-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-bl-xl border-l border-b border-gray-100">
+                                            範例
                                         </div>
-                                        <div className="text-right">
-                                            <span className="inline-block px-3 py-1 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold">
-                                                範例
-                                            </span>
+                                        <div className="flex flex-col gap-1 mb-3">
+                                            <span className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">範例訂單 #CH2025...</span>
+                                            <span className="text-sm text-blue-600 font-bold">尊榮轎車</span>
                                         </div>
-                                        <div className="text-xs font-bold text-gray-300 col-span-2 mt-2 pt-2 border-t border-gray-100 flex justify-between">
-                                            <span>預約時間</span>
-                                            <span>2025/12/08 14:00</span>
+                                        <div className="space-y-2 mb-4">
+                                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                                                <Calendar size={16} className="text-blue-500" />
+                                                <span className="font-medium">2025/12/08 14:00</span>
+                                            </div>
+                                            <div className="flex items-start gap-3 text-sm text-gray-600">
+                                                <MapPin size={16} className="text-blue-500 mt-0.5" />
+                                                <span className="font-medium line-clamp-1">台北市信義區信義路五段7號 (台北101)</span>
+                                            </div>
+                                            <div className="flex items-start gap-3 text-sm text-gray-600">
+                                                <Navigation size={16} className="text-blue-500 mt-0.5" />
+                                                <span className="font-medium line-clamp-1">桃園國際機場 (TTE)</span>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-2 pl-1 border-t border-dashed border-gray-100 pt-2">
+                                                <span>2大 0小</span>
+                                                <span>•</span>
+                                                <span>2 件行李</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-end border-t border-gray-50 pt-3">
+                                            <span className="text-xs text-gray-400 font-medium group-hover:text-blue-600 transition-colors">點擊查看詳情</span>
+                                            <span className="font-bold text-xl text-blue-600">NT$ 1,200</span>
                                         </div>
                                     </div>
                                     <p className="text-center text-xs text-gray-400 mt-2 font-bold">（目前尚無指派訂單，以上為範例）</p>

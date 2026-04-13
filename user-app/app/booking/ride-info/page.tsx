@@ -581,13 +581,13 @@ export default function RideInfoPage() {
 
                 {/* 7. Pet Friendly Service */}
                 <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 space-y-4">
-                    <div className="border-l-4 border-emerald-500 pl-3">
-                        <h2 className="text-lg font-bold text-gray-900">寵物友善服務</h2>
+                    <div className="border-l-4 border-blue-500 pl-3">
+                        <h2 className="text-lg font-bold text-gray-900">寵物友善</h2>
                         <p className="text-xs text-gray-500 mt-1">※ 需加價 NT$ {extraSettings?.pet_friendly_price || 0} / 趟</p>
                     </div>
 
                     <label className="flex items-center gap-4 cursor-pointer group">
-                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isPetFriendly ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-gray-200 group-hover:border-emerald-400'}`}>
+                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isPetFriendly ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 group-hover:border-blue-400'}`}>
                             {isPetFriendly && <Plus size={16} strokeWidth={4} />}
                         </div>
                         <input

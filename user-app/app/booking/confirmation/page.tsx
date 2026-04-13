@@ -380,7 +380,7 @@ function ConfirmationContent() {
                         <SummaryRow label="行李件數" value={`${(rideInfo?.luggage?.s || 0) + (rideInfo?.luggage?.m || 0) + (rideInfo?.luggage?.l || 0) + (rideInfo?.luggage?.total || 0)} 件${rideInfo?.luggage?.strollers > 0 ? ` (含嬰兒車 ${rideInfo.luggage.strollers} 台)` : ''}`} />
 
                         <SummaryRow label="舉牌服務" value={rideInfo?.signboard?.needed ? `需要` : "不需要"} />
-                        <SummaryRow label="寵物同行" value={rideInfo?.petFriendly?.needed ? `需要` : "不需要"} />
+                        <SummaryRow label="寵物友善" value={rideInfo?.petFriendly?.needed ? `需要` : "不需要"} />
                     </div>
                 </div>
 
@@ -407,7 +407,7 @@ function ConfirmationContent() {
                         <PriceDetailRow label="離峰優惠" value={-prices.discount} isDiscount />
                         <PriceDetailRow label="安全座椅" value={prices.safetySeats} />
                         <PriceDetailRow label="舉牌服務" value={prices.signboard} />
-                        <PriceDetailRow label="寵物同行" value={prices.petFriendly} />
+                        <PriceDetailRow label="寵物友善" value={prices.petFriendly} />
 
 
                         {prices.couponDiscount > 0 && (

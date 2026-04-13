@@ -452,9 +452,7 @@ function DashboardContent() {
                                     const o = ongoingOrders[0];
                                     return (
                                         <div key={o.orderId} onClick={() => setSelectedOrder(o)} className="bg-white p-5 rounded-xl shadow-md border border-blue-100 cursor-pointer hover:shadow-lg transition relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
-                                                進行中
-                                            </div>
+
                                             <div className="flex flex-col gap-1 mb-3">
                                                 <span className="font-bold text-gray-900 text-lg">{o.orderId}</span>
                                                 <span className="text-sm text-blue-600 font-bold">{o.type}</span>
@@ -524,18 +522,11 @@ function DashboardContent() {
                         <div className="max-w-[420px] mx-auto pointer-events-auto">
                             <button
                                 onClick={() => {
-                                    if (ongoingOrders.length > 0) {
-                                        alert("您已有進行中的行程，無法同時預約新服務");
-                                        return;
-                                    }
                                     router.push('/booking');
                                 }}
-                                className={`w-full py-3 text-white font-bold text-lg rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 ${ongoingOrders.length > 0
-                                    ? 'bg-gray-400 cursor-not-allowed shadow-gray-200'
-                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
-                                    }`}
+                                className={`w-full py-3 text-white font-bold text-lg rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-blue-200`}
                             >
-                                <Flag size={20} /> {ongoingOrders.length > 0 ? '行程進行中' : '預約服務'}
+                                <Flag size={20} /> 預約服務
                             </button>
                         </div>
                     </div>
@@ -706,17 +697,12 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                                 <div className="text-xs text-gray-500 font-bold">{order.date}</div>
                             </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${order.status === 'ing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                            order.status === 'done' ? 'bg-green-50 text-green-700 border-green-200' :
-                                order.status === 'refund_pending' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                    'bg-gray-50 text-gray-500 border-gray-200'
-                            }`}>
-                            {order.status === 'ing' ? '進行中' : order.status === 'done' ? '已完成' : '已取消'}
-                        </span>
                     </div>
 
                     <div className="space-y-1 pt-2">
                         <KV label="服務類型" value={order.type} />
+                        <KV label="司機名字" value={order.detail?.driverName || "安排中"} />
+                        <KV label="司機車牌" value={order.detail?.driverPlate || "安排中"} />
                     </div>
 
                     <div className="h-px bg-gray-100 my-2"></div>
@@ -730,7 +716,7 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                         <KV label="兒童座椅" value={order.detail?.seats ? `後${order.detail.seats.rear || 0} / 前${order.detail.seats.front || 0} / 增${order.detail.seats.booster || 0}` : '—'} />
                         <KV label="行李件數" value={order.detail?.luggage ? `${(order.detail.luggage.s20 || 0) + (order.detail.luggage.s25 || 0) + (order.detail.luggage.s28 || 0)} 件` : '—'} />
                         <KV label="舉牌服務" value={order.detail?.signage || (order.priceBreakdown?.signage ?? 0) > 0 ? `需要 (${order.detail?.signageText || ''})` : '不需要'} />
-                        <KV label="寵物同行" value={order.detail?.petFriendly || (order.priceBreakdown?.petFriendly ?? 0) > 0 ? `需要` : '不需要'} />
+                        <KV label="寵物友善" value={order.detail?.petFriendly || (order.priceBreakdown?.petFriendly ?? 0) > 0 ? `需要` : '不需要'} />
                         <KV label="備註" value={order.detail?.note || "—"} />
                     </div>
 
@@ -751,7 +737,7 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                         <PriceItem label="離峰優惠" value={order.priceBreakdown?.offPeak} isDiscount />
                         <PriceItem label="安全座椅" value={order.priceBreakdown?.carSeat} />
                         <PriceItem label="舉牌服務" value={order.priceBreakdown?.signage} />
-                        <PriceItem label="寵物同行" value={order.priceBreakdown?.petFriendly} />
+                        <PriceItem label="寵物友善" value={order.priceBreakdown?.petFriendly} />
                         <PriceItem label="優惠券" value={order.priceBreakdown?.coupon} isDiscount />
                         <div className="pt-2 border-t border-gray-200 mt-2 flex justify-between items-center font-black">
                             <span className="text-gray-900">總計</span>
@@ -759,7 +745,6 @@ function OrderDetailModal({ order, onClose, router }: { order: Order, onClose: (
                         </div>
                     </div>
 
-                    <KV label="付款方式" value={order.detail?.pay || "現金"} />
 
                     {order.status === 'ing' && (
                         <div className="pt-4 space-y-3">

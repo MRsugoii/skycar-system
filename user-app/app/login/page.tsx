@@ -8,11 +8,15 @@ import { supabase } from '../../lib/supabase';
 
 export default function LoginPage() {
     const router = useRouter();
-    const [idno, setIdno] = useState('');
-    const [password, setPassword] = useState('');
+    const [idno, setIdno] = useState('A123456789');
+    const [password, setPassword] = useState('0912345678');
     const [showForgot, setShowForgot] = useState(false);
 
     useEffect(() => {
+        // Enforce demo credentials on client side (bypasses some browser autofill clearing issues)
+        setIdno('A123456789');
+        setPassword('0912345678');
+        
         // initialize demo user if not exists
         if (typeof window !== 'undefined') {
             const demoKey = 'user_A123456789';
