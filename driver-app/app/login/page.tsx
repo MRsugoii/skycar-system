@@ -12,10 +12,15 @@ export default function LoginPage() {
     const [password, setPassword] = useState('0912345678');
     const [showForgot, setShowForgot] = useState(false);
 
-    React.useEffect(() => {
-        // Enforce demo credentials on client side (bypasses some browser autofill clearing issues)
-        setIdno('A123456789');
-        setPassword('0912345678');
+    useEffect(() => {
+        // Enforce demo credentials on client side (bypasses browser password managers clearing inputs)
+        const fillDemoContent = () => {
+            setIdno('A123456789');
+            setPassword('0912345678');
+        };
+        fillDemoContent();
+        const timeout = setTimeout(fillDemoContent, 500); // Re-fill after browser extension kicks in
+        return () => clearTimeout(timeout);
     }, []);
 
     const handleLogin = (e: React.FormEvent) => {

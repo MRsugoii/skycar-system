@@ -13,9 +13,13 @@ export default function LoginPage() {
     const [showForgot, setShowForgot] = useState(false);
 
     useEffect(() => {
-        // Enforce demo credentials on client side (bypasses some browser autofill clearing issues)
-        setIdno('A123456789');
-        setPassword('0912345678');
+        // Enforce demo credentials on client side (bypasses browser password managers clearing inputs)
+        const fillDemoContent = () => {
+            setIdno('A123456789');
+            setPassword('0912345678');
+        };
+        fillDemoContent();
+        const timeout = setTimeout(fillDemoContent, 500); // Re-fill after browser extension kicks in
         
         // initialize demo user if not exists
         if (typeof window !== 'undefined') {
