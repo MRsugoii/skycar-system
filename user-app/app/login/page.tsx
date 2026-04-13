@@ -134,6 +134,7 @@ export default function LoginPage() {
                         <div className="space-y-1.5">
                             <label className="text-sm font-bold text-gray-700 ml-1">帳號</label>
                             <input
+                                id="idno"
                                 type="text"
                                 value={idno}
                                 onChange={(e) => setIdno(e.target.value.toUpperCase())}
@@ -145,6 +146,7 @@ export default function LoginPage() {
                         <div className="space-y-1.5">
                             <label className="text-sm font-bold text-gray-700 ml-1">密碼</label>
                             <input
+                                id="password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -152,6 +154,22 @@ export default function LoginPage() {
                                 placeholder="請輸入密碼"
                             />
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIdno('A123456789');
+                                setPassword('0912345678');
+                                // Force DOM update for aggressive overriding browsers
+                                const idInput = document.getElementById('idno') as HTMLInputElement;
+                                const pwdInput = document.getElementById('password') as HTMLInputElement;
+                                if(idInput) idInput.value = 'A123456789';
+                                if(pwdInput) pwdInput.value = '0912345678';
+                            }}
+                            className="w-full bg-blue-50 text-blue-600 font-bold py-2 rounded-xl border border-blue-200 hover:bg-blue-100 transition-all text-sm mb-2"
+                        >
+                            💡 一鍵填入示範帳密
+                        </button>
 
                         <button
                             type="submit"
