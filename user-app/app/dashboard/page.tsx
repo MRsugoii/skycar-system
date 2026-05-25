@@ -21,6 +21,8 @@ interface OrderDetail {
     petFriendly?: boolean;
     carName?: string;
     car?: string; // fallback
+    driverName?: string;
+    driverPlate?: string;
 }
 
 interface Order {

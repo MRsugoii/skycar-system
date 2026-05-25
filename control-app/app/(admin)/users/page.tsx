@@ -127,6 +127,7 @@ export default function UsersPage() {
     });
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const { addLog } = useSystemActivity();
 
     const handleImportClick = () => {
@@ -212,14 +213,92 @@ export default function UsersPage() {
     const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
     const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    const handleUpdateUser = (updatedUser: User) => {
+    const handleUpdateUser = async (updatedUser: User) => {
         setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
         setSelectedUser(updatedUser);
 
-        // Log status change if it happened
-        const oldUser = users.find(u => u.id === updatedUser.id);
-        if (oldUser && oldUser.status !== updatedUser.status) {
-            addLog(`用戶 ${updatedUser.name} 狀態已更新為 ${updatedUser.status === 'Active' ? '啟用' : '停權'}`, updatedUser.status === 'Active' ? 'success' : 'warning');
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({
+                    name: updatedUser.name,
+                    email: updatedUser.email,
+                    phone: updatedUser.phone,
+                    status: updatedUser.status === 'Suspended' ? 'suspended' : 'active',
+                    dob: updatedUser.dob,
+                    address: updatedUser.address,
+                    line_id: updatedUser.lineId,
+                    whatsapp: updatedUser.whatsapp,
+                    level: updatedUser.level,
+                    national_id: updatedUser.nationalId
+                })
+                .eq('id', updatedUser.id);
+
+            if (error) {
+                console.error("Error updating user in Supabase:", error);
+                alert("數據更新失敗");
+            } else {
+                const oldUser = users.find(u => u.id === updatedUser.id);
+                if (oldUser && oldUser.status !== updatedUser.status) {
+                    addLog(`用戶 ${updatedUser.name} 狀態已更新為 ${updatedUser.status === 'Active' ? '啟用' : '停權'}`, updatedUser.status === 'Active' ? 'success' : 'warning');
+                }
+            }
+        } catch (err) {
+            console.error("Unexpected error updating user:", err);
+        }
+    };
+
+    const handleAddUser = async (newUser: User) => {
+        setIsAddModalOpen(false);
+
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .insert({
+                    name: newUser.name,
+                    email: newUser.email,
+                    phone: newUser.phone,
+                    status: newUser.status === 'Suspended' ? 'suspended' : 'active',
+                    dob: newUser.dob,
+                    address: newUser.address,
+                    line_id: newUser.lineId,
+                    whatsapp: newUser.whatsapp,
+                    level: newUser.level,
+                    national_id: newUser.nationalId,
+                    total_spending: 0,
+                    total_rides: 0
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error inserting user into Supabase:", error);
+                alert("新增用戶失敗：" + error.message);
+            } else {
+                if (data) {
+                    const mapped: User = {
+                        id: data.id,
+                        name: data.name || data.full_name || "Unknown",
+                        email: data.email || "",
+                        phone: data.phone || "",
+                        joinDate: data.created_at ? new Date(data.created_at).toISOString().split('T')[0] : "",
+                        status: data.status === 'suspended' ? "Suspended" : "Active",
+                        dob: data.dob || "",
+                        address: data.address || "",
+                        lineId: data.line_id || "",
+                        whatsapp: data.whatsapp || "",
+                        totalSpending: data.total_spending || 0,
+                        totalRides: data.total_rides || 0,
+                        level: data.level || "C",
+                        nationalId: data.national_id || "",
+                        password: "", // Hide password
+                    };
+                    setUsers(prev => [mapped, ...prev]);
+                }
+                addLog(`新增用戶 ${newUser.name}`, "info");
+            }
+        } catch (err) {
+            console.error("Unexpected error adding user:", err);
         }
     };
 
@@ -251,7 +330,10 @@ export default function UsersPage() {
                         <Download size={16} />
                         匯出名單
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-200">
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm shadow-blue-200"
+                    >
                         <UserPlus size={16} />
                         新增用戶
                     </button>
@@ -412,6 +494,13 @@ export default function UsersPage() {
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Add User Modal */}
+            {isAddModalOpen && (
+                <AddUserModal
+                    onClose={() => setIsAddModalOpen(false)}
+                    onAdd={handleAddUser}
+                />
             )}
         </div>
     );
@@ -872,5 +961,122 @@ function DriverStatusBadge({ status }: { status: string }) {
         <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${style}`}>
             {status}
         </span>
+    );
+}
+
+function AddUserModal({ onClose, onAdd }: { onClose: () => void; onAdd: (user: User) => void }) {
+    const [formData, setFormData] = useState<Partial<User>>({
+        name: "",
+        phone: "",
+        email: "",
+        dob: "",
+        address: "",
+        lineId: "",
+        whatsapp: "",
+        level: "C",
+        nationalId: "",
+        status: "Active",
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const newUser: User = {
+            id: (Math.floor(Math.random() * 1000) + 1).toString(),
+            name: formData.name || "",
+            phone: formData.phone || "",
+            email: formData.email || "",
+            joinDate: new Date().toISOString().split('T')[0],
+            status: (formData.status as "Active" | "Suspended") || "Active",
+            dob: formData.dob || "",
+            address: formData.address || "",
+            lineId: formData.lineId || "",
+            whatsapp: formData.whatsapp || "",
+            totalSpending: 0,
+            totalRides: 0,
+            level: formData.level || "C",
+            nationalId: formData.nationalId || "",
+            password: formData.phone || "",
+        };
+        onAdd(newUser);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl animate-in zoom-in duration-200">
+                <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+                    <h3 className="text-xl font-bold text-gray-900">新增用戶</h3>
+                    <button onClick={onClose} className="p-2 bg-white border border-gray-200 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors shadow-sm">
+                        <X size={20} />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                    <div className="space-y-6">
+                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">基本資料</h4>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">姓名 <span className="text-red-500">*</span></label>
+                                <input required name="name" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="請輸入真實姓名" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">電話 <span className="text-red-500">*</span></label>
+                                <input required name="phone" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="09xx-xxx-xxx" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">身分證字號 <span className="text-red-500">*</span></label>
+                                <input required name="nationalId" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all uppercase" placeholder="A123456789" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Email</label>
+                                <input type="email" name="email" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="example@email.com" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">出生日期</label>
+                                <input type="date" name="dob" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">會員等級</label>
+                                <select name="level" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white">
+                                    <option value="C">C 等級</option>
+                                    <option value="B">B 等級</option>
+                                    <option value="A">A 等級</option>
+                                    <option value="S">S 等級</option>
+                                </select>
+                            </div>
+                            <div className="col-span-2 space-y-2">
+                                <label className="text-sm font-medium text-gray-700">通訊地址</label>
+                                <input name="address" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="請輸入完整地址" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">社群與通訊資訊</h4>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Line ID</label>
+                                <input name="lineId" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="請輸入 Line ID" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">WhatsApp</label>
+                                <input name="whatsapp" onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="請輸入 WhatsApp 電話" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-gray-100 flex justify-end gap-3">
+                        <button type="button" onClick={onClose} className="px-5 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">
+                            取消
+                        </button>
+                        <button type="submit" className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm shadow-blue-200">
+                            新增
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 }

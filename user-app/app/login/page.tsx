@@ -57,9 +57,37 @@ export default function LoginPage() {
             alert('身分證字號格式不正確');
             return;
         }
+        let user: any = {};
+        const userStr = localStorage.getItem('user_' + cleanId);
+        if (userStr) {
+            user = JSON.parse(userStr);
+        } else if (supabase) {
+            // Fallback: Check if the user exists in Supabase
+            try {
+                const { data: sbUser } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('national_id', cleanId)
+                    .single();
 
-        const userStr = localStorage.getItem('user_' + cleanId) || '{}';
-        const user = JSON.parse(userStr);
+                if (sbUser) {
+                    user = {
+                        account: sbUser.national_id,
+                        password: sbUser.phone, // Default password to phone
+                        displayName: sbUser.name || sbUser.full_name || '示範用戶',
+                        email: sbUser.email || '',
+                        phone: sbUser.phone || '',
+                        totalSpent: sbUser.total_spending || 0,
+                        totalTrips: sbUser.total_rides || 0,
+                        level: sbUser.level || 'C'
+                    };
+                    // Store in localStorage for compatibility
+                    localStorage.setItem('user_' + cleanId, JSON.stringify(user));
+                }
+            } catch (err) {
+                console.error("Supabase direct query failed:", err);
+            }
+        }
 
         if (!user.account) {
             alert('查無此身分證帳號，請先註冊');
