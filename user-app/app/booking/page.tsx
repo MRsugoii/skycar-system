@@ -20,7 +20,7 @@ export default function BookingPage() {
 
                 const uid = sessionStorage.getItem('supabaseUserId');
                 if (uid) {
-                    // Check for any incomplete orders
+                    // Check for any incomplete orders (Skipped enforcement to allow multiple bookings)
                     const { data, error } = await supabase
                         .from('orders')
                         .select('id')
@@ -34,8 +34,8 @@ export default function BookingPage() {
                     }
 
                     if (data && data.length > 0) {
-                        alert("您目前有進行中的訂單，請先完成該行程後再預約。");
-                        router.push('/dashboard');
+                        console.log("User has active orders, but multiple bookings are allowed.");
+                        // Disabled alert and redirect to dashboard to allow multiple orders
                     }
                 }
             } catch (err) {
